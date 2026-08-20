@@ -27,7 +27,7 @@ jobs:
           sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null || true
 
       - name: Build APK (debug)
-          run: |
+        run: |
           cd CatEmpireCast && chmod +x gradlew && ./gradlew assembleDebug --stacktrace --no-daemon
           
       - name: Upload do APK gerado
