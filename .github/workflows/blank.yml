@@ -28,7 +28,7 @@ jobs:
 
       - name: Build APK (debug)
         run: |
-          chmod +x gradle
+          chmod +x gradlew
           ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload do APK gerado
