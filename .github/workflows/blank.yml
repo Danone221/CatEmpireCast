@@ -24,6 +24,7 @@ jobs:
 
       - name: Instalar SDKs necessários
         run: |
+          cd CatEmpireCast
           sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null || true
 
       - name: Build APK (debug)
