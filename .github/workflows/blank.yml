@@ -1,0 +1,39 @@
+name: Build Cat Empire APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar SDKs necessários
+        run: |
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null || true
+
+      - name: Build APK (debug)
+        run: |
+          cd CatEmpireCast
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Upload do APK gerado
+        uses: actions/upload-artifact@v4
+        with:
+          name: cat-empire-debug-apk
+          path: CatEmpireCast/app/build/outputs/apk/debug/*.apk
