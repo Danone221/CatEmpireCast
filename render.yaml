@@ -22,9 +22,3 @@ services:
         sync: false
       - key: CORS_ORIGIN
         value: "*"
-
-databases:
-  - name: cat-empire-db
-    plan: free
-    databaseName: cat_empire
-    user: cat_empire
