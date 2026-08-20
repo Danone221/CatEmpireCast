@@ -28,8 +28,7 @@ jobs:
 
       - name: Build APK (debug)
         run: |
-          cd CatEmpireCast
-          chmod +x gradlew
+          chmod +x gradle
           ./gradlew assembleDebug --stacktrace --no-daemon
 
       - name: Upload do APK gerado
