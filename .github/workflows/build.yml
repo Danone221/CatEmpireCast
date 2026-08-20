@@ -29,9 +29,8 @@ jobs:
       - name: Build APK (debug)
         run: |
           cd CatEmpireCast
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace --no-daemon
-          
+          gradle assembleDebug --stacktrace --no-daemon
+
       - name: Upload do APK gerado
         uses: actions/upload-artifact@v4
         with:
