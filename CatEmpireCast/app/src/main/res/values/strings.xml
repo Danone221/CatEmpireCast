@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Cat Empire</string>
+
+    <!-- Endereço do site. Troque aqui se o domínio do Render/Railway mudar
+         — é o único lugar que precisa editar. -->
+    <string name="app_base_url" translatable="false">https://cat-empire.onrender.com/</string>
+
+    <string name="loading">carregando o império…</string>
+    <string name="offline_title">Sem conexão</string>
+    <string name="offline_message">Não foi possível carregar o Cat Empire. Verifique sua internet.</string>
+    <string name="retry">TENTAR DE NOVO</string>
+    <string name="mic_cam_denied">Permissão de câmera/microfone negada. Ative nas configurações do app pra usar chamadas de voz e vídeo.</string>
+</resources>

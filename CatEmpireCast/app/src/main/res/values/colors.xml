@@ -1,0 +1,13 @@
+<resources>
+    <!-- Mesma paleta do client/style.css do site, pra casca nativa e o
+         conteúdo web parecerem a mesma coisa. -->
+    <color name="bg">#08020F</color>
+    <color name="panel">#130A27</color>
+    <color name="purple">#8B2BFF</color>
+    <color name="purple_light">#B56BFF</color>
+    <color name="pink">#FF4FD8</color>
+    <color name="gold">#FFCD3C</color>
+    <color name="text">#F2ECFF</color>
+    <color name="muted">#9A86BD</color>
+    <color name="danger">#FF3B55</color>
+</resources>

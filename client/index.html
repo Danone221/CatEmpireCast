@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CAT EMPIRE</title><link rel="stylesheet" href="/style.css">
+</head>
+<body class="landing-page">
+<div class="sky">
+  <div class="moon"></div>
+  <div class="stars"></div>
+  <div class="skyline"></div>
+</div>
+<header class="landing-topbar">
+  <div class="brand"><img src="/logo.svg" class="brand-logo" alt="Cat Empire"> <span>CAT EMPIRE</span></div>
+  <div class="topbar-right">
+    <div class="active-pill"><span class="dot"></span>SERVIDORES ATIVOS <strong id="activeRoomsTop">0</strong>/90</div>
+    <span class="deco-icon" title="Em breve" aria-hidden="true">♛</span>
+    <span class="deco-icon" title="Em breve" aria-hidden="true">⚙</span>
+  </div>
+</header>
+
+<main class="landing-main">
+  <section class="hero">
+   <img src="/logo.svg" class="pixel-cat" alt="Cat Empire">
+    <h1>CAT EMPIRE</h1>
+    <p class="creator">DESENVOLVIDO POR DANONIN</p>
+    <div class="auth">
+      <button class="btn btn-discord" id="discordBtn">🎮 ENTRAR COM DISCORD</button>
+      <button class="btn" id="guestBtn">🎭 CONTA ALEATÓRIA</button>
+      <div class="form-card" id="guestForm" hidden>
+        <input id="guestName" maxlength="16" placeholder="Como você deseja ser chamado?">
+        <button class="btn btn-primary" id="guestGo">ENTRAR</button>
+      </div>
+      <div class="form-card" id="createForm">
+        <input id="serverName" maxlength="40" placeholder="Nome do servidor (opcional)">
+        <button class="btn btn-primary" id="createServerBtn">+ CRIAR SERVIDOR</button>
+        <p class="hint">Crie um servidor e compartilhe o código de acesso.</p>
+      </div>
+      <div class="form-card">
+        <input id="joinCode" maxlength="6" inputmode="numeric" placeholder="Código do servidor (6 dígitos)">
+        <button class="btn" id="joinServerBtn">ENTRAR NO SERVIDOR</button>
+      </div>
+      <div id="serversList" class="server-list"></div>
+    </div>
+  </section>
+
+  <aside class="status-card">
+    <h3><span class="deco-icon small" aria-hidden="true">♛</span>STATUS</h3>
+    <div class="status-row">
+      <span><span class="dot success" aria-hidden="true"></span>Servidores ativos</span>
+      <strong id="activeRooms">0</strong>
+    </div>
+  </aside>
+</main>
+
+<footer class="landing-footer">
+  <div class="footer-item">
+    <span class="deco-icon" aria-hidden="true">☺</span>
+    <div>
+      <h4>COMUNIDADE</h4>
+      <p>Faça parte de uma comunidade incrível</p>
+    </div>
+  </div>
+  <div class="footer-item">
+    <span class="deco-icon" aria-hidden="true">⚑</span>
+    <div>
+      <h4>REPORTE DE BUGS</h4>
+      <p>Encontrou um problema? Avise no nosso Discord e ajude a melhorar o Cat Empire: <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">discord.gg/FdgS3V2b7e</a></p>
+    </div>
+  </div>
+</footer>
+<p class="landing-copyright">© CAT EMPIRE • Desenvolvido por Danonin</p>
+
+<script src="/ui.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

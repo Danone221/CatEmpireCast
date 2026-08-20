@@ -1,0 +1,31 @@
+{
+  "name": "cat-empire",
+  "version": "2.0.1",
+  "description": "Cat Empire - Servidor de Call + Go Live + Chat (Estilo Discord)",
+  "main": "server/index.js",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "uuid": "^9.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "pg": "^8.11.5",
+    "bcrypt": "^5.1.0",
+    "jsonwebtoken": "^9.0.0",
+    "multer": "^1.4.5-lts.1",
+    "helmet": "^7.0.0",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^6.7.0",
+    "node-media-server": "^2.6.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

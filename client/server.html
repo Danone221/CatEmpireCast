@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CAT EMPIRE — Servidor</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/socket.io/socket.io.js"></script>
+<script src="/ui.js"></script>
+</head>
+<body class="room-page discord-page">
+
+<div class="mobile-topbar">
+  <button class="hamburger" id="hamburgerBtn">☰</button>
+  <div class="mobile-title" id="mobileTitle">CAT EMPIRE</div>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app-shell">
+
+  <aside class="channels-sidebar" id="channelsSidebar">
+    <div class="server-head">
+      <div class="server-name" id="serverName">Servidor</div>
+      <div class="server-code">Código: <b id="roomCode">------</b></div>
+    </div>
+    <div class="channel-list" id="channelList"></div>
+    <div class="user-bar">
+      <div class="user-avatar"><img id="myAvatarImg" src="/logo.svg" alt=""></div>
+      <div class="user-info">
+        <div class="user-name" id="myName">Membro</div>
+        <div class="user-role" id="myRole">membro</div>
+      </div>
+      <button class="leave-btn" id="leaveBtn" title="Sair do servidor">🚪</button>
+    </div>
+  </aside>
+
+  <main class="main-panel">
+    <div class="text-view" id="textView">
+      <div class="panel-header"><span id="chatChannelName"># geral</span></div>
+      <div class="messages-list" id="messagesList"></div>
+      <div class="voice-connected-bar" id="voiceBar" hidden>
+        <span class="dot"></span>
+        <span id="voiceBarText">Conectado a 🔊 Geral</span>
+        <button id="voiceBarLeave">SAIR DA CHAMADA</button>
+      </div>
+      <div class="attach-preview" id="attachPreview" hidden>
+        <img id="attachPreviewImg" alt="">
+        <span id="attachPreviewName"></span>
+        <button type="button" id="attachRemoveBtn">✕</button>
+      </div>
+      <form class="message-form" id="messageForm">
+        <button type="button" class="attach-btn" id="attachBtn" title="Enviar imagem">📎</button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <input type="text" id="messageInput" placeholder="Enviar mensagem…" maxlength="2000" autocomplete="off" enterkeyhint="send">
+        <button type="button" id="sendBtn" class="send-btn" title="Enviar">➤</button>
+      </form>
+    </div>
+
+    <div class="voice-view" id="voiceView" hidden>
+      <div class="panel-header"><span id="voiceChannelName">🔊 Geral</span></div>
+      <div class="voice-grid" id="voiceGrid"></div>
+      <div class="voice-controls">
+        <button class="vc-btn active" id="micBtn" title="Mutar/Desmutar">🎤</button>
+        <button class="vc-btn" id="camBtn" title="Câmera">📷</button>
+        <button class="vc-btn" id="screenBtn" title="Compartilhar tela (navegador)">🖥️</button>
+        <button class="vc-btn" id="mobileCastBtn" title="Transmitir do celular (app externo)">📱</button>
+        <button class="vc-btn danger" id="hangupBtn" title="Sair da chamada">📞</button>
+      </div>
+    </div>
+  </main>
+
+  <aside class="members-sidebar" id="membersSidebar">
+    <h4>MEMBROS — <span id="memberCount">0</span></h4>
+    <div id="membersList"></div>
+  </aside>
+
+</div>
+
+<div class="modal" id="createChannelModal">
+  <div class="modal-box">
+    <h2>Criar canal</h2>
+    <input id="newChannelName" placeholder="nome-do-canal" maxlength="30">
+    <div class="type-toggle">
+      <button type="button" class="type-opt active" data-type="text" id="typeTextBtn"># Texto</button>
+      <button type="button" class="type-opt" data-type="voice" id="typeVoiceBtn">🔊 Voz</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="cancelChannelBtn">Cancelar</button>
+      <button class="btn btn-primary" id="confirmChannelBtn">Criar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mobileCastModal">
+  <div class="modal-box">
+    <h2>📱 Transmitir a tela do celular</h2>
+    <p class="modal-hint">
+      Use um app de RTMP grátis — <b>Larix Broadcaster</b> (Android/iOS) — ou qualquer
+      encoder RTMP (OBS, etc). Cole a URL e a CHAVE abaixo lá dentro e dá GO LIVE.
+    </p>
+    <div class="kv-row">
+      <span class="kv-label">URL RTMP</span>
+      <span class="kv-value" id="castRtmpUrl">—</span>
+      <button type="button" class="btn kv-copy" data-copy="castRtmpUrl">Copiar</button>
+    </div>
+    <div class="kv-row">
+      <span class="kv-label">CHAVE</span>
+      <span class="kv-value" id="castStreamKey">—</span>
+      <button type="button" class="btn kv-copy" data-copy="castStreamKey">Copiar</button>
+    </div>
+    <p class="modal-hint warn" id="castWarning" hidden>
+      ⚠️ Esse servidor de mídia externo não está configurado. Veja o README (seção
+      "Transmissão de tela pelo celular") pra apontar um host de RTMP.
+    </p>
+    <p class="modal-hint">
+      ⏳ Latência de ~2 a 4s. A transmissão entra na chamada como um tile de vídeo e
+      qualquer pessoa pode colocar em tela cheia.
+    </p>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="closeCastModalBtn">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/flv.js@1.6.2/dist/flv.min.js"></script>
+<script src="/room.js"></script>
+</body>
+</html>
