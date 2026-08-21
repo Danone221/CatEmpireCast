@@ -36,6 +36,9 @@
       } catch (_) {
         activeCameraDeviceId = null;
       }
+      track.addEventListener('ended', () => {
+        if (activeCameraStream === stream) activeCameraStream = null;
+      }, { once: true });
       return stream;
     }
 
