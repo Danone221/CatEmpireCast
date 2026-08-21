@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const Channel = require('./database/models/Channel');
 const ServerModel = require('./database/models/Server');
 const User = require('./database/models/User');
+const Dm = require('./database/models/Dm');
 
 function setupSocket(server) {
   const io = new Server(server, {
@@ -296,6 +297,70 @@ function setupSocket(server) {
     });
     socket.on('typing-stop', ({ channelId }) => {
       socket.to(`channel-${channelId}`).emit('user-stop-typing', { channelId, userId: socket.userId });
+    });
+
+    // ========== MENSAGENS PRIVADAS (DM) ==========
+    // Cada usuário já está numa sala `user-${id}` desde o registro (ver
+    // 'register' acima), então dá pra mandar DM direto pra sala da pessoa
+    // sem precisar que ela esteja com a página de DMs aberta.
+    socket.on('send-dm', async ({ toUserId, message, file }) => {
+      try {
+        if (!toUserId || toUserId === socket.userId) return;
+        const target = await User.findById(toUserId);
+        if (!target) return socket.emit('error', { message: 'Usuário não encontrado' });
+        const text = (message || '').trim();
+        if (!text && !file) return;
+        if (text.length > 2000) return socket.emit('error', { message: 'Mensagem muito longa' });
+
+        const dm = await Dm.send({ senderId: socket.userId, recipientId: toUserId, content: text, file });
+        io.to(`user-${toUserId}`).emit('new-dm', dm);
+        io.to(`user-${socket.userId}`).emit('new-dm', dm); // ecoa pro remetente (multi-aba)
+      } catch (error) {
+        console.error('❌ Erro ao enviar DM:', error);
+        socket.emit('error', { message: 'Erro ao enviar mensagem privada' });
+      }
+    });
+
+    socket.on('edit-dm', async ({ messageId, content }) => {
+      try {
+        const original = await Dm.getById(messageId);
+        if (!original || original.sender_id !== socket.userId) {
+          return socket.emit('error', { message: 'Você só pode editar suas próprias mensagens' });
+        }
+        const trimmed = (content || '').trim();
+        if (!trimmed) return;
+        const updated = await Dm.edit(messageId, trimmed.slice(0, 2000));
+        io.to(`user-${original.sender_id}`).emit('dm-edited', updated);
+        io.to(`user-${original.recipient_id}`).emit('dm-edited', updated);
+      } catch (error) {
+        console.error('❌ Erro ao editar DM:', error);
+        socket.emit('error', { message: 'Erro ao editar mensagem' });
+      }
+    });
+
+    socket.on('delete-dm', async ({ messageId }) => {
+      try {
+        const original = await Dm.getById(messageId);
+        if (!original || original.sender_id !== socket.userId) {
+          return socket.emit('error', { message: 'Você só pode excluir suas próprias mensagens' });
+        }
+        await Dm.delete(messageId);
+        const payload = { id: messageId, sender_id: original.sender_id, recipient_id: original.recipient_id };
+        io.to(`user-${original.sender_id}`).emit('dm-deleted', payload);
+        io.to(`user-${original.recipient_id}`).emit('dm-deleted', payload);
+      } catch (error) {
+        console.error('❌ Erro ao excluir DM:', error);
+        socket.emit('error', { message: 'Erro ao excluir mensagem' });
+      }
+    });
+
+    socket.on('dm-typing-start', ({ toUserId }) => {
+      if (!toUserId) return;
+      io.to(`user-${toUserId}`).emit('dm-user-typing', { userId: socket.userId, userName: socket.userName });
+    });
+    socket.on('dm-typing-stop', ({ toUserId }) => {
+      if (!toUserId) return;
+      io.to(`user-${toUserId}`).emit('dm-user-stop-typing', { userId: socket.userId });
     });
 
     // ========== GO LIVE ==========
