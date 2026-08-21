@@ -1,4 +1,4 @@
-const $ = id => document.getElementById(id);
+cconst $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const serverId = q.get('serverId');
 const userId = q.get('userId');
@@ -28,6 +28,34 @@ $('myName').textContent = userName;
 function headers() {
   return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
 }
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+let hadConnectedBefore = false;
+socket.on('connect', () => {
+  socket.emit('register', { userId, token, serverId });
+  if (selectedTextChannelId) socket.emit('join-text-channel', { channelId: selectedTextChannelId });
+  
+  // Corrigindo a reconexão do canal de voz
+  if (voiceChannelId) {
+    // Se é uma RECONEXÃO, limpa os peers e o grid antes de tentar entrar no canal
+    if (hadConnectedBefore) {
+      Object.keys(peers).forEach(closePeer);
+      // Reseta o estado da câmera/tela local
+      if (camOn) { camOn = false; updateCamButton(); removeCurrentVideoTrack(); }
+      if (screenOn) { screenOn = false; updateScreenButton(); removeCurrentVideoTrack(); }
+      renderVoiceGrid();
+    }
+    socket.emit('join-voice-channel', { channelId: voiceChannelId });
+  }
+  hadConnectedBefore = true;
+});
+socket.on('disconnect', () => {
+  if (voiceChannelId) toast('Conexão perdida, reconectando…', 'error');
+});
+socket.on('error', d => console.error(d));
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
