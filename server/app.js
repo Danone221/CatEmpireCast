@@ -17,8 +17,8 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       // flv.js (player do cast externo via RTMP/HTTP-FLV) vem do jsdelivr;
       // o resto do JS continua tudo same-origin.
-      scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
-      styleSrc: ["'self'", "https://fonts.googleapis.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       // cdn.discordapp.com: é de lá que vem a foto de perfil de quem loga
       // com Discord — sem isso o navegador bloqueia o avatar e ele quebra.
