@@ -407,9 +407,21 @@ function removeCurrentVideoTrack() {
   localStream.removeTrack(track);
 }
 
-function addVideoTrackToPeers(track) {
+ffunction addVideoTrackToPeers(track) {
   if (!localStream) localStream = new MediaStream();
   localStream.addTrack(track);
+  
+  // ===== NOVA CORREÇÃO: REMOVER TRACKS ANTIGAS =====
+  // Antes de adicionar a nova track, garanta que não existe outra track de vídeo
+  const oldVideos = localStream.getVideoTracks();
+  oldVideos.forEach(t => {
+    if (t !== track) {
+      t.stop();
+      localStream.removeTrack(t);
+    }
+  });
+  // ================================================
+
   Object.values(peers).forEach(p => p.pc.addTrack(track, localStream));
 }
 
