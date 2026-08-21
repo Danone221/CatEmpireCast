@@ -17,6 +17,78 @@ router.get('/servers/active', async (req, res) => {
   }
 });
 
+// ========== PERFIL DO USUÁRIO ==========
+
+// Dados completos do usuário logado (pra pré-preencher o modal de edição)
+router.get('/me', authenticate, async (req, res) => {
+  res.json(req.user);
+});
+
+// Editar meu perfil: nome de exibição, avatar, bio, cor do banner
+router.put('/me/profile', authenticate, async (req, res) => {
+  try {
+    const { displayName, avatar, bio, bannerColor } = req.body;
+    const data = {};
+    if (typeof displayName === 'string') {
+      const trimmed = displayName.trim().slice(0, 32);
+      if (trimmed) data.display_name = trimmed;
+    }
+    if (typeof bio === 'string') data.bio = bio.slice(0, 190);
+    if (typeof bannerColor === 'string' || bannerColor === null) data.banner_color = bannerColor || null;
+    if (typeof avatar === 'string') {
+      // Base64 data URL — limite de ~500KB pra não pesar no banco.
+      if (avatar.length > 700000) {
+        return res.status(400).json({ error: 'Imagem muito grande (máx. ~500KB).' });
+      }
+      data.avatar = avatar;
+    }
+    const user = await User.update(req.user.id, data);
+
+    // Propaga em tempo real pra quem estiver com a página aberta em
+    // qualquer servidor que essa pessoa participa — sem isso, nomes e
+    // avatares atualizados só apareceriam pros outros membros depois de
+    // um refresh manual da página.
+    const io = req.app.get('io');
+    if (io) {
+      const servers = await User.getServers(req.user.id);
+      const publicUser = await User.getPublicProfile(req.user.id);
+      for (const s of servers) {
+        io.to(`server-${s.id}`).emit('member-profile-updated', publicUser);
+      }
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Erro ao editar perfil:', error);
+    res.status(500).json({ error: 'Erro ao editar perfil' });
+  }
+});
+
+// Ver o perfil público de outra pessoa — só liberado pra quem divide
+// pelo menos um servidor com ela (evita expor perfis pra estranhos).
+router.get('/users/:userId/profile', authenticate, async (req, res) => {
+  try {
+    if (req.params.userId === req.user.id) {
+      return res.json(await User.getPublicProfile(req.user.id));
+    }
+    const myServers = await User.getServers(req.user.id);
+    let sharesServer = false;
+    for (const s of myServers) {
+      const role = await Server.getMemberRole(s.id, req.params.userId);
+      if (role) { sharesServer = true; break; }
+    }
+    if (!sharesServer) {
+      return res.status(403).json({ error: 'Você não divide nenhum servidor com esse usuário' });
+    }
+    const profile = await User.getPublicProfile(req.params.userId);
+    if (!profile) return res.status(404).json({ error: 'Usuário não encontrado' });
+    res.json(profile);
+  } catch (error) {
+    console.error('Erro ao buscar perfil:', error);
+    res.status(500).json({ error: 'Erro ao buscar perfil' });
+  }
+});
+
 // ========== SERVIDORES ==========
 
 // Criar servidor
@@ -101,6 +173,42 @@ router.post('/servers/:serverId/join', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Erro ao entrar no servidor:', error);
     res.status(500).json({ error: 'Erro ao entrar no servidor' });
+  }
+});
+
+// Editar servidor (somente ADMIN): nome, ícone, cor do banner, descrição
+router.put('/servers/:serverId', authenticate, async (req, res) => {
+  try {
+    const role = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas administradores podem editar o servidor' });
+    }
+    const { name, icon, bannerColor, description } = req.body;
+    const data = {};
+    if (typeof name === 'string') {
+      const trimmed = name.trim().slice(0, 40);
+      if (trimmed) data.name = trimmed;
+    }
+    if (typeof icon === 'string') {
+      // Emoji curto OU imagem (data URL/URL) — limite generoso só pra
+      // barrar payloads absurdos, a validação de tipo fica pro cliente.
+      if (icon.length > 700000) {
+        return res.status(400).json({ error: 'Ícone muito grande (máx. ~500KB).' });
+      }
+      data.icon = icon;
+    }
+    if (typeof bannerColor === 'string' || bannerColor === null) data.banner_color = bannerColor || null;
+    if (typeof description === 'string') data.description = description.slice(0, 300);
+
+    const server = await Server.update(req.params.serverId, data);
+
+    const io = req.app.get('io');
+    if (io) io.to(`server-${req.params.serverId}`).emit('server-updated', server);
+
+    res.json(server);
+  } catch (error) {
+    console.error('Erro ao editar servidor:', error);
+    res.status(500).json({ error: 'Erro ao editar servidor' });
   }
 });
 
