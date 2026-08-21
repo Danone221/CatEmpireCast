@@ -167,7 +167,7 @@
       <div class="char-counter"><span id="editBioCount">0</span>/190</div>
       
       <label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER (DISCORD)</label>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div class="color-picker-layout" style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div class="color-swatches" id="editColorSwatches" style="margin-bottom:0;flex:1"></div>
         <input type="color" id="editCustomColorInput" class="custom-color-input" title="Cor personalizada">
       </div>
@@ -175,7 +175,7 @@
       <input type="file" id="avatarFileInput" accept="image/*" hidden>
       <input type="file" id="profileBannerFileInput" accept="image/*" hidden>
 
-      <div class="modal-actions">
+      <div class="modal-actions profile-settings-actions">
         <button class="btn" id="cancelEditProfileBtn">Cancelar</button>
         <button class="btn btn-primary" id="saveEditProfileBtn">Salvar Alterações</button>
       </div>
@@ -253,7 +253,7 @@
       <div class="char-counter"><span id="editServerDescCount">0</span>/300</div>
       
       <label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER (DISCORD)</label>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div class="color-picker-layout" style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div class="color-swatches" id="serverColorSwatches" style="margin-bottom:0;flex:1"></div>
         <input type="color" id="serverCustomColorInput" class="custom-color-input" title="Cor personalizada">
       </div>
@@ -261,7 +261,7 @@
       <input type="file" id="serverIconFileInput" accept="image/*" hidden>
       <input type="file" id="serverBannerFileInput" accept="image/*" hidden>
 
-      <div class="modal-actions">
+      <div class="modal-actions profile-settings-actions">
         <button class="btn" id="cancelServerSettingsBtn">Cancelar</button>
         <button class="btn btn-primary" id="saveServerSettingsBtn">Salvar Alterações</button>
       </div>
@@ -285,7 +285,7 @@
 
       <div class="danger-zone-box" id="deleteServerBox">
         <h4 style="font-size:10px;color:#ff5369;margin-bottom:8px">EXCLUIR ESTE SERVIDOR</h4>
-        <p class="modal-hint" style="font-size:12px;color:#ffb0be;margin-bottom:14px">Esta ação é irreversível. Todos os canais, mensagens e convites deste servidor serão apagados permanentemente. (Apenas o Criador)</p>
+        <p class="modal-hint" style="font-size:10px;color:#ffb0be;margin-bottom:14px">Esta ação é irreversível. Todos os canais, mensagens e convites deste servidor serão apagados permanentemente. (Apenas o Criador)</p>
         <button type="button" class="btn" id="deleteServerBtn" style="background:#a11c35;color:#fff;border-color:#ff3b55;font-size:10px">🗑️ Excluir Servidor Permanentemente</button>
       </div>
       <div class="modal-actions" style="margin-top:16px">
