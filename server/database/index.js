@@ -106,7 +106,27 @@ async function initSchema() {
     await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)');
   }
 
+  // ===== Migração: personalização de perfil (bio, cor de banner) e de
+  // servidor (cor de banner, descrição) — fidelidade estilo Discord. =====
+  await addColumnIfMissing('users', 'bio', 'TEXT');
+  await addColumnIfMissing('users', 'banner_color', 'TEXT');
+  await addColumnIfMissing('servers', 'banner_color', 'TEXT');
+  await addColumnIfMissing('servers', 'description', 'TEXT');
+  // Fidelidade Discord: mensagens editáveis (marca "(editado)") e exclusão.
+  await addColumnIfMissing('messages', 'edited_at', 'BIGINT');
+
   console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
+}
+
+// Helper de migração idempotente: adiciona a coluna só se ainda não existir.
+async function addColumnIfMissing(table, column, type) {
+  const col = await pool.query(
+    `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
+    [table, column]
+  );
+  if (col.rowCount === 0) {
+    await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+  }
 }
 
 module.exports = { pool, query, queryOne, initSchema };
