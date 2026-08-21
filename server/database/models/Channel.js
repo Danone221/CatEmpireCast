@@ -78,6 +78,20 @@ class Channel {
     );
   }
 
+  // Edita o conteúdo de uma mensagem já enviada (marca edited_at). Não
+  // mexe em anexo — só o texto pode ser editado, igual ao Discord.
+  static async editMessage(id, content) {
+    await query(
+      `UPDATE messages SET content = $1, edited_at = extract(epoch FROM now())::bigint WHERE id = $2`,
+      [content, id]
+    );
+    return this.getMessage(id);
+  }
+
+  static async deleteMessage(id) {
+    await query('DELETE FROM messages WHERE id = $1', [id]);
+  }
+
   static async getVoiceMembers(channelId) {
     return query(
       `SELECT vs.*, u.username, u.display_name, u.avatar

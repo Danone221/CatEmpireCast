@@ -15,7 +15,16 @@ class User {
 
   static async findById(id) {
     return queryOne(
-      'SELECT id, username, display_name, avatar, created_at FROM users WHERE id = $1',
+      'SELECT id, username, display_name, avatar, bio, banner_color, created_at FROM users WHERE id = $1',
+      [id]
+    );
+  }
+
+  // Perfil público — o que qualquer membro do mesmo servidor pode ver.
+  // Nunca inclui password_hash, discord_id ou email.
+  static async getPublicProfile(id) {
+    return queryOne(
+      'SELECT id, username, display_name, avatar, bio, banner_color, created_at FROM users WHERE id = $1',
       [id]
     );
   }

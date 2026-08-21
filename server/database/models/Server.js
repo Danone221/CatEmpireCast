@@ -79,6 +79,25 @@ class Server {
     return row ? row.role : null;
   }
 
+  // Edita nome, ícone (emoji ou imagem em base64/URL), cor de banner e
+  // descrição do servidor. Só quem chama a rota confere se é ADMIN antes.
+  static async update(id, data) {
+    const allowed = ['name', 'icon', 'banner_color', 'description'];
+    const fields = [];
+    const values = [];
+    let i = 1;
+    for (const key of allowed) {
+      if (data[key] === undefined) continue;
+      fields.push(`${key} = $${i}`);
+      values.push(data[key]);
+      i++;
+    }
+    if (!fields.length) return this.findById(id);
+    values.push(id);
+    await query(`UPDATE servers SET ${fields.join(', ')} WHERE id = $${i}`, values);
+    return this.findById(id);
+  }
+
   static async getChannels(serverId) {
     return query(
       `SELECT * FROM channels
