@@ -38,6 +38,21 @@ socket.on('connect', () => {
   socket.emit('register', { userId, token, serverId });
   if (selectedTextChannelId) socket.emit('join-text-channel', { channelId: selectedTextChannelId });
   if (voiceChannelId) {
+    // ===== CORREÇÃO DA RECONEXÃO =====
+    // Se você já esteve conectado antes, você DEVE fechar TODOS os peers velhos
+    // e limpar o grid de voz ANTES de tentar entrar no canal.
+    if (hadConnectedBefore) {
+      Object.keys(peers).forEach(closePeer);
+      // Reseta o estado da câmera/tela local para evitar conflitos
+      if (camOn) { camOn = false; updateCamButton(); removeCurrentVideoTrack(); }
+      if (screenOn) { screenOn = false; updateScreenButton(); removeCurrentVideoTrack(); }
+      renderVoiceGrid();
+    }
+    // ==================================
+    socket.emit('join-voice-channel', { channelId: voiceChannelId });
+  }
+  hadConnectedBefore = true;
+}); {
     // Se isso é uma RECONEXÃO (já tínhamos conectado antes) durante uma
     // chamada, o servidor já nos tirou e recolocou no canal de voz (ver
     // fix no disconnect handler do socket.js). As conexões WebRTC antigas
