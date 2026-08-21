@@ -144,7 +144,6 @@
       overlay.querySelector('#confirmJoinInviteBtn').onclick = async () => {
         let raw = inputInvite.value.trim();
         if (!raw) return toast('Cole o link ou código de convite.', 'error');
-        // Extrai o código caso o usuário cole a URL inteira (ex: https://.../invite/abc123)
         const match = raw.match(/invite\/([a-zA-Z0-9_-]+)/);
         const code = match ? match[1] : raw;
 
@@ -183,4 +182,54 @@
       window.openAddServerModal();
     }
   });
+
+  // ========== CORREÇÃO DAS PALETAS DE CORES ==========
+  // A paleta é usada tanto no Perfil quanto nas Configurações do Servidor.
+  // Forçamos uma grade estável para impedir que os swatches sejam empilhados
+  // em uma única coluna quando o modal/flexbox calcula uma largura pequena.
+  const paletteStyle = document.createElement('style');
+  paletteStyle.id = 'catEmpirePaletteFix';
+  paletteStyle.textContent = `
+    .color-swatches {
+      display: grid !important;
+      grid-template-columns: repeat(8, 26px) !important;
+      grid-auto-rows: 26px;
+      gap: 9px;
+      align-content: start;
+      justify-content: start;
+      width: 100%;
+      min-width: 0;
+      flex: 1 1 auto !important;
+      margin-bottom: 0 !important;
+    }
+
+    .color-swatch {
+      width: 26px !important;
+      height: 26px !important;
+      min-width: 26px;
+      min-height: 26px;
+      display: block !important;
+      flex: none !important;
+    }
+
+    .color-swatch:hover {
+      transform: translateY(-1px);
+      border-color: #fff;
+      box-shadow: 0 0 8px rgba(181, 107, 255, .45);
+    }
+
+    .color-swatch.selected {
+      outline: 2px solid #fff;
+      outline-offset: 2px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, .25);
+    }
+
+    @media (max-width: 600px) {
+      .color-swatches {
+        grid-template-columns: repeat(6, 26px) !important;
+        gap: 8px;
+      }
+    }
+  `;
+  document.head.appendChild(paletteStyle);
 })();
