@@ -12,6 +12,13 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
+    <!-- Necessárias pra transmissão de tela nativa (RTMP via MediaProjection)
+         e pro serviço em primeiro plano que a captura de tela do WebView
+         (getDisplayMedia) já exigia desde o Android 14. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Só usado se o usuário escolher "Tirar foto" no seletor de imagem
          do chat, em vez de escolher uma já existente na galeria. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -36,6 +43,22 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Fica ativo enquanto uma sala está aberta, pra permitir que o
+             getDisplayMedia() do WebView (compartilhar tela pelo navegador
+             embutido) funcione a partir do Android 14. -->
+        <service
+            android:name=".ScreenCaptureNotifier"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
+
+        <!-- Transmissão de tela nativa de verdade (RTMP via RootEncoder),
+             disparada pelo botão "📱" na chamada de voz através da ponte
+             JS CatEmpireNative. -->
+        <service
+            android:name=".BroadcastService"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
 
     </application>
 
