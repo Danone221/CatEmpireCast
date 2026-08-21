@@ -224,12 +224,118 @@
       box-shadow: 0 0 10px rgba(255, 255, 255, .25);
     }
 
+    /* Campo de cor personalizada: não deixar o input nativo aparecer
+       como um retângulo sem identificação ao lado da paleta. */
+    .custom-color-field {
+      width: 100%;
+      min-width: 172px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px;
+      border: 2px solid #3b1b68;
+      background: #0d0618;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+
+    .custom-color-field:hover {
+      border-color: #a65cff;
+      background: #120a22;
+      box-shadow: 0 0 12px rgba(181, 107, 255, .18);
+    }
+
+    .custom-color-field-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .custom-color-field-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      line-height: 1.3;
+      color: #f2ecff;
+      letter-spacing: .2px;
+    }
+
+    .custom-color-field-hint {
+      font-family: monospace;
+      font-size: 10px;
+      line-height: 1.2;
+      color: #8c74a9;
+    }
+
+    .custom-color-field input[type="color"] {
+      width: 32px !important;
+      height: 32px !important;
+      min-width: 32px !important;
+      min-height: 32px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      border: 2px solid #8a3fe8 !important;
+      background: transparent !important;
+      cursor: pointer;
+      flex: none !important;
+    }
+
+    .custom-color-field input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 2px;
+    }
+
+    .custom-color-field input[type="color"]::-webkit-color-swatch {
+      border: 0;
+    }
+
     @media (max-width: 600px) {
       .color-swatches {
         grid-template-columns: repeat(6, 26px) !important;
         gap: 8px;
       }
+
+      .custom-color-field {
+        min-width: 150px;
+      }
     }
   `;
   document.head.appendChild(paletteStyle);
+
+  // ========== IDENTIFICAÇÃO DO CAMPO DE COR PERSONALIZADA ==========
+  // Mantemos os IDs existentes para não quebrar o código que já lê/salva
+  // as cores. Apenas transformamos visualmente o input nativo em um campo
+  // claramente identificado, tanto no Perfil quanto no Servidor.
+  function setupCustomColorField(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input || input.closest('.custom-color-field')) return;
+
+    const field = document.createElement('label');
+    field.className = 'custom-color-field';
+    field.setAttribute('for', inputId);
+
+    const copy = document.createElement('span');
+    copy.className = 'custom-color-field-copy';
+    copy.innerHTML =
+      '<span class="custom-color-field-title">🎨 COR PERSONALIZADA</span>' +
+      '<span class="custom-color-field-hint">Escolher uma cor fora da paleta</span>';
+
+    input.parentNode.insertBefore(field, input);
+    field.appendChild(copy);
+    field.appendChild(input);
+    input.title = 'Escolher cor personalizada';
+  }
+
+  function setupAllCustomColorFields() {
+    setupCustomColorField('editCustomColorInput');
+    setupCustomColorField('serverCustomColorInput');
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupAllCustomColorFields, { once: true });
+  } else {
+    setupAllCustomColorFields();
+  }
 })();
