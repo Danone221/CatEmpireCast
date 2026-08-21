@@ -45,4 +45,8 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.activity:activity-ktx:1.9.2'
+    // RootEncoder — encoder RTMP com captura de tela via MediaProjection
+    // (DisplayBase/RtmpDisplay). Usado no BroadcastService pra transmitir
+    // a tela do celular de verdade pro node-media-server do backend.
+    implementation 'com.github.pedroSG94.RootEncoder:library:2.5.4'
 }
