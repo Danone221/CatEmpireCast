@@ -670,6 +670,20 @@ socket.on('channel-members', (list) => {
 socket.on('user-left', ({ userId: uid }) => {
   if (peers[uid]) closePeer(uid);
   renderVoiceGrid();
+
+    // ===== NOVA CORREÇÃO: REMOVER TRACKS ANTIGAS =====
+  // Antes de adicionar a nova track, garanta que não existe outra track de vídeo
+  const oldVideos = localStream.getVideoTracks();
+  oldVideos.forEach(t => {
+    if (t !== track) {
+      t.stop();
+      localStream.removeTrack(t);
+    }
+  });
+  // ================================================
+
+  Object.values(peers).forEach(p => p.pc.addTrack(track, localStream));
+}
 });
 
 // Estado de câmera/tela de quem está na chamada, conforme o último aviso
