@@ -98,6 +98,17 @@ class Server {
     return this.findById(id);
   }
 
+  static async updateMemberRole(serverId, userId, role) {
+    await query(
+      'UPDATE server_members SET role = $3 WHERE server_id = $1 AND user_id = $2',
+      [serverId, userId, role]
+    );
+  }
+
+  static async delete(serverId) {
+    await query('DELETE FROM servers WHERE id = $1', [serverId]);
+  }
+
   static async getChannels(serverId) {
     return query(
       `SELECT * FROM channels

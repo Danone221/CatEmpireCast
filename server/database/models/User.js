@@ -67,6 +67,18 @@ class User {
     return this.findById(user.id);
   }
 
+  static async updatePassword(id, currentPassword, newPassword) {
+    const rawUser = await queryOne('SELECT password_hash FROM users WHERE id = $1', [id]);
+    if (!rawUser) throw new Error('Usuário não encontrado');
+    if (rawUser.password_hash) {
+      if (!currentPassword || !bcrypt.compareSync(currentPassword, rawUser.password_hash)) {
+        throw new Error('Senha atual incorreta');
+      }
+    }
+    const hashed = bcrypt.hashSync(newPassword, 10);
+    await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashed, id]);
+  }
+
   static async update(id, data) {
     const fields = [];
     const values = [];

@@ -33,11 +33,11 @@
       </div>
       <div class="channel-list" id="dmList"></div>
       <div class="user-bar">
-        <div class="user-avatar" id="myAvatarBtn" title="Editar perfil"><img id="myAvatarImg" src="/logo.svg" alt=""></div>
-        <div class="user-info" id="myInfoBtn" title="Editar perfil">
+        <div class="user-avatar" id="myAvatarBtn" title="Configurações do usuário"><img id="myAvatarImg" src="/logo.svg" alt=""></div>
+        <div class="user-info" id="myInfoBtn" title="Configurações do usuário">
           <div class="user-name" id="myName">Membro</div>
         </div>
-        <button class="leave-btn" id="backBtn" title="Voltar">🏠</button>
+        <button class="user-settings-btn" id="userSettingsBtn" title="Configurações do usuário">⚙️</button>
       </div>
     </aside>
   </div>
@@ -67,22 +67,76 @@
 
 <div class="modal" id="editProfileModal">
   <div class="modal-box profile-modal-box">
-    <div class="profile-banner" id="editProfileBanner"></div>
-    <div class="profile-avatar-row">
-      <div class="avatar-edit-wrap profile-avatar-big" id="editAvatarWrap">
-        <img id="editAvatarPreview" src="/logo.svg" alt="">
-        <span class="avatar-edit-label">TROCAR<br>FOTO</span>
+    <div class="type-toggle" style="margin-bottom:14px">
+      <button type="button" class="type-opt active" id="userTabProfileBtn">👤 Meu Perfil</button>
+      <button type="button" class="type-opt" id="userTabAccountBtn">⚙️ Minha Conta</button>
+    </div>
+
+    <div id="userPaneProfile">
+      <div class="profile-banner banner-edit-wrap" id="editProfileBanner">
+        <div class="banner-btn-group">
+          <button type="button" class="banner-upload-btn" id="editProfileBannerBtn">📷 Imagem</button>
+          <button type="button" class="banner-clear-btn" id="removeProfileBannerBtn">🎨 Cor Padrão</button>
+        </div>
+      </div>
+      <div class="profile-avatar-row">
+        <div class="avatar-edit-wrap profile-avatar-big" id="editAvatarWrap">
+          <img id="editAvatarPreview" src="/logo.svg" alt="">
+          <span class="avatar-edit-label">TROCAR<br>FOTO</span>
+        </div>
+      </div>
+      <h2 style="font-size:11px">Personalizar Perfil</h2>
+      <label class="kv-label" style="display:block;margin-bottom:6px">NOME DE EXIBIÇÃO</label>
+      <input id="editDisplayName" placeholder="Nome de exibição" maxlength="32">
+      
+      <label class="kv-label" style="display:block;margin-bottom:6px">SOBRE MIM (BIO)</label>
+      <textarea id="editBio" class="bio-input" placeholder="Fale um pouco sobre você…" maxlength="190"></textarea>
+      <div class="char-counter"><span id="editBioCount">0</span>/190</div>
+      
+      <label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER (DISCORD)</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div class="color-swatches" id="editColorSwatches" style="margin-bottom:0;flex:1"></div>
+        <input type="color" id="editCustomColorInput" class="custom-color-input" title="Cor personalizada">
+      </div>
+
+      <input type="file" id="avatarFileInput" accept="image/*" hidden>
+      <input type="file" id="profileBannerFileInput" accept="image/*" hidden>
+
+      <div class="modal-actions">
+        <button class="btn" id="cancelEditProfileBtn">Cancelar</button>
+        <button class="btn btn-primary" id="saveEditProfileBtn">Salvar Alterações</button>
       </div>
     </div>
-    <h2>Editar perfil</h2>
-    <input id="editDisplayName" placeholder="Nome de exibição" maxlength="32">
-    <textarea id="editBio" class="bio-input" placeholder="Fale um pouco sobre você…" maxlength="190"></textarea>
-    <div class="char-counter"><span id="editBioCount">0</span>/190</div>
-    <div class="color-swatches" id="editColorSwatches"></div>
-    <input type="file" id="avatarFileInput" accept="image/*" hidden>
-    <div class="modal-actions">
-      <button class="btn" id="cancelEditProfileBtn">Cancelar</button>
-      <button class="btn btn-primary" id="saveEditProfileBtn">Salvar</button>
+
+    <div id="userPaneAccount" hidden>
+      <h2 style="font-size:11px;margin-bottom:14px">Configurações da Conta</h2>
+      <div class="kv-row">
+        <span class="kv-label">USUÁRIO</span>
+        <span class="kv-value" id="accountUsername">—</span>
+      </div>
+      <div class="kv-row">
+        <span class="kv-label">ID DA CONTA</span>
+        <span class="kv-value" id="accountUserId">—</span>
+        <button type="button" class="btn kv-copy" id="copyUserIdBtn" style="padding:4px 8px;font-size:8px">Copiar</button>
+      </div>
+
+      <div style="margin-top:16px;border-top:1px solid #281048;padding-top:14px">
+        <h4 style="font-size:9px;color:var(--gold);margin-bottom:10px">ALTERAR SENHA</h4>
+        <input type="password" id="currentPasswordInput" placeholder="Senha atual (se possuir)" style="margin-bottom:8px">
+        <input type="password" id="newPasswordInput" placeholder="Nova senha (mín. 4 caracteres)" style="margin-bottom:8px">
+        <input type="password" id="confirmPasswordInput" placeholder="Confirmar nova senha" style="margin-bottom:10px">
+        <button type="button" class="btn btn-primary" id="changePasswordBtn" style="font-size:9px;padding:10px">Atualizar Senha</button>
+      </div>
+
+      <div class="danger-zone-box" style="margin-top:20px">
+        <h4 style="font-size:9px;color:#ff5369;margin-bottom:8px">DESCONECTAR</h4>
+        <p class="modal-hint" style="font-size:12px;margin-bottom:12px">Sair da sua conta atual neste navegador e voltar à tela inicial.</p>
+        <button type="button" class="btn" id="accountLogoutBtn" style="background:#a11c35;color:#fff;border-color:#ff3b55;font-size:10px">🔴 Sair da Conta</button>
+      </div>
+
+      <div class="modal-actions" style="margin-top:20px">
+        <button class="btn" id="closeAccountTabBtn">Fechar</button>
+      </div>
     </div>
   </div>
 </div>

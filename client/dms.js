@@ -14,6 +14,22 @@ let currentOtherId = null;
 let currentOtherUser = null;
 
 $('myName').textContent = userName;
+const cachedAvatar = localStorage.getItem('cat_avatar');
+if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
+
+(async function loadMyProfileOnStartup() {
+  try {
+    const r = await fetch('/api/me', { headers: headers() });
+    if (!r.ok) return;
+    const me = await r.json();
+    if (me) {
+      if (me.display_name && $('myName')) $('myName').textContent = me.display_name;
+      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = me.avatar;
+      if (me.avatar) localStorage.setItem('cat_avatar', me.avatar);
+      if (me.display_name) localStorage.setItem('cat_user_name', me.display_name);
+    }
+  } catch (e) {}
+})();
 
 function headers() {
   return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
@@ -303,16 +319,58 @@ $('sidebarOverlay').onclick = closeMobileSidebar;
 function closeMobileSidebar() { $('mobileDrawer').classList.remove('open'); $('sidebarOverlay').classList.remove('open'); }
 
 // ========== MEU PERFIL (mesmo modal usado em server.html) ==========
-const PROFILE_COLORS = ['#8b2bff', '#ff4fd8', '#ffcd3c', '#3ddc7a', '#ff3b55', '#4fc3ff', '#b56bff', '#ff8a3c'];
+const PROFILE_COLORS = [
+  '#5865f2', // Discord Blurple
+  '#57f287', // Discord Green
+  '#fee75c', // Discord Yellow
+  '#eb459e', // Discord Fuchsia
+  '#ed4245', // Discord Red
+  '#00a8fc', // Discord Sky Blue
+  '#f47b67', // Discord Coral
+  '#e91e63', // Discord Pink
+  '#9b59b6', // Discord Purple
+  '#71368a', // Discord Dark Purple
+  '#3498db', // Discord Blue
+  '#206694', // Discord Deep Blue
+  '#1abc9c', // Discord Teal
+  '#11806a', // Discord Dark Teal
+  '#2ecc71', // Discord Light Green
+  '#1f8b4c', // Discord Dark Green
+  '#f1c40f', // Discord Gold
+  '#e67e22', // Discord Orange
+  '#a84300', // Discord Rust
+  '#e74c3c', // Discord Crimson
+  '#8b2bff', // Cat Empire Neon Purple
+  '#ff4fd8', // Cat Empire Neon Pink
+  '#4e5058', // Discord Grey
+  '#2b2d31', // Discord Dark
+  '#111214'  // Discord Black
+];
 let editSelectedColor = null;
 let pendingAvatarData = null;
+let pendingProfileBannerData = null;
+
+function applyBannerStyle(el, banner) {
+  if (!el) return;
+  if (banner && /^(data:|https?:)/.test(banner)) {
+    el.style.backgroundImage = 'url("' + banner + '")';
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+  } else {
+    el.style.backgroundImage = 'none';
+    el.style.backgroundColor = banner || '#5865f2';
+  }
+}
+
 function renderSwatches(containerId, selected, onPick) {
   const el = $(containerId);
-  el.innerHTML = PROFILE_COLORS.map(c => `<div class="color-swatch${c === selected ? ' selected' : ''}" data-color="${c}" style="background:${c}"></div>`).join('');
+  if (!el) return;
+  el.innerHTML = PROFILE_COLORS.map(c => `<div class="color-swatch${c === selected ? ' selected' : ''}" data-color="${c}" style="background:${c}" title="${c}"></div>`).join('');
   el.querySelectorAll('.color-swatch').forEach(sw => {
     sw.onclick = () => { onPick(sw.dataset.color); renderSwatches(containerId, sw.dataset.color, onPick); };
   });
 }
+
 function fileToDataUrl(file, maxBytes) {
   return new Promise((resolve, reject) => {
     if (file.size > maxBytes) { reject(new Error('Imagem muito grande (máx. ' + Math.round(maxBytes / 1024) + 'KB).')); return; }
@@ -322,45 +380,172 @@ function fileToDataUrl(file, maxBytes) {
     reader.readAsDataURL(file);
   });
 }
+
+function logout() {
+  localStorage.removeItem('cat_user_id');
+  localStorage.removeItem('cat_user_name');
+  localStorage.removeItem('cat_token');
+  localStorage.removeItem('cat_last_server');
+  localStorage.removeItem('cat_avatar');
+  location.href = '/';
+}
+
+function switchUserTab(tab) {
+  if (tab === 'profile') {
+    $('userTabProfileBtn')?.classList.add('active');
+    $('userTabAccountBtn')?.classList.remove('active');
+    if ($('userPaneProfile')) $('userPaneProfile').hidden = false;
+    if ($('userPaneAccount')) $('userPaneAccount').hidden = true;
+  } else {
+    $('userTabProfileBtn')?.classList.remove('active');
+    $('userTabAccountBtn')?.classList.add('active');
+    if ($('userPaneProfile')) $('userPaneProfile').hidden = true;
+    if ($('userPaneAccount')) $('userPaneAccount').hidden = false;
+  }
+}
+
 async function openMyProfile() {
   try {
     const r = await fetch('/api/me', { headers: headers() });
     const me = await r.json();
     if (!r.ok) throw new Error(me.error || 'Erro ao carregar perfil');
     pendingAvatarData = null;
-    editSelectedColor = me.banner_color || null;
+    pendingProfileBannerData = null;
+    editSelectedColor = me.banner_color || '#5865f2';
     $('editAvatarPreview').src = me.avatar || '/logo.svg';
     $('editDisplayName').value = me.display_name || me.username || '';
     $('editBio').value = me.bio || '';
     $('editBioCount').textContent = (me.bio || '').length;
-    $('editProfileBanner').style.background = editSelectedColor || 'linear-gradient(135deg,var(--purple),var(--pink))';
-    renderSwatches('editColorSwatches', editSelectedColor, (c) => { editSelectedColor = c; $('editProfileBanner').style.background = c; });
+    applyBannerStyle($('editProfileBanner'), editSelectedColor);
+    
+    renderSwatches('editColorSwatches', editSelectedColor, (c) => {
+      editSelectedColor = c;
+      pendingProfileBannerData = null;
+      applyBannerStyle($('editProfileBanner'), c);
+    });
+
+    if ($('accountUsername')) $('accountUsername').textContent = '@' + (me.username || 'usuario');
+    if ($('accountUserId')) $('accountUserId').textContent = me.id || userId;
+    if ($('currentPasswordInput')) $('currentPasswordInput').value = '';
+    if ($('newPasswordInput')) $('newPasswordInput').value = '';
+    if ($('confirmPasswordInput')) $('confirmPasswordInput').value = '';
+
+    switchUserTab('profile');
     $('editProfileModal').classList.add('open');
   } catch (e) { toast(e.message, 'error'); }
 }
+
 $('myAvatarBtn').onclick = openMyProfile;
 $('myInfoBtn').onclick = openMyProfile;
+$('userSettingsBtn')?.addEventListener('click', openMyProfile);
+$('userTabProfileBtn')?.addEventListener('click', () => switchUserTab('profile'));
+$('userTabAccountBtn')?.addEventListener('click', () => switchUserTab('account'));
+$('closeAccountTabBtn')?.addEventListener('click', () => $('editProfileModal').classList.remove('open'));
 $('cancelEditProfileBtn').onclick = () => $('editProfileModal').classList.remove('open');
 $('editBio').addEventListener('input', () => { $('editBioCount').textContent = $('editBio').value.length; });
 $('editAvatarWrap').onclick = () => $('avatarFileInput').click();
+
 $('avatarFileInput').onchange = async () => {
   const f = $('avatarFileInput').files[0];
   if (!f) return;
-  try { pendingAvatarData = await fileToDataUrl(f, 500 * 1024); $('editAvatarPreview').src = pendingAvatarData; }
-  catch (e) { toast(e.message, 'error'); }
+  try {
+    pendingAvatarData = await fileToDataUrl(f, 500 * 1024);
+    $('editAvatarPreview').src = pendingAvatarData;
+  } catch (e) { toast(e.message, 'error'); }
   $('avatarFileInput').value = '';
 };
+
+$('editProfileBannerBtn')?.addEventListener('click', () => $('profileBannerFileInput').click());
+$('profileBannerFileInput')?.addEventListener('change', async () => {
+  const f = $('profileBannerFileInput').files[0];
+  if (!f) return;
+  try {
+    pendingProfileBannerData = await fileToDataUrl(f, 500 * 1024);
+    editSelectedColor = pendingProfileBannerData;
+    applyBannerStyle($('editProfileBanner'), pendingProfileBannerData);
+  } catch (e) { toast(e.message, 'error'); }
+  $('profileBannerFileInput').value = '';
+});
+
+$('removeProfileBannerBtn')?.addEventListener('click', () => {
+  pendingProfileBannerData = null;
+  editSelectedColor = '#5865f2';
+  applyBannerStyle($('editProfileBanner'), editSelectedColor);
+  renderSwatches('editColorSwatches', editSelectedColor, (c) => {
+    editSelectedColor = c;
+    pendingProfileBannerData = null;
+    applyBannerStyle($('editProfileBanner'), c);
+  });
+  toast('Banner redefinido para a cor padrão.', 'info');
+});
+
+$('editCustomColorInput')?.addEventListener('input', (e) => {
+  editSelectedColor = e.target.value;
+  pendingProfileBannerData = null;
+  applyBannerStyle($('editProfileBanner'), editSelectedColor);
+  renderSwatches('editColorSwatches', null, (c) => { editSelectedColor = c; applyBannerStyle($('editProfileBanner'), c); });
+});
+
+$('copyUserIdBtn')?.addEventListener('click', () => {
+  const uid = $('accountUserId')?.textContent;
+  if (!uid || uid === '—') return;
+  navigator.clipboard.writeText(uid).then(() => toast('ID da conta copiado!', 'success')).catch(() => toast('Erro ao copiar', 'error'));
+});
+
+$('changePasswordBtn')?.addEventListener('click', async () => {
+  const currentPassword = $('currentPasswordInput')?.value || '';
+  const newPassword = $('newPasswordInput')?.value || '';
+  const confirmPassword = $('confirmPasswordInput')?.value || '';
+
+  if (!newPassword || newPassword.length < 4) {
+    toast('A nova senha deve ter no mínimo 4 caracteres.', 'error');
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    toast('A nova senha e a confirmação não conferem.', 'error');
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/me/password', {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erro ao alterar senha');
+    if ($('currentPasswordInput')) $('currentPasswordInput').value = '';
+    if ($('newPasswordInput')) $('newPasswordInput').value = '';
+    if ($('confirmPasswordInput')) $('confirmPasswordInput').value = '';
+    toast('Senha alterada com sucesso!', 'success');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+});
+
+$('accountLogoutBtn')?.addEventListener('click', async () => {
+  if (!(await uiConfirm('Deseja realmente sair da sua conta?'))) return;
+  logout();
+});
+
 $('saveEditProfileBtn').onclick = async () => {
   try {
-    const body = { displayName: $('editDisplayName').value, bio: $('editBio').value, bannerColor: editSelectedColor };
+    const body = {
+      displayName: $('editDisplayName').value,
+      bio: $('editBio').value,
+      bannerColor: pendingProfileBannerData || editSelectedColor
+    };
     if (pendingAvatarData) body.avatar = pendingAvatarData;
     const r = await fetch('/api/me/profile', { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Erro ao salvar perfil');
     $('myName').textContent = d.display_name || d.username;
-    if (d.avatar) $('myAvatarImg').src = d.avatar;
+    if (d.avatar) {
+      $('myAvatarImg').src = d.avatar;
+      localStorage.setItem('cat_avatar', d.avatar);
+    }
     $('editProfileModal').classList.remove('open');
-    toast('Perfil atualizado!', 'success');
+    toast('Perfil atualizado com sucesso!', 'success');
   } catch (e) { toast(e.message, 'error'); }
 };
 

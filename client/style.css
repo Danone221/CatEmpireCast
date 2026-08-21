@@ -79,15 +79,15 @@ button{cursor:pointer}
 .footer-item p a{color:var(--gold)}
 .landing-copyright{position:relative;z-index:1;text-align:center;font-family:monospace;font-size:10.5px;color:#6f5a88;padding-bottom:26px;letter-spacing:.5px}
 .auth{width:min(460px,92vw);margin:15px auto 0}.btn{display:block;width:100%;padding:16px 18px;border:3px solid var(--line);background:#10051d;box-shadow:5px 5px 0 #050007;color:#c9adf0;font-size:12px;text-align:center;transition:box-shadow .15s ease,border-color .15s ease}.btn:hover{transform:translate(-1px,-1px);border-color:var(--purple2);box-shadow:5px 5px 0 #050007,0 0 16px rgba(181,107,255,.35)}.btn-primary{background:linear-gradient(135deg,var(--gold),var(--pink) 140%);color:#2b0c50;border-color:#391066;box-shadow:5px 5px 0 #050007,0 0 18px rgba(255,79,216,.3)}.btn-discord{background:linear-gradient(135deg,#9457ff,#5865f2);color:#fff;border-color:#31105d;box-shadow:5px 5px 0 #050007,0 0 18px rgba(148,87,255,.4)}.btn+.btn{margin-top:18px}.hint{font-family:monospace;font-size:12px;line-height:1.5;color:#7f7094;margin-top:18px;text-align:left}.form-card{border:3px solid #301353;background:rgba(12,3,23,.75);padding:18px;margin-top:22px;box-shadow:5px 5px 0 #050007}.form-card input{width:100%;background:#09020f;border:2px solid #32175a;padding:13px;margin-bottom:10px;outline:none}.form-card input:focus{border-color:var(--purple2);box-shadow:0 0 0 2px rgba(181,107,255,.25)}.error{font-family:monospace;color:#ff6678;font-size:11px;margin-top:10px}.server-list{margin-top:30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.server-card{border:3px solid #2f1554;background:#110722;padding:14px;text-align:center;cursor:pointer;box-shadow:4px 4px 0 #050007;transition:border-color .15s ease,box-shadow .15s ease}.server-card:hover{border-color:var(--purple2);box-shadow:4px 4px 0 #050007,0 0 14px rgba(181,107,255,.3)}.server-logo{width:42px;height:42px;margin-bottom:10px;filter:drop-shadow(0 0 4px #6d28d9)}.server-card .name{font-size:10px}.server-card .code{font-family:monospace;font-size:11px;color:#7c6794;margin-top:8px}
-.modal{position:fixed;inset:0;background:rgba(3,0,7,.82);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}.modal.open{display:flex}.modal-box{width:min(440px,92vw);max-height:88vh;overflow-y:auto;border:3px solid #6e36b2;background:#120820;padding:24px;box-shadow:8px 8px 0 #050007}.modal-box h2{font-size:14px;margin-bottom:18px}.modal-box input{width:100%;padding:12px;background:#09020f;border:2px solid #3b1b68;margin-bottom:12px}.modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1}
-.modal-hint{font-family:monospace;font-size:12px;line-height:1.6;color:#a996c9;margin-bottom:14px}
+.modal{position:fixed;inset:0;background:rgba(3,0,7,.82);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}.modal.open{display:flex}.modal-box{width:min(460px,92vw);max-height:88vh;overflow-y:auto;border:3px solid #6e36b2;background:#120820;padding:24px;box-shadow:8px 8px 0 #050007;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}.modal-box h2{font-family:'Press Start 2P',monospace;font-size:13px;margin-bottom:18px}.modal-box input{width:100%;padding:11px 12px;background:#09020f;border:2px solid #3b1b68;margin-bottom:12px;font-family:monospace;font-size:12px}.modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1}
+.modal-hint{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:1.5;color:#c0b0dd;margin-bottom:14px}
 .modal-hint.warn{color:#ff8fa0}
-.kv-row{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:2px;padding:10px;margin-bottom:12px;background:#09020f;flex-wrap:wrap}
-.kv-label{font-size:9px;color:#8c74a9;min-width:80px}
-.kv-value{flex:1;font-family:monospace;font-size:13px;color:var(--gold);word-break:break-all}
-.kv-copy{padding:6px 10px;font-size:9px;flex:none}
+.kv-row{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:2px;padding:8px 10px;margin-bottom:12px;background:#09020f;flex-wrap:wrap}
+.kv-label{font-family:'Press Start 2P',monospace;font-size:8px;color:#8c74a9;min-width:80px}
+.kv-value{flex:1;font-family:monospace;font-size:11px;color:var(--gold);word-break:break-all}
+.kv-copy{padding:6px 10px;font-family:'Press Start 2P',monospace;font-size:8px;flex:none}
 .member-avatar img{width:100%;height:100%;object-fit:cover}.btn:disabled{opacity:.5;cursor:not-allowed}
-.type-toggle{display:flex;gap:10px;margin-bottom:16px}.type-opt{flex:1;padding:12px;border:2px solid #3b1b68;background:#0d0618;color:#8d7ba9;font-size:10px}.type-opt.active{border-color:#a65cff;color:#fff;background:#1c0e37}
+.type-toggle{display:flex;gap:10px;margin-bottom:16px}.type-opt{flex:1;padding:12px;border:2px solid #3b1b68;background:#0d0618;color:#8d7ba9;font-size:9px}.type-opt.active{border-color:#a65cff;color:#fff;background:#1c0e37}
 
 /* ===== Discord-style room layout ===== */
 
@@ -325,18 +325,52 @@ textarea.bio-input{width:100%;padding:12px;background:#09020f;border:2px solid #
 .dm-preview{font-family:monospace;font-size:8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 .unread-badge{min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--danger);color:#fff;font-family:monospace;font-size:8px;display:grid;place-items:center;flex:none}
 
+/* ---------- barra de usuário e botão de configurações (estilo Discord) ---------- */
+.user-settings-btn{background:#15092a;border:2px solid #4a2180;color:var(--muted);font-size:15px;padding:6px 9px;cursor:pointer;flex:none;transition:border-color .15s ease,color .15s ease}
+.user-settings-btn:hover{border-color:var(--purple2);color:#fff;background:#240f45}
+
 /* ---------- sistema de convites ---------- */
 .server-invite-bar{margin-top:8px}
-.btn-server-invite{width:100%;padding:6px 10px;background:#15092a;border:2px solid #5a2a95;color:var(--gold);font-size:9px;text-align:center;box-shadow:2px 2px 0 #050007;transition:border-color .15s ease,background .15s ease}
+.btn-server-invite{width:100%;padding:8px 10px;background:#15092a;border:2px solid #5a2a95;color:var(--gold);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;font-weight:bold;text-align:center;box-shadow:2px 2px 0 #050007;transition:border-color .15s ease,background .15s ease;display:flex;align-items:center;justify-content:center;gap:6px}
 .btn-server-invite:hover{border-color:var(--purple2);background:#220e40;color:#fff}
 
 .invite-card{padding:0!important;overflow:hidden;border:3px solid var(--purple2)}
-.invite-banner{height:80px;background:linear-gradient(135deg,var(--purple),var(--pink));border-bottom:3px solid #050007}
+.invite-banner{height:80px;background:linear-gradient(135deg,var(--purple),var(--pink));border-bottom:3px solid #050007;background-size:cover;background-position:center}
 .invite-head{display:flex;justify-content:center;margin-top:-40px;position:relative;z-index:2}
 .invite-icon-wrap{width:76px;height:76px;border:4px solid #120820;background:#09020f;display:grid;place-items:center;font-size:32px;overflow:hidden;box-shadow:0 0 16px rgba(139,43,255,.4)}
-.invite-sub{font-family:monospace;font-size:11px;color:var(--muted);margin-top:16px;text-align:center;letter-spacing:.5px}
+.invite-sub{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;color:var(--muted);margin-top:16px;text-align:center;letter-spacing:.3px}
 .invite-title{font-size:16px;color:#fff;margin-top:8px;text-align:center;text-shadow:2px 2px #000;padding:0 16px}
-.invite-desc{font-family:monospace;font-size:11px;line-height:1.6;color:#c9adf0;margin-top:10px;text-align:center;padding:0 24px}
-.invite-stats{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;font-family:monospace;font-size:11px;color:var(--muted)}
+.invite-desc{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:1.5;color:#c9adf0;margin-top:10px;text-align:center;padding:0 24px}
+.invite-stats{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;color:var(--muted)}
 .admin-invites-list{max-height:160px;overflow-y:auto;background:#09020f;border:2px solid #29104b;padding:8px;margin-top:8px}
+.active-invite-row{display:flex;align-items:center;justify-content:space-between;padding:8px 6px;border-bottom:1px solid #1f0b3b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;line-height:1.4}
+.active-invite-row:last-child{border-bottom:none}
+
+.invite-config-panel label{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:11px;font-weight:bold;color:var(--gold);margin-bottom:6px;display:block}
+.invite-config-panel select{width:100%;padding:8px 10px;background:#09020f;border:2px solid #3b1b68;color:#eee8ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;outline:none}
+.invite-config-panel select:focus{border-color:var(--purple2)}
+.invite-config-panel .btn-primary{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;font-weight:bold;padding:10px 14px}
+
+/* ---------- customização avançada de perfil e servidor ---------- */
+.banner-edit-wrap{position:relative}
+.banner-btn-group{position:absolute;top:8px;right:10px;display:flex;gap:6px;z-index:3}
+.banner-upload-btn, .banner-clear-btn{padding:4px 8px;background:rgba(8,2,15,.82);border:1px solid var(--purple2);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:10px;font-weight:500;cursor:pointer;border-radius:3px;display:flex;align-items:center;gap:4px;backdrop-filter:blur(2px);transition:all .15s ease}
+.banner-upload-btn:hover{background:var(--purple);border-color:#fff}
+.banner-clear-btn{border-color:#a11c35;color:#ff8fa0}
+.banner-clear-btn:hover{background:#a11c35;color:#fff}
+
+.custom-color-input{width:32px;height:26px;border:2px solid #050007;background:none;cursor:pointer;padding:0;border-radius:3px}
+
+/* ---------- gerenciamento de membros e cargos no servidor ---------- */
+.server-members-manage-list{max-height:220px;overflow-y:auto;background:#09020f;border:2px solid #29104b;padding:8px;margin-top:8px}
+.server-member-manage-row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid #1c0a36}
+.server-member-manage-row:last-child{border-bottom:none}
+.server-member-manage-row .m-avatar{width:28px;height:28px;border:2px solid #5a2a95;flex:none;overflow:hidden}
+.server-member-manage-row .m-avatar img{width:100%;height:100%;object-fit:cover}
+.server-member-manage-row .m-name{flex:1;font-family:monospace;font-size:12px;color:#eee8ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.role-select{background:#120820;border:1px solid #5a2a95;color:var(--gold);font-family:monospace;font-size:10px;padding:4px 6px;outline:none}
+.btn-kick-member{background:none;border:1px solid #a11c35;color:#ff5369;font-family:monospace;font-size:10px;padding:3px 6px;cursor:pointer}
+.btn-kick-member:hover{background:#a11c35;color:#fff}
+.danger-zone-box{border:2px solid #a11c35;background:rgba(40,10,20,.6);padding:14px;margin-top:16px}
+
 

@@ -30,6 +30,22 @@ const peers = {}; // remoteUserId -> { pc, polite, makingOffer, ignoreOffer }
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 $('myName').textContent = userName;
+const cachedAvatar = localStorage.getItem('cat_avatar');
+if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
+
+(async function loadMyProfileOnStartup() {
+  try {
+    const r = await fetch('/api/me', { headers: headers() });
+    if (!r.ok) return;
+    const me = await r.json();
+    if (me) {
+      if (me.display_name && $('myName')) $('myName').textContent = me.display_name;
+      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = me.avatar;
+      if (me.avatar) localStorage.setItem('cat_avatar', me.avatar);
+      if (me.display_name) localStorage.setItem('cat_user_name', me.display_name);
+    }
+  } catch (e) {}
+})();
 
 function headers() {
   return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
@@ -1095,16 +1111,57 @@ $('leaveBtn').onclick = () => {
 };
 
 // ========== PERFIL DE USUÁRIO E CONFIGURAÇÕES DE SERVIDOR ==========
-const PROFILE_COLORS = ['#8b2bff', '#ff4fd8', '#ffcd3c', '#3ddc7a', '#ff3b55', '#4fc3ff', '#b56bff', '#ff8a3c'];
+const PROFILE_COLORS = [
+  '#5865f2', // Discord Blurple
+  '#57f287', // Discord Green
+  '#fee75c', // Discord Yellow
+  '#eb459e', // Discord Fuchsia
+  '#ed4245', // Discord Red
+  '#00a8fc', // Discord Sky Blue
+  '#f47b67', // Discord Coral
+  '#e91e63', // Discord Pink
+  '#9b59b6', // Discord Purple
+  '#71368a', // Discord Dark Purple
+  '#3498db', // Discord Blue
+  '#206694', // Discord Deep Blue
+  '#1abc9c', // Discord Teal
+  '#11806a', // Discord Dark Teal
+  '#2ecc71', // Discord Light Green
+  '#1f8b4c', // Discord Dark Green
+  '#f1c40f', // Discord Gold
+  '#e67e22', // Discord Orange
+  '#a84300', // Discord Rust
+  '#e74c3c', // Discord Crimson
+  '#8b2bff', // Cat Empire Neon Purple
+  '#ff4fd8', // Cat Empire Neon Pink
+  '#4e5058', // Discord Grey
+  '#2b2d31', // Discord Dark
+  '#111214'  // Discord Black
+];
 let editSelectedColor = null;
 let serverSelectedColor = null;
 let pendingAvatarData = null;
+let pendingProfileBannerData = null;
 let pendingServerIconData = null;
+let pendingServerBannerData = null;
+
+function applyBannerStyle(el, banner) {
+  if (!el) return;
+  if (banner && /^(data:|https?:)/.test(banner)) {
+    el.style.backgroundImage = 'url("' + banner + '")';
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+  } else {
+    el.style.backgroundImage = 'none';
+    el.style.backgroundColor = banner || '#5865f2';
+  }
+}
 
 function renderSwatches(containerId, selected, onPick) {
   const el = $(containerId);
+  if (!el) return;
   el.innerHTML = PROFILE_COLORS.map(c =>
-    `<div class="color-swatch${c === selected ? ' selected' : ''}" data-color="${c}" style="background:${c}"></div>`
+    `<div class="color-swatch${c === selected ? ' selected' : ''}" data-color="${c}" style="background:${c}" title="${c}"></div>`
   ).join('');
   el.querySelectorAll('.color-swatch').forEach(sw => {
     sw.onclick = () => { onPick(sw.dataset.color); renderSwatches(containerId, sw.dataset.color, onPick); };
@@ -1121,31 +1178,114 @@ function fileToDataUrl(file, maxBytes) {
   });
 }
 
-// ---- Ver/editar meu perfil ----
+function logout() {
+  localStorage.removeItem('cat_user_id');
+  localStorage.removeItem('cat_user_name');
+  localStorage.removeItem('cat_token');
+  localStorage.removeItem('cat_last_server');
+  localStorage.removeItem('cat_avatar');
+  location.href = '/';
+}
+
+// ---- Configurações de Usuário / Perfil ----
 async function openMyProfile() {
   try {
     const r = await fetch('/api/me', { headers: headers() });
     const me = await r.json();
     if (!r.ok) throw new Error(me.error || 'Erro ao carregar perfil');
     pendingAvatarData = null;
-    editSelectedColor = me.banner_color || null;
+    pendingProfileBannerData = null;
+    editSelectedColor = me.banner_color || '#5865f2';
     $('editAvatarPreview').src = me.avatar || '/logo.svg';
     $('editDisplayName').value = me.display_name || me.username || '';
     $('editBio').value = me.bio || '';
     $('editBioCount').textContent = (me.bio || '').length;
-    $('editProfileBanner').style.background = editSelectedColor || 'linear-gradient(135deg,var(--purple),var(--pink))';
+    applyBannerStyle($('editProfileBanner'), editSelectedColor);
+    
     renderSwatches('editColorSwatches', editSelectedColor, (c) => {
       editSelectedColor = c;
-      $('editProfileBanner').style.background = c;
+      pendingProfileBannerData = null;
+      applyBannerStyle($('editProfileBanner'), c);
     });
+
+    if ($('accountUsername')) $('accountUsername').textContent = '@' + (me.username || 'usuario');
+    if ($('accountUserId')) $('accountUserId').textContent = me.id || userId;
+    if ($('currentPasswordInput')) $('currentPasswordInput').value = '';
+    if ($('newPasswordInput')) $('newPasswordInput').value = '';
+    if ($('confirmPasswordInput')) $('confirmPasswordInput').value = '';
+
+    // Reseta abas para perfil
+    switchUserTab('profile');
     $('editProfileModal').classList.add('open');
   } catch (e) { toast(e.message, 'error'); }
 }
+
+function switchUserTab(tab) {
+  if (tab === 'profile') {
+    $('userTabProfileBtn')?.classList.add('active');
+    $('userTabAccountBtn')?.classList.remove('active');
+    if ($('userPaneProfile')) $('userPaneProfile').hidden = false;
+    if ($('userPaneAccount')) $('userPaneAccount').hidden = true;
+  } else {
+    $('userTabProfileBtn')?.classList.remove('active');
+    $('userTabAccountBtn')?.classList.add('active');
+    if ($('userPaneProfile')) $('userPaneProfile').hidden = true;
+    if ($('userPaneAccount')) $('userPaneAccount').hidden = false;
+  }
+}
+
+$('userTabProfileBtn')?.addEventListener('click', () => switchUserTab('profile'));
+$('userTabAccountBtn')?.addEventListener('click', () => switchUserTab('account'));
+$('accountLogoutBtn')?.addEventListener('click', async () => {
+  if (!(await uiConfirm('Deseja realmente sair da sua conta?'))) return;
+  logout();
+});
+$('closeAccountTabBtn')?.addEventListener('click', () => $('editProfileModal').classList.remove('open'));
+
+$('copyUserIdBtn')?.addEventListener('click', () => {
+  const uid = $('accountUserId')?.textContent;
+  if (!uid || uid === '—') return;
+  navigator.clipboard.writeText(uid).then(() => toast('ID da conta copiado!', 'success')).catch(() => toast('Erro ao copiar', 'error'));
+});
+
+$('changePasswordBtn')?.addEventListener('click', async () => {
+  const currentPassword = $('currentPasswordInput')?.value || '';
+  const newPassword = $('newPasswordInput')?.value || '';
+  const confirmPassword = $('confirmPasswordInput')?.value || '';
+
+  if (!newPassword || newPassword.length < 4) {
+    toast('A nova senha deve ter no mínimo 4 caracteres.', 'error');
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    toast('A nova senha e a confirmação não conferem.', 'error');
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/me/password', {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erro ao alterar senha');
+    if ($('currentPasswordInput')) $('currentPasswordInput').value = '';
+    if ($('newPasswordInput')) $('newPasswordInput').value = '';
+    if ($('confirmPasswordInput')) $('confirmPasswordInput').value = '';
+    toast('Senha alterada com sucesso!', 'success');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+});
+
 $('myAvatarBtn').onclick = openMyProfile;
 $('myInfoBtn').onclick = openMyProfile;
+$('userSettingsBtn')?.addEventListener('click', openMyProfile);
 $('cancelEditProfileBtn').onclick = () => $('editProfileModal').classList.remove('open');
 $('editBio').addEventListener('input', () => { $('editBioCount').textContent = $('editBio').value.length; });
 $('editAvatarWrap').onclick = () => $('avatarFileInput').click();
+
 $('avatarFileInput').onchange = async () => {
   const f = $('avatarFileInput').files[0];
   if (!f) return;
@@ -1155,23 +1295,58 @@ $('avatarFileInput').onchange = async () => {
   } catch (e) { toast(e.message, 'error'); }
   $('avatarFileInput').value = '';
 };
+
+$('editProfileBannerBtn')?.addEventListener('click', () => $('profileBannerFileInput').click());
+$('profileBannerFileInput')?.addEventListener('change', async () => {
+  const f = $('profileBannerFileInput').files[0];
+  if (!f) return;
+  try {
+    pendingProfileBannerData = await fileToDataUrl(f, 500 * 1024);
+    editSelectedColor = pendingProfileBannerData;
+    applyBannerStyle($('editProfileBanner'), pendingProfileBannerData);
+  } catch (e) { toast(e.message, 'error'); }
+  $('profileBannerFileInput').value = '';
+});
+
+$('removeProfileBannerBtn')?.addEventListener('click', () => {
+  pendingProfileBannerData = null;
+  editSelectedColor = '#5865f2';
+  applyBannerStyle($('editProfileBanner'), editSelectedColor);
+  renderSwatches('editColorSwatches', editSelectedColor, (c) => {
+    editSelectedColor = c;
+    pendingProfileBannerData = null;
+    applyBannerStyle($('editProfileBanner'), c);
+  });
+  toast('Banner redefinido para a cor padrão.', 'info');
+});
+
+$('editCustomColorInput')?.addEventListener('input', (e) => {
+  editSelectedColor = e.target.value;
+  pendingProfileBannerData = null;
+  applyBannerStyle($('editProfileBanner'), editSelectedColor);
+  renderSwatches('editColorSwatches', null, (c) => { editSelectedColor = c; applyBannerStyle($('editProfileBanner'), c); });
+});
+
 $('saveEditProfileBtn').onclick = async () => {
   try {
     const body = {
       displayName: $('editDisplayName').value,
       bio: $('editBio').value,
-      bannerColor: editSelectedColor
+      bannerColor: pendingProfileBannerData || editSelectedColor
     };
     if (pendingAvatarData) body.avatar = pendingAvatarData;
     const r = await fetch('/api/me/profile', { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Erro ao salvar perfil');
     $('myName').textContent = d.display_name || d.username;
-    if (d.avatar) $('myAvatarImg').src = d.avatar;
+    if (d.avatar) {
+      $('myAvatarImg').src = d.avatar;
+      localStorage.setItem('cat_avatar', d.avatar);
+    }
     const meIdx = members.findIndex(m => m.id === userId);
     if (meIdx >= 0) { members[meIdx] = { ...members[meIdx], display_name: d.display_name, avatar: d.avatar }; renderMembers(); }
     $('editProfileModal').classList.remove('open');
-    toast('Perfil atualizado!', 'success');
+    toast('Perfil atualizado com sucesso!', 'success');
   } catch (e) { toast(e.message, 'error'); }
 };
 
@@ -1185,7 +1360,7 @@ async function openProfile(targetUserId) {
     const p = await r.json();
     if (!r.ok) throw new Error(p.error || 'Erro ao carregar perfil');
     viewingProfileId = targetUserId;
-    $('viewProfileBanner').style.background = p.banner_color || 'linear-gradient(135deg,var(--purple),var(--pink))';
+    applyBannerStyle($('viewProfileBanner'), p.banner_color || '#5865f2');
     $('viewProfileAvatar').src = p.avatar || '/logo.svg';
     $('viewProfileName').textContent = p.display_name || p.username;
     $('viewProfileUsername').textContent = '@' + p.username;
@@ -1197,6 +1372,231 @@ $('closeViewProfileBtn').onclick = () => $('viewProfileModal').classList.remove(
 $('dmFromProfileBtn').onclick = () => {
   if (!viewingProfileId) return;
   location.href = '/dms.html?with=' + encodeURIComponent(viewingProfileId);
+};
+
+// ---- Configurações completas do servidor (admin) ----
+function switchServerSettingsTab(tab) {
+  $('serverTabOverviewBtn')?.classList.toggle('active', tab === 'overview');
+  $('serverTabMembersBtn')?.classList.toggle('active', tab === 'members');
+  $('serverTabDangerBtn')?.classList.toggle('active', tab === 'danger');
+
+  if ($('serverPaneOverview')) $('serverPaneOverview').hidden = (tab !== 'overview');
+  if ($('serverPaneMembers')) $('serverPaneMembers').hidden = (tab !== 'members');
+  if ($('serverPaneDanger')) $('serverPaneDanger').hidden = (tab !== 'danger');
+}
+
+$('serverTabOverviewBtn')?.addEventListener('click', () => switchServerSettingsTab('overview'));
+$('serverTabMembersBtn')?.addEventListener('click', () => switchServerSettingsTab('members'));
+$('serverTabDangerBtn')?.addEventListener('click', () => switchServerSettingsTab('danger'));
+$('closeServerMembersTabBtn')?.addEventListener('click', () => $('serverSettingsModal').classList.remove('open'));
+$('closeServerDangerTabBtn')?.addEventListener('click', () => $('serverSettingsModal').classList.remove('open'));
+
+function openServerSettings() {
+  if (!currentServer) return;
+  pendingServerIconData = null;
+  pendingServerBannerData = null;
+  serverSelectedColor = currentServer.banner_color || '#5865f2';
+
+  const isImg = currentServer.icon && /^(https?:|data:)/.test(currentServer.icon);
+  $('editServerIconPreview').innerHTML = isImg
+    ? `<img src="${esc(currentServer.icon)}" alt="">`
+    : esc(currentServer.icon || '🐱');
+  $('editServerName').value = currentServer.name || '';
+  $('editServerDescription').value = currentServer.description || '';
+  $('editServerDescCount').textContent = (currentServer.description || '').length;
+
+  applyBannerStyle($('editServerBanner'), serverSelectedColor);
+  renderSwatches('serverColorSwatches', serverSelectedColor, (c) => {
+    serverSelectedColor = c;
+    pendingServerBannerData = null;
+    applyBannerStyle($('editServerBanner'), c);
+  });
+
+  const isCreator = currentServer && currentServer.creator_id === userId;
+  if ($('deleteServerBox')) $('deleteServerBox').hidden = !isCreator;
+  if ($('leaveServerBox')) $('leaveServerBox').hidden = isCreator;
+
+  renderServerMembersManageList();
+  switchServerSettingsTab('overview');
+  $('serverSettingsModal').classList.add('open');
+}
+
+function renderServerMembersManageList() {
+  if (!$('serverMembersManageList')) return;
+  if ($('manageMembersCount')) $('manageMembersCount').textContent = members.length;
+  const isCreator = currentServer && currentServer.creator_id === userId;
+
+  $('serverMembersManageList').innerHTML = members.map(m => {
+    const isMemberCreator = currentServer && currentServer.creator_id === m.id;
+    const isSelf = m.id === userId;
+    const isMAdmin = m.role === 'admin';
+
+    let roleSelectHtml = `<span class="m-badge" style="font-size:9px">${isMAdmin ? 'ADMIN' : 'MEMBRO'}</span>`;
+    if (myRole === 'admin' && !isMemberCreator && !isSelf) {
+      roleSelectHtml = `
+        <select class="role-select" data-user-id="${esc(m.id)}">
+          <option value="member" ${!isMAdmin ? 'selected' : ''}>Membro</option>
+          <option value="admin" ${isMAdmin ? 'selected' : ''}>Admin</option>
+        </select>
+      `;
+    }
+
+    let kickBtnHtml = '';
+    if (myRole === 'admin' && !isMemberCreator && !isSelf) {
+      kickBtnHtml = `<button type="button" class="btn-kick-member" data-user-id="${esc(m.id)}" title="Expulsar">Expulsar</button>`;
+    }
+
+    return `
+      <div class="server-member-manage-row">
+        <div class="m-avatar"><img src="${esc(m.avatar || '/logo.svg')}" alt=""></div>
+        <div class="m-name">${esc(m.display_name || m.username)}${isMemberCreator ? ' 👑' : ''}</div>
+        <div>${roleSelectHtml}</div>
+        <div>${kickBtnHtml}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Eventos de alteração de cargo
+  $('serverMembersManageList').querySelectorAll('.role-select').forEach(sel => {
+    sel.onchange = async () => {
+      const targetUid = sel.dataset.userId;
+      const newRole = sel.value;
+      try {
+        const r = await fetch('/api/servers/' + serverId + '/members/' + targetUid + '/role', {
+          method: 'PUT',
+          headers: headers(),
+          body: JSON.stringify({ role: newRole })
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Erro ao alterar cargo');
+        const mIdx = members.findIndex(m => m.id === targetUid);
+        if (mIdx >= 0) members[mIdx].role = newRole;
+        renderMembers();
+        toast('Cargo atualizado!', 'success');
+      } catch (e) {
+        toast(e.message, 'error');
+        renderServerMembersManageList();
+      }
+    };
+  });
+
+  // Eventos de expulsão de membro
+  $('serverMembersManageList').querySelectorAll('.btn-kick-member').forEach(btn => {
+    btn.onclick = async () => {
+      const targetUid = btn.dataset.userId;
+      const m = members.find(mm => mm.id === targetUid);
+      const name = m ? (m.display_name || m.username) : 'este membro';
+      if (!(await uiConfirm(`Tem certeza que deseja expulsar ${name} do servidor?`))) return;
+      try {
+        const r = await fetch('/api/servers/' + serverId + '/members/' + targetUid, {
+          method: 'DELETE',
+          headers: headers()
+        });
+        if (!r.ok) throw new Error('Erro ao expulsar membro');
+        members = members.filter(mm => mm.id !== targetUid);
+        renderMembers();
+        renderServerMembersManageList();
+        toast('Membro expulso.', 'success');
+      } catch (e) { toast(e.message, 'error'); }
+    };
+  });
+}
+
+$('leaveServerBtn')?.addEventListener('click', async () => {
+  if (!(await uiConfirm('Tem certeza que deseja sair deste servidor?'))) return;
+  try {
+    const r = await fetch('/api/servers/' + serverId + '/members/me', {
+      method: 'DELETE',
+      headers: headers()
+    });
+    if (!r.ok) {
+      const d = await r.json();
+      throw new Error(d.error || 'Erro ao sair do servidor');
+    }
+    localStorage.removeItem('cat_last_server');
+    toast('Você saiu do servidor.', 'success');
+    location.href = '/dms.html';
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+$('deleteServerBtn')?.addEventListener('click', async () => {
+  if (!(await uiConfirm('⚠️ ATENÇÃO: Deseja EXCLUIR permanentemente este servidor? Esta ação não pode ser desfeita.'))) return;
+  try {
+    const r = await fetch('/api/servers/' + serverId, {
+      method: 'DELETE',
+      headers: headers()
+    });
+    if (!r.ok) throw new Error('Erro ao excluir servidor');
+    localStorage.removeItem('cat_last_server');
+    toast('Servidor excluído.', 'success');
+    location.href = '/dms.html';
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+$('serverSettingsBtn').onclick = openServerSettings;
+$('cancelServerSettingsBtn').onclick = () => $('serverSettingsModal').classList.remove('open');
+$('editServerDescription').addEventListener('input', () => { $('editServerDescCount').textContent = $('editServerDescription').value.length; });
+$('editServerIconWrap').onclick = () => $('serverIconFileInput').click();
+
+$('serverIconFileInput').onchange = async () => {
+  const f = $('serverIconFileInput').files[0];
+  if (!f) return;
+  try {
+    pendingServerIconData = await fileToDataUrl(f, 500 * 1024);
+    $('editServerIconPreview').innerHTML = `<img src="${pendingServerIconData}" alt="">`;
+  } catch (e) { toast(e.message, 'error'); }
+  $('serverIconFileInput').value = '';
+};
+
+$('editServerBannerBtn')?.addEventListener('click', () => $('serverBannerFileInput').click());
+$('serverBannerFileInput')?.addEventListener('change', async () => {
+  const f = $('serverBannerFileInput').files[0];
+  if (!f) return;
+  try {
+    pendingServerBannerData = await fileToDataUrl(f, 500 * 1024);
+    serverSelectedColor = pendingServerBannerData;
+    applyBannerStyle($('editServerBanner'), pendingServerBannerData);
+  } catch (e) { toast(e.message, 'error'); }
+  $('serverBannerFileInput').value = '';
+});
+
+$('removeServerBannerBtn')?.addEventListener('click', () => {
+  pendingServerBannerData = null;
+  serverSelectedColor = '#5865f2';
+  applyBannerStyle($('editServerBanner'), serverSelectedColor);
+  renderSwatches('serverColorSwatches', serverSelectedColor, (c) => {
+    serverSelectedColor = c;
+    pendingServerBannerData = null;
+    applyBannerStyle($('editServerBanner'), c);
+  });
+  toast('Banner do servidor redefinido para a cor padrão.', 'info');
+});
+
+$('serverCustomColorInput')?.addEventListener('input', (e) => {
+  serverSelectedColor = e.target.value;
+  pendingServerBannerData = null;
+  applyBannerStyle($('editServerBanner'), serverSelectedColor);
+  renderSwatches('serverColorSwatches', null, (c) => { serverSelectedColor = c; applyBannerStyle($('editServerBanner'), c); });
+});
+
+$('saveServerSettingsBtn').onclick = async () => {
+  try {
+    const body = {
+      name: $('editServerName').value,
+      description: $('editServerDescription').value,
+      bannerColor: pendingServerBannerData || serverSelectedColor
+    };
+    if (pendingServerIconData) body.icon = pendingServerIconData;
+    const r = await fetch('/api/servers/' + serverId, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erro ao salvar servidor');
+    currentServer = { ...currentServer, ...d };
+    $('serverName').textContent = d.name || 'Servidor';
+    $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
+    applyBannerStyle($('serverHead'), d.banner_color);
+    $('serverSettingsModal').classList.remove('open');
+    toast('Servidor atualizado com sucesso!', 'success');
+  } catch (e) { toast(e.message, 'error'); }
 };
 
 // ---- Gerenciamento de convites do servidor ----
@@ -1304,67 +1704,55 @@ $('copyInviteBtn')?.addEventListener('click', () => {
   }).catch(() => toast('Não foi possível copiar.', 'error'));
 });
 
-// ---- Configurações do servidor (admin) ----
-function openServerSettings() {
-  if (!currentServer) return;
-  pendingServerIconData = null;
-  serverSelectedColor = currentServer.banner_color || null;
-  const isImg = currentServer.icon && /^(https?:|data:)/.test(currentServer.icon);
-  $('editServerIconPreview').innerHTML = isImg
-    ? `<img src="${esc(currentServer.icon)}" alt="">`
-    : esc(currentServer.icon || '🐱');
-  $('editServerName').value = currentServer.name || '';
-  $('editServerDescription').value = currentServer.description || '';
-  $('editServerDescCount').textContent = (currentServer.description || '').length;
-  renderSwatches('serverColorSwatches', serverSelectedColor, (c) => { serverSelectedColor = c; });
-  $('serverSettingsModal').classList.add('open');
-}
-$('serverSettingsBtn').onclick = openServerSettings;
-$('cancelServerSettingsBtn').onclick = () => $('serverSettingsModal').classList.remove('open');
-$('editServerDescription').addEventListener('input', () => { $('editServerDescCount').textContent = $('editServerDescription').value.length; });
-$('editServerIconWrap').onclick = () => $('serverIconFileInput').click();
-$('serverIconFileInput').onchange = async () => {
-  const f = $('serverIconFileInput').files[0];
-  if (!f) return;
-  try {
-    pendingServerIconData = await fileToDataUrl(f, 500 * 1024);
-    $('editServerIconPreview').innerHTML = `<img src="${pendingServerIconData}" alt="">`;
-  } catch (e) { toast(e.message, 'error'); }
-  $('serverIconFileInput').value = '';
-};
-$('saveServerSettingsBtn').onclick = async () => {
-  try {
-    const body = {
-      name: $('editServerName').value,
-      description: $('editServerDescription').value,
-      bannerColor: serverSelectedColor
-    };
-    if (pendingServerIconData) body.icon = pendingServerIconData;
-    const r = await fetch('/api/servers/' + serverId, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Erro ao salvar servidor');
-    currentServer = { ...currentServer, ...d };
-    $('serverName').textContent = d.name || 'Servidor';
-    $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
-    if (d.banner_color) $('serverHead').style.background = d.banner_color;
-    $('serverSettingsModal').classList.remove('open');
-    toast('Servidor atualizado!', 'success');
-  } catch (e) { toast(e.message, 'error'); }
-};
-
-// ---- Atualizações em tempo real de perfil/servidor ----
+// ---- Atualizações em tempo real de perfil/servidor/moderação ----
 socket.on('member-profile-updated', (u) => {
   const idx = members.findIndex(m => m.id === u.id);
   if (idx >= 0) { members[idx] = { ...members[idx], display_name: u.display_name, avatar: u.avatar }; renderMembers(); }
   if (u.id === userId) { $('myName').textContent = u.display_name; if (u.avatar) $('myAvatarImg').src = u.avatar; }
   renderVoiceGrid();
 });
+
 socket.on('server-updated', (s) => {
   if (s.id !== serverId) return;
   currentServer = { ...currentServer, ...s };
   $('serverName').textContent = s.name || 'Servidor';
   $('mobileTitle').textContent = s.name || 'CAT EMPIRE';
-  if (s.banner_color) $('serverHead').style.background = s.banner_color;
+  applyBannerStyle($('serverHead'), s.banner_color);
+});
+
+socket.on('member-role-updated', ({ userId: uid, role }) => {
+  const idx = members.findIndex(m => m.id === uid);
+  if (idx >= 0) {
+    members[idx].role = role;
+    renderMembers();
+    renderServerMembersManageList();
+  }
+  if (uid === userId) {
+    myRole = role;
+    $('myRole').textContent = myRole === 'admin' ? 'admin' : 'membro';
+    $('serverSettingsBtn').hidden = (myRole !== 'admin');
+    toast('Seu cargo foi atualizado para: ' + (role === 'admin' ? 'Administrador' : 'Membro'), 'success');
+  }
+});
+
+socket.on('member-kicked', ({ userId: uid }) => {
+  if (uid === userId) {
+    toast('Você foi removido deste servidor.', 'error');
+    localStorage.removeItem('cat_last_server');
+    setTimeout(() => { location.href = '/dms.html'; }, 1000);
+    return;
+  }
+  members = members.filter(m => m.id !== uid);
+  renderMembers();
+  renderServerMembersManageList();
+});
+
+socket.on('server-deleted', ({ serverId: sid }) => {
+  if (sid === serverId) {
+    toast('Este servidor foi excluído pelo proprietário.', 'error');
+    localStorage.removeItem('cat_last_server');
+    setTimeout(() => { location.href = '/dms.html'; }, 1000);
+  }
 });
 
 // ========== APP ANDROID NATIVO (transmissão de tela real via RTMP) ==========

@@ -65,6 +65,21 @@ router.put('/me/profile', authenticate, async (req, res) => {
   }
 });
 
+// Alterar senha da conta
+router.put('/me/password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!newPassword || newPassword.length < 4) {
+      return res.status(400).json({ error: 'A nova senha deve ter no mínimo 4 caracteres.' });
+    }
+    await User.updatePassword(req.user.id, currentPassword, newPassword);
+    res.json({ success: true, message: 'Senha atualizada com sucesso!' });
+  } catch (error) {
+    console.error('Erro ao atualizar senha:', error);
+    res.status(400).json({ error: error.message || 'Erro ao alterar senha' });
+  }
+});
+
 // Ver o perfil público de outra pessoa — só liberado pra quem divide
 // pelo menos um servidor com ela (evita expor perfis pra estranhos).
 router.get('/users/:userId/profile', authenticate, async (req, res) => {
@@ -360,7 +375,12 @@ router.put('/servers/:serverId', authenticate, async (req, res) => {
       }
       data.icon = icon;
     }
-    if (typeof bannerColor === 'string' || bannerColor === null) data.banner_color = bannerColor || null;
+    if (typeof bannerColor === 'string' || bannerColor === null) {
+      if (typeof bannerColor === 'string' && bannerColor.length > 700000) {
+        return res.status(400).json({ error: 'Banner muito grande (máx. ~500KB).' });
+      }
+      data.banner_color = bannerColor || null;
+    }
     if (typeof description === 'string') data.description = description.slice(0, 300);
 
     const server = await Server.update(req.params.serverId, data);
@@ -372,6 +392,96 @@ router.put('/servers/:serverId', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Erro ao editar servidor:', error);
     res.status(500).json({ error: 'Erro ao editar servidor' });
+  }
+});
+
+// Alterar cargo de membro do servidor (somente ADMIN)
+router.put('/servers/:serverId/members/:memberId/role', authenticate, async (req, res) => {
+  try {
+    const role = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas administradores podem gerenciar cargos' });
+    }
+    const server = await Server.findById(req.params.serverId);
+    if (!server) return res.status(404).json({ error: 'Servidor não encontrado' });
+    if (server.creator_id === req.params.memberId && req.body.role !== 'admin') {
+      return res.status(400).json({ error: 'O criador do servidor não pode ter o cargo de administrador removido' });
+    }
+    const newRole = req.body.role === 'admin' ? 'admin' : 'member';
+    await Server.updateMemberRole(req.params.serverId, req.params.memberId, newRole);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`server-${req.params.serverId}`).emit('member-role-updated', {
+        userId: req.params.memberId,
+        role: newRole
+      });
+    }
+
+    res.json({ success: true, role: newRole });
+  } catch (error) {
+    console.error('Erro ao alterar cargo:', error);
+    res.status(500).json({ error: 'Erro ao alterar cargo' });
+  }
+});
+
+// Expulsar membro ou sair do servidor
+router.delete('/servers/:serverId/members/:memberId', authenticate, async (req, res) => {
+  try {
+    const isSelf = req.params.memberId === req.user.id || req.params.memberId === 'me';
+    const targetUserId = isSelf ? req.user.id : req.params.memberId;
+
+    const role = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (!role) {
+      return res.status(403).json({ error: 'Você não é membro deste servidor' });
+    }
+    if (!isSelf && role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas administradores podem expulsar membros' });
+    }
+    const server = await Server.findById(req.params.serverId);
+    if (!server) return res.status(404).json({ error: 'Servidor não encontrado' });
+    if (server.creator_id === targetUserId) {
+      return res.status(400).json({ error: isSelf ? 'O criador não pode sair do servidor (exclua o servidor se desejar)' : 'Você não pode expulsar o criador do servidor' });
+    }
+
+    await Server.removeMember(req.params.serverId, targetUserId);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`server-${req.params.serverId}`).emit('member-kicked', {
+        userId: targetUserId
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao remover membro:', error);
+    res.status(500).json({ error: 'Erro ao remover membro' });
+  }
+});
+
+// Excluir servidor permanentemente (somente o CRIADOR do servidor)
+router.delete('/servers/:serverId', authenticate, async (req, res) => {
+  try {
+    const server = await Server.findById(req.params.serverId);
+    if (!server) return res.status(404).json({ error: 'Servidor não encontrado' });
+    if (server.creator_id !== req.user.id) {
+      return res.status(403).json({ error: 'Apenas o criador do servidor pode excluí-lo' });
+    }
+
+    await Server.delete(req.params.serverId);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`server-${req.params.serverId}`).emit('server-deleted', {
+        serverId: req.params.serverId
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao excluir servidor:', error);
+    res.status(500).json({ error: 'Erro ao excluir servidor' });
   }
 });
 
