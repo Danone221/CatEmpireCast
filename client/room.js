@@ -20,6 +20,7 @@ let localStream = null;
 let micOn = true;
 let camOn = false;
 let screenOn = false;
+let screenAudioTrack = null; // faixa de áudio da tela (som do jogo/vídeo compartilhado), separada do mic
 const peers = {}; // remoteUserId -> { pc, polite, makingOffer, ignoreOffer }
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -219,9 +220,9 @@ $('confirmChannelBtn').onclick = async () => {
 };
 
 // ========== MOBILE SIDEBAR ==========
-$('hamburgerBtn').onclick = () => { $('channelsSidebar').classList.add('open'); $('serverRail').classList.add('open'); $('sidebarOverlay').classList.add('open'); };
+$('hamburgerBtn').onclick = () => { $('mobileDrawer').classList.add('open'); $('sidebarOverlay').classList.add('open'); };
 $('sidebarOverlay').onclick = closeMobileSidebar;
-function closeMobileSidebar() { $('channelsSidebar').classList.remove('open'); $('serverRail').classList.remove('open'); $('sidebarOverlay').classList.remove('open'); }
+function closeMobileSidebar() { $('mobileDrawer').classList.remove('open'); $('sidebarOverlay').classList.remove('open'); }
 
 // ========== VIEW SWITCHING ==========
 function showView(view) {
@@ -370,6 +371,7 @@ function leaveVoiceChannel(switchView = true) {
   socket.emit('leave-voice-channel');
   Object.keys(peers).forEach(closePeer);
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  screenAudioTrack = null;
   voiceChannelId = null;
   camOn = false;
   screenOn = false;
@@ -400,6 +402,18 @@ function removeCurrentVideoTrack() {
   });
   track.stop();
   localStream.removeTrack(track);
+}
+
+function removeScreenAudioTrack() {
+  if (!screenAudioTrack) return;
+  const track = screenAudioTrack;
+  screenAudioTrack = null;
+  Object.values(peers).forEach(p => {
+    const sender = p.pc.getSenders().find(s => s.track === track);
+    if (sender) p.pc.removeTrack(sender);
+  });
+  track.stop();
+  if (localStream) localStream.removeTrack(track);
 }
 
 function addVideoTrackToPeers(track) {
@@ -446,18 +460,37 @@ $('screenBtn').onclick = async () => {
     }
     try {
       if (camOn) { removeCurrentVideoTrack(); camOn = false; updateCamButton(); }
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      // audio:true pede o som da aba/tela também (jogo, vídeo, música etc).
+      // Depende do navegador/SO aceitar — se não vier áudio nenhum, a
+      // pessoa que está assistindo simplesmente não ouve o som da tela
+      // (não quebra nada, só não tem áudio extra).
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       const track = screenStream.getVideoTracks()[0];
       addVideoTrackToPeers(track);
+
+      const screenAudio = screenStream.getAudioTracks()[0];
+      if (screenAudio) {
+        screenAudioTrack = screenAudio;
+        localStream.addTrack(screenAudio);
+        Object.values(peers).forEach(p => p.pc.addTrack(screenAudio, localStream));
+        screenAudio.addEventListener('ended', () => removeScreenAudioTrack());
+      }
+
       screenOn = true;
       renderVoiceGrid();
-      track.addEventListener('ended', () => { screenOn = false; updateScreenButton(); renderVoiceGrid(); });
+      track.addEventListener('ended', () => {
+        screenOn = false;
+        removeScreenAudioTrack();
+        updateScreenButton();
+        renderVoiceGrid();
+      });
     } catch (e) {
       if (e.name !== 'NotAllowedError') toast('Não foi possível compartilhar a tela.', 'error');
       return;
     }
   } else {
     removeCurrentVideoTrack();
+    removeScreenAudioTrack();
     screenOn = false;
     renderVoiceGrid();
   }
