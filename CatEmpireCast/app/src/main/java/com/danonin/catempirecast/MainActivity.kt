@@ -67,6 +67,8 @@ class MainActivity : AppCompatActivity() {
     private var broadcastBound = false
     private var pendingCastUrl: String? = null
     private var pendingCastKey: String? = null
+    private var pendingCastQuality = 720
+    private var pendingCastFps = 30
 
     private val broadcastConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -91,6 +93,8 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         val url = pendingCastUrl
         val key = pendingCastKey
+        val quality = pendingCastQuality
+        val fps = pendingCastFps
         pendingCastUrl = null
         pendingCastKey = null
         if (result.resultCode != RESULT_OK || result.data == null || url == null || key == null) {
@@ -104,16 +108,18 @@ class MainActivity : AppCompatActivity() {
         // os dados e disparar de dentro de onServiceConnected, mas como o
         // bind local é praticamente instantâneo isso é suficiente aqui.
         binding.webView.postDelayed({
-            broadcastService?.startBroadcast(result.resultCode, result.data!!, url, key)
+            broadcastService?.startBroadcast(result.resultCode, result.data!!, url, key, quality, fps)
         }, 150)
     }
 
     private inner class WebAppInterface {
         @JavascriptInterface
-        fun startBroadcast(rtmpUrl: String, streamKey: String) {
+        fun startBroadcast(rtmpUrl: String, streamKey: String, quality: Int, fps: Int) {
             runOnUiThread {
                 pendingCastUrl = rtmpUrl
                 pendingCastKey = streamKey
+                pendingCastQuality = if (quality in setOf(480, 720, 1080)) quality else 720
+                pendingCastFps = if (fps in setOf(24, 30, 60)) fps else 30
                 val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
                 try {
                     screenCaptureLauncher.launch(projectionManager.createScreenCaptureIntent())

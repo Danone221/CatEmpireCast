@@ -67,7 +67,14 @@ class BroadcastService : Service(), ConnectChecker {
      * MediaProjection (ActivityResultContracts.StartActivityForResult
      * lançado a partir de MediaProjectionManager.createScreenCaptureIntent()).
      */
-    fun startBroadcast(resultCode: Int, data: Intent, rtmpUrl: String, streamKey: String) {
+    fun startBroadcast(
+        resultCode: Int,
+        data: Intent,
+        rtmpUrl: String,
+        streamKey: String,
+        quality: Int,
+        fps: Int
+    ) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Cat Empire")
             .setContentText("Transmitindo sua tela ao vivo…")
@@ -90,9 +97,13 @@ class BroadcastService : Service(), ConnectChecker {
             val display = RtmpDisplay(this, true, this)
             rtmpDisplay = display
 
-            // Resolução/bitrate conservadores — o objetivo é uma transmissão
-            // estável em rede de celular, não a máxima qualidade possível.
-            val prepared = display.prepareVideo(720, 1280, 2_500_000, 30) &&
+            val profile = when (quality) {
+                480 -> VideoProfile(480, 854, 1_500_000)
+                1080 -> VideoProfile(1080, 1920, 5_000_000)
+                else -> VideoProfile(720, 1280, 3_000_000)
+            }
+            val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
+            val prepared = display.prepareVideo(profile.width, profile.height, profile.bitrate, safeFps) &&
                 display.prepareAudio(128_000, 44100, true)
 
             if (!prepared) {
@@ -168,4 +179,6 @@ class BroadcastService : Service(), ConnectChecker {
 
         fun intent(context: Context): Intent = Intent(context, BroadcastService::class.java)
     }
+
+    private data class VideoProfile(val width: Int, val height: Int, val bitrate: Int)
 }

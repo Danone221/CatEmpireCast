@@ -79,6 +79,7 @@
         <button class="vc-btn active" id="micBtn" title="Mutar/Desmutar">🎤</button>
         <button class="vc-btn" id="camBtn" title="Câmera">📷</button>
         <button class="vc-btn" id="flipCamBtn" title="Virar câmera" hidden>🔄</button>
+        <button class="vc-btn" id="videoSettingsBtn" title="Qualidade da transmissão">⚙️</button>
         <button class="vc-btn" id="screenBtn" title="Compartilhar tela (navegador)">🖥️</button>
         <button class="vc-btn" id="mobileCastBtn" title="Transmitir do celular (app externo)">📱</button>
         <button class="vc-btn danger" id="hangupBtn" title="Sair da chamada">📞</button>
@@ -91,6 +92,29 @@
     <div id="membersList"></div>
   </aside>
 
+</div>
+
+<div class="modal" id="videoSettingsModal">
+  <div class="modal-box">
+    <h2>Qualidade da transmissão</h2>
+    <p class="modal-hint">As opções são aplicadas à câmera e à transmissão nativa do celular. O aparelho e a conexão podem limitar o valor efetivo.</p>
+    <label class="kv-label" for="videoQualitySelect" style="display:block;margin:14px 0 6px">QUALIDADE</label>
+    <select id="videoQualitySelect">
+      <option value="480">SD — 480p (mais estável)</option>
+      <option value="720" selected>HD — 720p</option>
+      <option value="1080">Full HD — 1080p</option>
+    </select>
+    <label class="kv-label" for="videoFpsSelect" style="display:block;margin:14px 0 6px">FPS MÁXIMO</label>
+    <select id="videoFpsSelect">
+      <option value="24">24 FPS</option>
+      <option value="30" selected>30 FPS</option>
+      <option value="60">60 FPS</option>
+    </select>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="cancelVideoSettingsBtn">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="saveVideoSettingsBtn">Salvar</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal" id="createChannelModal">
@@ -283,56 +307,5 @@
 </div>
 
 <script src="/room.js"></script>
-<script>
-(function () {
-  const flipBtn = document.getElementById('flipCamBtn');
-  const camButton = document.getElementById('camBtn');
-  if (!flipBtn || !camButton) return;
-
-  function syncFlipButton() {
-    flipBtn.hidden = !camOn;
-  }
-
-  const originalCamClick = camButton.onclick;
-  camButton.onclick = async function (event) {
-    await originalCamClick?.call(this, event);
-    syncFlipButton();
-  };
-
-  flipBtn.addEventListener('click', async function () {
-    if (!camOn || !localStream) return;
-
-    const currentTrack = localStream.getVideoTracks()[0];
-    if (!currentTrack) return;
-
-    const currentFacing = currentTrack.getSettings?.().facingMode;
-    const nextFacing = currentFacing === 'environment' ? 'user' : 'environment';
-
-    try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: nextFacing } }
-      });
-      const newTrack = newStream.getVideoTracks()[0];
-      if (!newTrack) throw new Error('Câmera não encontrada.');
-
-      Object.values(peers).forEach(peer => {
-        const sender = peer.pc.getSenders().find(s => s.track === currentTrack);
-        if (sender) sender.replaceTrack(newTrack).catch(() => {});
-      });
-
-      localStream.removeTrack(currentTrack);
-      currentTrack.stop();
-      localStream.addTrack(newTrack);
-
-      renderVoiceGrid();
-      socket.emit('voice-media-state', { muted: !micOn, camera: camOn, screen: screenOn });
-    } catch (e) {
-      toast('Não foi possível virar a câmera neste dispositivo.', 'error');
-    }
-  });
-
-  syncFlipButton();
-})();
-</script>
 </body>
 </html>

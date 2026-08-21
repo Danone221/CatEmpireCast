@@ -28,8 +28,11 @@ jobs:
 
       - name: Build APK (debug)
         run: |
+          GRADLE_VERSION=8.7
+          curl --fail --location --retry 3 --output gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+          unzip -q gradle.zip
           cd CatEmpireCast
-          gradle assembleDebug --stacktrace --no-daemon
+          ../gradle-${GRADLE_VERSION}/bin/gradle assembleDebug --stacktrace --no-daemon
 
       - name: Upload do APK gerado
         uses: actions/upload-artifact@v4

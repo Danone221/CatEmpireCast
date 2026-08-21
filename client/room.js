@@ -26,6 +26,13 @@ let micOn = true;
 let camOn = false;
 let screenOn = false;
 let screenAudioTrack = null; // faixa de áudio da tela (som do jogo/vídeo compartilhado), separada do mic
+const VIDEO_SETTINGS_KEY = 'cat_video_settings';
+const VIDEO_PROFILES = {
+  480: { width: 854, height: 480, bitrate: 1_500_000 },
+  720: { width: 1280, height: 720, bitrate: 3_000_000 },
+  1080: { width: 1920, height: 1080, bitrate: 5_000_000 }
+};
+let videoSettings = loadVideoSettings();
 const peers = {}; // remoteUserId -> { pc, polite, makingOffer, ignoreOffer }
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -658,12 +665,59 @@ function addVideoTrackToPeers(track) {
   Object.values(peers).forEach(p => p.pc.addTrack(track, localStream));
 }
 
+function loadVideoSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VIDEO_SETTINGS_KEY));
+    const quality = [480, 720, 1080].includes(Number(saved?.quality)) ? Number(saved.quality) : 720;
+    const fps = [24, 30, 60].includes(Number(saved?.fps)) ? Number(saved.fps) : 30;
+    return { quality, fps, facingMode: saved?.facingMode === 'environment' ? 'environment' : 'user' };
+  } catch (_) {
+    return { quality: 720, fps: 30, facingMode: 'user' };
+  }
+}
+
+function cameraConstraints() {
+  const profile = VIDEO_PROFILES[videoSettings.quality];
+  return {
+    audio: false,
+    video: {
+      facingMode: { ideal: videoSettings.facingMode },
+      width: { ideal: profile.width },
+      height: { ideal: profile.height },
+      frameRate: { ideal: videoSettings.fps, max: videoSettings.fps }
+    }
+  };
+}
+
+async function replaceCameraTrack(newTrack) {
+  if (!localStream) localStream = new MediaStream();
+  const oldTrack = localStream.getVideoTracks()[0];
+  if (!oldTrack) {
+    addVideoTrackToPeers(newTrack);
+    return;
+  }
+  await Promise.all(Object.values(peers).map(async (peer) => {
+    const sender = peer.pc.getSenders().find(s => s.track === oldTrack);
+    if (sender) await sender.replaceTrack(newTrack);
+    else peer.pc.addTrack(newTrack, localStream);
+  }));
+  localStream.removeTrack(oldTrack);
+  oldTrack.stop();
+  localStream.addTrack(newTrack);
+}
+
+function syncCameraControls() {
+  $('flipCamBtn').hidden = !camOn;
+  $('videoSettingsBtn').classList.toggle('active', camOn);
+}
+
 $('camBtn').onclick = async () => {
   if (!camOn) {
     try {
       if (screenOn) { removeCurrentVideoTrack(); screenOn = false; updateScreenButton(); }
-      const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const camStream = await navigator.mediaDevices.getUserMedia(cameraConstraints());
       const track = camStream.getVideoTracks()[0];
+      if (!track) throw new Error('Câmera não encontrada.');
       addVideoTrackToPeers(track);
       camOn = true;
       renderVoiceGrid();
@@ -675,7 +729,25 @@ $('camBtn').onclick = async () => {
     renderVoiceGrid();
   }
   updateCamButton();
+  syncCameraControls();
   socket.emit('voice-media-state', { muted: !micOn, camera: camOn, screen: screenOn });
+};
+
+$('flipCamBtn').onclick = async () => {
+  if (!camOn) return;
+  const previousFacing = videoSettings.facingMode;
+  videoSettings.facingMode = previousFacing === 'environment' ? 'user' : 'environment';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(cameraConstraints());
+    const track = stream.getVideoTracks()[0];
+    if (!track) throw new Error('Câmera não encontrada.');
+    await replaceCameraTrack(track);
+    localStorage.setItem(VIDEO_SETTINGS_KEY, JSON.stringify(videoSettings));
+    renderVoiceGrid();
+  } catch (e) {
+    videoSettings.facingMode = previousFacing;
+    toast('Não foi possível virar a câmera neste dispositivo.', 'error');
+  }
 };
 
 $('screenBtn').onclick = async () => {
@@ -725,8 +797,22 @@ $('screenBtn').onclick = async () => {
 };
 
 function updateMicButton() { $('micBtn').classList.toggle('active', micOn); $('micBtn').textContent = micOn ? '🎤' : '🔇'; }
-function updateCamButton() { $('camBtn').classList.toggle('active', camOn); }
+function updateCamButton() { $('camBtn').classList.toggle('active', camOn); syncCameraControls(); }
 function updateScreenButton() { $('screenBtn').classList.toggle('active', screenOn); }
+
+$('videoSettingsBtn').onclick = () => {
+  $('videoQualitySelect').value = String(videoSettings.quality);
+  $('videoFpsSelect').value = String(videoSettings.fps);
+  $('videoSettingsModal').classList.add('open');
+};
+$('cancelVideoSettingsBtn').onclick = () => $('videoSettingsModal').classList.remove('open');
+$('saveVideoSettingsBtn').onclick = () => {
+  videoSettings.quality = Number($('videoQualitySelect').value);
+  videoSettings.fps = Number($('videoFpsSelect').value);
+  localStorage.setItem(VIDEO_SETTINGS_KEY, JSON.stringify(videoSettings));
+  $('videoSettingsModal').classList.remove('open');
+  toast('Qualidade salva. Ela será usada na próxima ativação da câmera ou transmissão.', 'success');
+};
 
 // ========== CAST EXTERNO ==========
 $('mobileCastBtn').onclick = async () => {
@@ -1778,7 +1864,7 @@ $('mobileCastBtn').onclick = async () => {
       if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
       // O app cuida de pedir a permissão de captura de tela (MediaProjection)
       // e sobe o RTMP num serviço em primeiro plano — ver BroadcastService.kt.
-      window.CatEmpireNative.startBroadcast(d.rtmpUrl, d.streamKey);
+      window.CatEmpireNative.startBroadcast(d.rtmpUrl, d.streamKey, videoSettings.quality, videoSettings.fps);
     } catch (e) { toast(e.message, 'error'); }
     return;
   }
