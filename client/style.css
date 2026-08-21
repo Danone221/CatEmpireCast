@@ -109,6 +109,19 @@ button{cursor:pointer}
 .app-shell{display:flex;height:100vh;height:100dvh}
 
 .channels-sidebar{width:260px;flex:none;background:#0d0319;border-right:3px solid #29104b;display:flex;flex-direction:column;min-width:0;min-height:0}
+
+/* ---------- barra de servidores (estilo Discord, cores/traço do site) ---------- */
+.server-rail{width:72px;flex:none;background:#08020f;border-right:3px solid #29104b;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 0;overflow-y:auto;overflow-x:hidden}
+.rail-icon{width:46px;height:46px;flex:none;display:grid;place-items:center;background:#150a29;border:2px solid #3b1b68;color:#b99adb;font-size:13px;cursor:pointer;position:relative;box-shadow:3px 3px 0 #050007;transition:border-color .12s ease,color .12s ease,transform .12s ease}
+.rail-home,.rail-add{font-size:20px}
+.rail-icon:hover{border-color:var(--purple2);color:#fff;transform:translate(-1px,-1px);box-shadow:4px 4px 0 #050007}
+.rail-icon img{width:100%;height:100%;object-fit:cover}
+.rail-icon.active{border-color:var(--pink);box-shadow:0 0 14px rgba(255,79,216,.5),3px 3px 0 #050007}
+.rail-icon.active:before{content:'';position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:5px;height:26px;background:#fff;box-shadow:0 0 8px #fff}
+.rail-sep{width:32px;height:3px;background:#29104b;flex:none}
+.rail-servers{display:flex;flex-direction:column;gap:10px;align-items:center}
+.rail-add{color:var(--success);font-size:20px}
+.rail-add:hover{border-color:var(--success);color:#fff}
 .server-head{padding:18px 16px;border-bottom:3px solid #29104b}
 .server-name{font-size:13px;color:#eee8ff;text-shadow:2px 2px #2b0c50;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .server-code{font-family:monospace;font-size:10px;color:#7f6a98;margin-top:8px}
@@ -215,8 +228,10 @@ button{cursor:pointer}
   .hamburger{background:none;border:none;color:#eee8ff;font-size:18px;cursor:pointer}
   .mobile-title{font-size:11px;color:#dcd3ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .app-shell{height:calc(100vh - 56px);height:calc(100dvh - 56px)}
-  .channels-sidebar{position:fixed;top:56px;left:0;bottom:0;z-index:15;transform:translateX(-100%);transition:transform .18s ease;box-shadow:8px 0 20px rgba(0,0,0,.5)}
+  .channels-sidebar{position:fixed;top:56px;left:72px;bottom:0;z-index:15;transform:translateX(-100%);transition:transform .18s ease;box-shadow:8px 0 20px rgba(0,0,0,.5)}
   .channels-sidebar.open{transform:translateX(0)}
+  .server-rail{position:fixed;top:56px;left:0;bottom:0;z-index:16;transform:translateX(-100%);transition:transform .18s ease .02s}
+  .server-rail.open{transform:translateX(0)}
   .sidebar-overlay{display:none;position:fixed;inset:56px 0 0 0;background:rgba(0,0,0,.55);z-index:14}
   .sidebar-overlay.open{display:block}
   .members-sidebar{display:none}

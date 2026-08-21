@@ -64,6 +64,33 @@ socket.on('member-joined', (member) => {
   if (voiceChannelId) renderVoiceGrid();
 });
 
+// ========== BARRA DE SERVIDORES (estilo Discord) ==========
+// O servidor já manda essa lista assim que registra o socket (login) —
+// é a mesma usada na tela inicial pra listar "meus servidores".
+socket.on('servers-list', (list) => {
+  renderServerRail(list || []);
+});
+
+function switchServer(id) {
+  if (id === serverId) return;
+  const params = new URLSearchParams({ serverId: id, userId, userName, token });
+  location.href = '/server.html?' + params.toString();
+}
+
+function renderServerRail(list) {
+  $('railServers').innerHTML = list.map(s => {
+    const initials = esc((s.name || '?').trim().slice(0, 2).toUpperCase());
+    const active = s.id === serverId ? ' active' : '';
+    return `<div class="rail-icon${active}" data-server-id="${esc(s.id)}" title="${esc(s.name || 'Servidor')}">${initials}</div>`;
+  }).join('');
+  $('railServers').querySelectorAll('[data-server-id]').forEach(el => {
+    el.onclick = () => switchServer(el.dataset.serverId);
+  });
+}
+
+$('railHomeBtn').onclick = () => { location.href = '/'; };
+$('railAddBtn').onclick = () => { location.href = '/'; };
+
 // ========== CARREGAR SERVIDOR ==========
 async function load() {
   if (!serverId || !token) { location.href = '/'; return; }
@@ -192,9 +219,9 @@ $('confirmChannelBtn').onclick = async () => {
 };
 
 // ========== MOBILE SIDEBAR ==========
-$('hamburgerBtn').onclick = () => { $('channelsSidebar').classList.add('open'); $('sidebarOverlay').classList.add('open'); };
+$('hamburgerBtn').onclick = () => { $('channelsSidebar').classList.add('open'); $('serverRail').classList.add('open'); $('sidebarOverlay').classList.add('open'); };
 $('sidebarOverlay').onclick = closeMobileSidebar;
-function closeMobileSidebar() { $('channelsSidebar').classList.remove('open'); $('sidebarOverlay').classList.remove('open'); }
+function closeMobileSidebar() { $('channelsSidebar').classList.remove('open'); $('serverRail').classList.remove('open'); $('sidebarOverlay').classList.remove('open'); }
 
 // ========== VIEW SWITCHING ==========
 function showView(view) {
