@@ -103,13 +103,23 @@ class BroadcastService : Service(), ConnectChecker {
                 else -> VideoProfile(720, 1280, 3_000_000)
             }
             val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
+
+            // O Android exige um densityDpi estritamente positivo ao criar a
+            // VirtualDisplay. O valor 0 usado anteriormente causava:
+            // "Virtual display density must be positive".
+            val safeDpi = resources.displayMetrics.densityDpi.coerceAtLeast(160)
+
+            // RootEncoder recomenda informar o resultado do MediaProjection
+            // antes de preparar o vídeo/áudio e antes de iniciar o stream.
+            display.setIntentResult(resultCode, data)
+
             val prepared = display.prepareVideo(
                 profile.width,
                 profile.height,
                 safeFps,
                 profile.bitrate,
-                2,
-                0
+                0,
+                safeDpi
             ) &&
                 display.prepareAudio(128_000, 44100, true)
 
@@ -119,7 +129,6 @@ class BroadcastService : Service(), ConnectChecker {
                 return
             }
 
-            display.setIntentResult(resultCode, data)
             val endpoint = rtmpUrl.trimEnd('/') + "/" + streamKey
             display.startStream(endpoint)
         } catch (e: Exception) {
