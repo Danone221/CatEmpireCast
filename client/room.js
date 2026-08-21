@@ -1,4 +1,4 @@
-cconst $ = id => document.getElementById(id);
+const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const serverId = q.get('serverId');
 const userId = q.get('userId');
@@ -38,12 +38,10 @@ socket.on('connect', () => {
   socket.emit('register', { userId, token, serverId });
   if (selectedTextChannelId) socket.emit('join-text-channel', { channelId: selectedTextChannelId });
   
-  // Corrigindo a reconexão do canal de voz
   if (voiceChannelId) {
-    // Se é uma RECONEXÃO, limpa os peers e o grid antes de tentar entrar no canal
+    // Corrigindo a reconexão do canal de voz
     if (hadConnectedBefore) {
       Object.keys(peers).forEach(closePeer);
-      // Reseta o estado da câmera/tela local
       if (camOn) { camOn = false; updateCamButton(); removeCurrentVideoTrack(); }
       if (screenOn) { screenOn = false; updateScreenButton(); removeCurrentVideoTrack(); }
       renderVoiceGrid();
@@ -52,60 +50,13 @@ socket.on('connect', () => {
   }
   hadConnectedBefore = true;
 });
+
 socket.on('disconnect', () => {
   if (voiceChannelId) toast('Conexão perdida, reconectando…', 'error');
 });
 socket.on('error', d => console.error(d));
 
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-}
-
-let hadConnectedBefore = false;
-socket.on('connect', () => {
-  socket.emit('register', { userId, token, serverId });
-  if (selectedTextChannelId) socket.emit('join-text-channel', { channelId: selectedTextChannelId });
-  if (voiceChannelId) {
-    // ===== CORREÇÃO DA RECONEXÃO =====
-    // Se você já esteve conectado antes, você DEVE fechar TODOS os peers velhos
-    // e limpar o grid de voz ANTES de tentar entrar no canal.
-    if (hadConnectedBefore) {
-      Object.keys(peers).forEach(closePeer);
-      // Reseta o estado da câmera/tela local para evitar conflitos
-      if (camOn) { camOn = false; updateCamButton(); removeCurrentVideoTrack(); }
-      if (screenOn) { screenOn = false; updateScreenButton(); removeCurrentVideoTrack(); }
-      renderVoiceGrid();
-    }
-    // ==================================
-    socket.emit('join-voice-channel', { channelId: voiceChannelId });
-  }
-  hadConnectedBefore = true;
-}); {
-    // Se isso é uma RECONEXÃO (já tínhamos conectado antes) durante uma
-    // chamada, o servidor já nos tirou e recolocou no canal de voz (ver
-    // fix no disconnect handler do socket.js). As conexões WebRTC antigas
-    // que tínhamos com os outros participantes, porém, ficaram órfãs desse
-    // lado — o 'channel-members' que vamos receber a seguir só cria peers
-    // pra quem AINDA NÃO existe no nosso `peers`, então essas conexões
-    // velhas nunca seriam refeitas. Fechamos todas aqui pra garantir que
-    // sejam recriadas do zero com a lista atualizada de participantes.
-    if (hadConnectedBefore) {
-      Object.keys(peers).forEach(closePeer);
-      renderVoiceGrid();
-    }
-    socket.emit('join-voice-channel', { channelId: voiceChannelId });
-  }
-  hadConnectedBefore = true;
-});
-socket.on('disconnect', () => {
-  if (voiceChannelId) toast('Conexão perdida, reconectando…', 'error');
-});
-socket.on('error', d => console.error(d));
-
-// Alguém novo entrou no servidor enquanto esta página já estava aberta —
-// atualiza a lista local de membros pra que o nome apareça correto em
-// qualquer lugar que dependa desse array (sidebar de membros, nome nos
-// tiles da chamada de voz — sem isso caíam no fallback genérico "Membro").
+// Alguém novo entrou no servidor
 socket.on('member-joined', (member) => {
   if (!member || members.some(m => m.id === member.id)) return;
   members.push(member);
@@ -285,7 +236,6 @@ function messageHtml(m) {
   const time = new Date((m.created_at || 0) * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   let fileHtml = '';
   if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
-    // sem onclick inline — o listener delegado no #messagesList cuida do clique (ver abaixo)
     fileHtml = `<img class="message-image" src="${m.file_data}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${m.file_data}">`;
   } else if (m.file_data) {
     fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
@@ -300,7 +250,6 @@ function messageHtml(m) {
   </div>`;
 }
 
-// clique nas imagens do chat pra abrir em nova aba — delegado (sem onclick inline)
 $('messagesList').addEventListener('click', (e) => {
   const img = e.target.closest('.message-image[data-file-url]');
   if (img) window.open(img.dataset.fileUrl, '_blank');
@@ -326,10 +275,6 @@ $('fileInput').onchange = () => {
     $('attachPreviewImg').src = reader.result;
     $('attachPreviewName').textContent = f.name;
     $('attachPreview').hidden = false;
-    // Enquanto já existe uma imagem selecionada, desativa o botão de anexar:
-    // só cabe uma imagem por mensagem mesmo, e assim nenhum toque acidental
-    // (ou ativação sintética vinda do teclado virtual) consegue reabrir o
-    // seletor de arquivo por engano.
     $('attachBtn').disabled = true;
     $('fileInput').blur();
     $('messageInput').focus();
@@ -356,10 +301,6 @@ function sendMessage() {
   $('messageInput').focus();
 }
 
-// O envio não depende mais da submissão nativa do form (evita de vez a
-// ambiguidade de "qual botão é o padrão" em teclados virtuais/IMEs
-// mobile): o botão de enviar e a tecla Enter chamam sendMessage()
-// diretamente. O onsubmit fica só como rede de segurança.
 $('messageInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
@@ -368,7 +309,6 @@ $('messageInput').addEventListener('keydown', (e) => {
 });
 
 $('sendBtn').onclick = (e) => { e.preventDefault(); sendMessage(); };
-
 $('messageForm').onsubmit = (e) => {
   e.preventDefault();
   sendMessage();
@@ -435,12 +375,11 @@ function removeCurrentVideoTrack() {
   localStream.removeTrack(track);
 }
 
-ffunction addVideoTrackToPeers(track) {
+function addVideoTrackToPeers(track) {
   if (!localStream) localStream = new MediaStream();
   localStream.addTrack(track);
   
-  // ===== NOVA CORREÇÃO: REMOVER TRACKS ANTIGAS =====
-  // Antes de adicionar a nova track, garanta que não existe outra track de vídeo
+  // CORREÇÃO: Remove tracks antigas para não duplicar
   const oldVideos = localStream.getVideoTracks();
   oldVideos.forEach(t => {
     if (t !== track) {
@@ -448,7 +387,6 @@ ffunction addVideoTrackToPeers(track) {
       localStream.removeTrack(t);
     }
   });
-  // ================================================
 
   Object.values(peers).forEach(p => p.pc.addTrack(track, localStream));
 }
@@ -476,9 +414,6 @@ $('camBtn').onclick = async () => {
 $('screenBtn').onclick = async () => {
   if (!screenOn) {
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      // Alguns navegadores de celular (principalmente Android mais antigo)
-      // simplesmente não têm a API de captura de tela — sem essa checagem,
-      // o clique não fazia nada e parecia um bug silencioso.
       toast('Este navegador não suporta compartilhar tela. Tente no Chrome/Brave atualizado.', 'error');
       return;
     }
@@ -489,10 +424,8 @@ $('screenBtn').onclick = async () => {
       addVideoTrackToPeers(track);
       screenOn = true;
       renderVoiceGrid();
-      // dispara quando o usuário clica em "Parar compartilhamento" na barra nativa do navegador
       track.addEventListener('ended', () => { screenOn = false; updateScreenButton(); renderVoiceGrid(); });
     } catch (e) {
-      // usuário cancelou o seletor de tela — não é erro de verdade
       if (e.name !== 'NotAllowedError') toast('Não foi possível compartilhar a tela.', 'error');
       return;
     }
@@ -509,7 +442,7 @@ function updateMicButton() { $('micBtn').classList.toggle('active', micOn); $('m
 function updateCamButton() { $('camBtn').classList.toggle('active', camOn); }
 function updateScreenButton() { $('screenBtn').classList.toggle('active', screenOn); }
 
-// ========== CAST EXTERNO (transmitir a tela do celular via app de RTMP) ==========
+// ========== CAST EXTERNO ==========
 $('mobileCastBtn').onclick = async () => {
   if (!voiceChannelId) return;
   try {
@@ -587,12 +520,6 @@ function removeExternalCastTile() {
 function tileId(uid) { return 'tile-' + uid; }
 function audioElId(uid) { return 'audio-' + uid; }
 
-// Áudio remoto é tocado por um <audio> dedicado, independente de vídeo.
-// Antes, o som só saía através do <video> — e esse <video> só existia quando
-// a pessoa tinha câmera/tela ligada (hasVideo). Alguém só de microfone
-// (o caso mais comum) não tinha ONDE o áudio tocar: por isso "o microfone
-// era só enfeite". Esse elemento fica fora do grid (não é apagado quando o
-// tile é redesenhado) e persiste enquanto o peer estiver conectado.
 function ensureRemoteAudio(uid, stream) {
   let el = document.getElementById(audioElId(uid));
   if (!el) {
@@ -613,18 +540,13 @@ function renderVoiceGrid() {
   const existingIds = new Set([...grid.children].map(c => c.id));
   const wantIds = new Set([userId, ...Object.keys(peers)]);
 
-  // remove stale
   existingIds.forEach(id => { if (![...wantIds].some(u => tileId(u) === id)) grid.querySelector('#' + id)?.remove(); });
 
-  // self tile
   const meM = members.find(mm => mm.id === userId);
   upsertTile(userId, userName, meM && meM.avatar, localStream, true);
-  // remote tiles — e áudio (ver ensureRemoteAudio acima)
   Object.keys(peers).forEach(uid => {
     const m = members.find(mm => mm.id === uid);
     const state = remoteMediaState[uid];
-    // Sem aviso ainda recebido pra esse peer (acabou de entrar): confia na
-    // stream em si até o primeiro 'user-media-state' chegar.
     const knownVideoOff = state && !state.camera && !state.screen;
     upsertTile(uid, m ? (m.display_name || m.username) : 'Membro', m && m.avatar, peers[uid].remoteStream, false, knownVideoOff);
     ensureRemoteAudio(uid, peers[uid].remoteStream);
@@ -643,22 +565,9 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
     $('voiceGrid').appendChild(tile);
   }
 
-  // Quando você compartilha a TELA (não a câmera), sua própria prévia mostra
-  // literalmente o seu monitor — que inclui essa mesma prévia. Em janela
-  // normal isso já fica estranho; em tela cheia vira um espelho infinito
-  // (o "erro" com dezenas de cursores da imagem). Isso não é um bug de
-  // renderização, é o efeito Droste inevitável de exibir a própria captura
-  // de tela em tela cheia. Só quem está do outro lado deve ver esse vídeo
-  // ao vivo — pra você, mostramos um card fixo "transmitindo".
   const isOwnScreenShare = isSelf && screenOn && hasVideo;
   const wantKind = isOwnScreenShare ? 'sharing' : hasVideo ? 'video' : 'avatar';
 
-  // Só recria o HTML de dentro do tile quando o "tipo" dele muda de fato
-  // (passou a ter vídeo, deixou de ter, ou entrou/saiu do modo "sua
-  // transmissão"). Se já é vídeo e continua sendo, NUNCA mexe no <video>
-  // existente — só troca o srcObject. Recriar o nó via innerHTML a cada
-  // render tirava a pessoa da tela cheia sozinha, porque o elemento em
-  // tela cheia some do DOM assim que o innerHTML é reatribuído por cima.
   if (tile.dataset.kind !== wantKind) {
     if (wantKind === 'sharing') {
       tile.innerHTML = `
@@ -669,8 +578,6 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
         <div class="tile-name"><span class="mic-icon">🎤</span></div>`;
     } else if (wantKind === 'video') {
       const fsBtn = `<button type="button" class="fs-btn" data-tile="${id}" title="Tela cheia">⛶</button>`;
-      // O vídeo é sempre "muted": o som de verdade sai pelo <audio> dedicado
-      // (ensureRemoteAudio), então tocar áudio pelo <video> também duplicaria o som.
       tile.innerHTML = `<video autoplay playsinline muted></video>${fsBtn}<div class="tile-name"><span class="mic-icon">🎤</span></div>`;
     } else {
       tile.innerHTML = `<div class="tile-avatar"><img alt=""></div><div class="tile-name"><span class="mic-icon">🎤</span></div>`;
@@ -678,8 +585,6 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
     tile.dataset.kind = wantKind;
   }
 
-  // atualiza só o conteúdo dinâmico (nome, srcObject, avatar), sem tocar na
-  // estrutura/nó de vídeo já existente.
   const nameEl = tile.querySelector('.tile-name');
   if (nameEl) nameEl.innerHTML = `<span class="mic-icon">🎤</span>${esc(name)}${isSelf ? ' (você)' : ''}`;
 
@@ -726,31 +631,18 @@ socket.on('user-left', ({ userId: uid }) => {
   if (peers[uid]) closePeer(uid);
   renderVoiceGrid();
 
-    // ===== NOVA CORREÇÃO: REMOVER TRACKS ANTIGAS =====
-  // Antes de adicionar a nova track, garanta que não existe outra track de vídeo
-  const oldVideos = localStream.getVideoTracks();
-  oldVideos.forEach(t => {
-    if (t !== track) {
-      t.stop();
-      localStream.removeTrack(t);
+  // CORREÇÃO: Limpeza do tile de quem saiu
+  const tile = document.getElementById(tileId(uid));
+  if (tile) {
+    const video = tile.querySelector('video');
+    if (video && video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
     }
-  });
-  // ================================================
-
-  Object.values(peers).forEach(p => p.pc.addTrack(track, localStream));
-}
+  }
 });
 
-// Estado de câmera/tela de quem está na chamada, conforme o último aviso
-// que recebemos por sinalização (evento abaixo). É essa informação — não a
-// stream em si — que decide se mostramos vídeo ou o avatar de alguém: a
-// track WebRTC removida às vezes continua "pendurada" no MediaStream do
-// outro lado com o último frame congelado, sem disparar nenhum evento
-// confiável de remoção em todos os navegadores. Antes, o código recebia
-// esse aviso mas ignorava os campos camera/screen e nunca re-renderizava —
-// por isso quem assistia continuava vendo a câmera/tela "aberta" mesmo
-// depois de fechada do outro lado.
-const remoteMediaState = {}; // remoteUserId -> { camera, screen }
+const remoteMediaState = {};
 
 socket.on('user-media-state', ({ userId: uid, muted, camera, screen }) => {
   remoteMediaState[uid] = { camera: !!camera, screen: !!screen };
@@ -769,16 +661,6 @@ function createPeer(remoteId) {
 
   pc.onnegotiationneeded = async () => {
     try {
-      // Só inicia uma negociação nova se a conexão estiver "parada" (stable).
-      // Sem essa checagem, com 3+ pessoas é comum esse evento disparar bem
-      // no meio de uma negociação que já está em andamento (ex: acabamos de
-      // receber uma oferta e ainda não respondemos) — aí setLocalDescription()
-      // sem argumento cria uma RESPOSTA em vez de oferta (o navegador infere
-      // pelo estado atual), o outro lado recebe uma resposta duplicada pra
-      // mesma oferta, e a conexão quebra de vez. Se não está estável, quem
-      // vai resolver isso é o próprio ciclo de negociação em andamento — não
-      // precisamos fazer nada aqui, o evento volta a disparar sozinho quando
-      // estabilizar.
       if (pc.signalingState !== 'stable') return;
       peer.makingOffer = true;
       await pc.setLocalDescription();
@@ -797,12 +679,6 @@ function createPeer(remoteId) {
   };
 
   pc.onconnectionstatechange = () => {
-    // 'disconnected' costuma ser passageiro (rede oscilou, ICE está
-    // renegociando sozinho) — principalmente sob a carga extra de 3+
-    // pessoas transmitindo câmera/tela ao mesmo tempo. Fechar a conexão na
-    // hora, como fazíamos antes, matava participantes que teriam se
-    // reconectado sozinhos em 1-2 segundos. Só derruba de vez se ficar
-    // "failed"/"closed", ou se "disconnected" persistir por um tempo.
     if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
       closePeer(remoteId);
       renderVoiceGrid();
@@ -843,14 +719,6 @@ socket.on('voice-signal', async ({ from, data }) => {
       peer.ignoreOffer = !peer.polite && offerCollision;
       if (peer.ignoreOffer) return;
       await peer.pc.setRemoteDescription(data.sdp);
-      // Candidatos de ICE que chegaram antes da remote description estar
-      // pronta (comum quando o outro lado inicia uma nova negociação, ex:
-      // ao ligar a câmera/tela no meio de uma chamada só de áudio) ficam
-      // guardados em peer.pendingCandidates; agora que a description já
-      // foi aplicada, aplica todos eles. Sem isso, esses candidatos eram
-      // simplesmente descartados e a conexão de vídeo podia nunca fechar
-      // — fica com o track chegando mas nenhum dado fluindo, daí o vídeo
-      // parece "carregando" pra sempre.
       if (peer.pendingCandidates.length) {
         for (const c of peer.pendingCandidates) {
           try { await peer.pc.addIceCandidate(c); } catch (e) { console.error(e); }
