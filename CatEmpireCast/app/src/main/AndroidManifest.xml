@@ -12,13 +12,6 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- Android 14+ exige um foreground service do tipo mediaProjection
-         rodando durante qualquer captura de tela. Mantido como rede de
-         segurança pro getDisplayMedia da própria WebView. -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
     <!-- Só usado se o usuário escolher "Tirar foto" no seletor de imagem
          do chat, em vez de escolher uma já existente na galeria. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
@@ -43,11 +36,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <service
-            android:name=".ScreenCaptureNotifier"
-            android:foregroundServiceType="mediaProjection"
-            android:exported="false" />
 
     </application>
 
