@@ -149,12 +149,6 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String?) {
                 binding.loadingOverlay.visibility = View.GONE
                 binding.swipeRefresh.isRefreshing = false
-
-                if (url?.contains("server.html") == true) {
-                    ScreenCaptureNotifier.start(this@MainActivity)
-                } else {
-                    ScreenCaptureNotifier.stop(this@MainActivity)
-                }
             }
 
             override fun onReceivedError(
@@ -245,7 +239,6 @@ class MainActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     override fun onDestroy() {
-        ScreenCaptureNotifier.stop(this)
         binding.webView.destroy()
         super.onDestroy()
     }
