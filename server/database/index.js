@@ -90,10 +90,27 @@ async function initSchema() {
       PRIMARY KEY (user_id, channel_id)
     );
 
+    -- Mensagens privadas (DM) — 1 pra 1, sem canal/servidor envolvido.
+    CREATE TABLE IF NOT EXISTS dm_messages (
+      id TEXT PRIMARY KEY,
+      sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      recipient_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT,
+      file_name TEXT,
+      file_type TEXT,
+      file_size INTEGER,
+      file_data TEXT,
+      created_at BIGINT NOT NULL DEFAULT extract(epoch FROM now())::bigint,
+      edited_at BIGINT,
+      read_at BIGINT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
     CREATE INDEX IF NOT EXISTS idx_server_members_server ON server_members(server_id);
     CREATE INDEX IF NOT EXISTS idx_channels_server ON channels(server_id);
+    CREATE INDEX IF NOT EXISTS idx_dm_sender ON dm_messages(sender_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_dm_recipient ON dm_messages(recipient_id, created_at);
   `);
 
   // ===== Migração: coluna discord_id em bancos já existentes =====
