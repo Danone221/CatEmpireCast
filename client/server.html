@@ -26,14 +26,17 @@
     </aside>
 
     <aside class="channels-sidebar" id="channelsSidebar">
-      <div class="server-head">
-        <div class="server-name" id="serverName">Servidor</div>
+      <div class="server-head" id="serverHead">
+        <div class="server-head-row">
+          <div class="server-name" id="serverName">Servidor</div>
+          <button class="server-gear-btn" id="serverSettingsBtn" title="Configurações do servidor" hidden>⚙️</button>
+        </div>
         <div class="server-code">Código: <b id="roomCode">------</b></div>
       </div>
       <div class="channel-list" id="channelList"></div>
       <div class="user-bar">
-        <div class="user-avatar"><img id="myAvatarImg" src="/logo.svg" alt=""></div>
-        <div class="user-info">
+        <div class="user-avatar" id="myAvatarBtn" title="Editar perfil"><img id="myAvatarImg" src="/logo.svg" alt=""></div>
+        <div class="user-info" id="myInfoBtn" title="Editar perfil">
           <div class="user-name" id="myName">Membro</div>
           <div class="user-role" id="myRole">membro</div>
         </div>
@@ -126,6 +129,64 @@
     </p>
     <div class="modal-actions">
       <button class="btn btn-primary" id="closeCastModalBtn">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="editProfileModal">
+  <div class="modal-box profile-modal-box">
+    <div class="profile-banner" id="editProfileBanner"></div>
+    <div class="profile-avatar-row">
+      <div class="avatar-edit-wrap profile-avatar-big" id="editAvatarWrap">
+        <img id="editAvatarPreview" src="/logo.svg" alt="">
+        <span class="avatar-edit-label">TROCAR<br>FOTO</span>
+      </div>
+    </div>
+    <h2>Editar perfil</h2>
+    <input id="editDisplayName" placeholder="Nome de exibição" maxlength="32">
+    <textarea id="editBio" class="bio-input" placeholder="Fale um pouco sobre você…" maxlength="190"></textarea>
+    <div class="char-counter"><span id="editBioCount">0</span>/190</div>
+    <div class="color-swatches" id="editColorSwatches"></div>
+    <input type="file" id="avatarFileInput" accept="image/*" hidden>
+    <div class="modal-actions">
+      <button class="btn" id="cancelEditProfileBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveEditProfileBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="viewProfileModal">
+  <div class="modal-box profile-modal-box">
+    <div class="profile-banner" id="viewProfileBanner"></div>
+    <div class="profile-avatar-row">
+      <div class="profile-avatar-big"><img id="viewProfileAvatar" src="/logo.svg" alt=""></div>
+    </div>
+    <h2 class="profile-display-name" id="viewProfileName">—</h2>
+    <div class="profile-username" id="viewProfileUsername">@—</div>
+    <div class="profile-bio" id="viewProfileBio"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="closeViewProfileBtn">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="serverSettingsModal">
+  <div class="modal-box">
+    <h2>Configurações do servidor</h2>
+    <div class="profile-avatar-row" style="margin-top:0">
+      <div class="avatar-edit-wrap server-icon-preview" id="editServerIconWrap">
+        <span id="editServerIconPreview">🐱</span>
+        <span class="avatar-edit-label">TROCAR<br>ÍCONE</span>
+      </div>
+    </div>
+    <input id="editServerName" placeholder="Nome do servidor" maxlength="40">
+    <textarea id="editServerDescription" class="bio-input" placeholder="Descrição do servidor…" maxlength="300"></textarea>
+    <div class="char-counter"><span id="editServerDescCount">0</span>/300</div>
+    <div class="color-swatches" id="serverColorSwatches"></div>
+    <input type="file" id="serverIconFileInput" accept="image/*" hidden>
+    <div class="modal-actions">
+      <button class="btn" id="cancelServerSettingsBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveServerSettingsBtn">Salvar</button>
     </div>
   </div>
 </div>

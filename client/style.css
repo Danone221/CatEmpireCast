@@ -256,3 +256,60 @@ button{cursor:pointer}
 .confirm-actions{display:flex;gap:10px}
 .confirm-actions .btn{flex:1;margin:0}
 
+/* ---------- perfil de usuário e configurações de servidor (fidelidade Discord) ---------- */
+.server-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.server-head-row .server-name{flex:1;min-width:0}
+.server-gear-btn{background:none;border:2px solid transparent;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 4px;flex:none;line-height:1}
+.server-gear-btn:hover{color:var(--text)}
+.user-avatar,.user-info{cursor:pointer}
+.member-row{cursor:pointer}
+.message-avatar,.message-author{cursor:pointer}
+
+.profile-modal-box{padding:0 24px 24px;overflow:visible}
+.profile-banner{height:70px;margin:0 -24px 0;background:linear-gradient(135deg,var(--purple),var(--pink));border-bottom:3px solid #050007}
+.profile-avatar-row{display:flex;align-items:flex-end;margin-top:-38px;margin-bottom:14px;position:relative;z-index:1}
+.profile-avatar-big{width:72px;height:72px;border:4px solid #120820;background:#09020f;overflow:hidden;flex:none}
+.profile-avatar-big img{width:100%;height:100%;object-fit:cover}
+.avatar-edit-wrap{position:relative;cursor:pointer}
+.avatar-edit-wrap .avatar-edit-label{position:absolute;inset:0;display:grid;place-items:center;background:rgba(3,0,7,.72);opacity:0;font-size:7px;text-align:center;line-height:1.5;padding:4px;transition:opacity .15s ease}
+.avatar-edit-wrap:hover .avatar-edit-label{opacity:1}
+.profile-modal-box h2{margin-top:4px}
+.profile-display-name{font-size:14px;color:#eee8ff;margin-top:6px}
+.profile-username{font-family:monospace;font-size:10px;color:var(--muted);margin-top:6px;margin-bottom:14px}
+.profile-bio{font-family:monospace;font-size:11px;line-height:1.7;color:#d8cdf0;background:#09020f;border:2px solid var(--line);border-radius:2px;padding:12px;white-space:pre-wrap;word-break:break-word}
+textarea.bio-input{width:100%;padding:12px;background:#09020f;border:2px solid #3b1b68;font:inherit;color:inherit;resize:vertical;min-height:60px;margin-bottom:4px}
+.char-counter{font-family:monospace;font-size:9px;color:var(--muted);text-align:right;margin-bottom:14px}
+.color-swatches{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:16px}
+.color-swatch{width:26px;height:26px;border:2px solid #050007;cursor:pointer;flex:none}
+.color-swatch.selected{outline:2px solid #fff;outline-offset:2px}
+.server-icon-preview{width:56px;height:56px;border:3px solid #5a2a95;overflow:hidden;display:grid;place-items:center;font-size:22px;flex:none;background:#09020f}
+.server-icon-preview img{width:100%;height:100%;object-fit:cover}
+.native-broadcast-btn{background:linear-gradient(135deg,var(--purple),var(--pink))!important}
+/* ---------- fidelidade Discord: presença, digitando, markdown, editar/excluir, não lidos ---------- */
+.m-avatar{position:relative}
+.presence-dot{position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;border:2px solid #0a0215}
+.presence-dot.online{background:var(--success);box-shadow:0 0 4px rgba(61,220,122,.7)}
+.presence-dot.offline{background:#4a4260}
+
+.channel-item{position:relative}
+.channel-item.has-unread .cname{color:#fff;font-weight:bold}
+.unread-dot{position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 6px #fff}
+
+.typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;color:var(--muted);font-style:italic;min-height:14px}
+.typing-indicator[hidden]{display:none}
+
+.inline-code{background:#0d0618;border:1px solid #3b1c68;padding:1px 5px;border-radius:2px;font-family:monospace;font-size:11px;color:#ffcd3c}
+.code-block{background:#0d0618;border:2px solid #3b1c68;padding:10px;border-radius:2px;font-family:monospace;font-size:11px;color:#dcd3ee;white-space:pre-wrap;word-break:break-word;margin-top:6px;overflow-x:auto}
+.message-content a{color:var(--purple2);text-decoration:underline}
+.message-content b{color:#fff}
+
+.message{position:relative}
+.message-author.author-admin{color:var(--gold);text-shadow:0 0 8px rgba(255,205,60,.4)}
+.message-edited-tag{font-family:monospace;font-size:8px;color:#5e4c78}
+.message-toolbar{position:absolute;top:-14px;right:0;display:none;gap:4px;background:#150a29;border:2px solid #3b1b68;padding:3px;box-shadow:2px 2px 0 #050007}
+.message:hover .message-toolbar{display:flex}
+.msg-tool-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 4px}
+.msg-tool-btn:hover{color:#fff}
+.edit-message-wrap{margin-top:2px}
+.edit-message-input{width:100%;padding:8px 10px;background:#0d0618;border:2px solid var(--purple2);color:#eee8ff;font-family:monospace;font-size:12px;outline:none}
+.edit-message-hint{font-family:monospace;font-size:8px;color:var(--muted);margin-top:4px}

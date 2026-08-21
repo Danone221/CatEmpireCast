@@ -11,6 +11,9 @@ let channels = [];
 let members = [];
 let myRole = 'member';
 let selectedTextChannelId = null;
+let currentServer = null;
+let unreadChannels = new Set();
+let onlineUserIds = new Set();
 let activeMainView = 'text'; // 'text' | 'voice'
 let voiceChannelId = null;   // channel currently connected to voice
 let pendingChannelType = 'text';
@@ -32,6 +35,31 @@ function headers() {
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+// Formatação estilo Discord: aplica DEPOIS de esc() escapar o HTML, então
+// é seguro — nunca opera em texto não-escapado.
+function renderMarkdown(escapedText) {
+  let t = escapedText;
+  // Blocos de código ```...``` (antes de tudo, pra não formatar por dentro)
+  const blocks = [];
+  t = t.replace(/```([\s\S]+?)```/g, (_, code) => {
+    blocks.push(code);
+    return `\u0000CODEBLOCK${blocks.length - 1}\u0000`;
+  });
+  // Código inline `texto`
+  t = t.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
+  // Negrito **texto**
+  t = t.replace(/\*\*([^\*\n]+?)\*\*/g, '<b>$1</b>');
+  // Itálico *texto* ou _texto_
+  t = t.replace(/(?:\*([^\*\n]+?)\*|_([^_\n]+?)_)/g, (_, a, b) => `<i>${a || b}</i>`);
+  // Riscado ~~texto~~
+  t = t.replace(/~~([^~\n]+?)~~/g, '<s>$1</s>');
+  // Links http(s)://
+  t = t.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  // Devolve os blocos de código guardados
+  t = t.replace(/\u0000CODEBLOCK(\d+)\u0000/g, (_, i) => `<pre class="code-block">${blocks[Number(i)]}</pre>`);
+  return t;
 }
 
 let hadConnectedBefore = false;
@@ -65,6 +93,16 @@ socket.on('member-joined', (member) => {
   if (voiceChannelId) renderVoiceGrid();
 });
 
+// ===== Presença online/offline (bolinha verde/cinza estilo Discord) =====
+socket.on('presence-list', (ids) => {
+  onlineUserIds = new Set(ids || []);
+  renderMembers();
+});
+socket.on('presence-update', ({ userId: uid, online }) => {
+  if (online) onlineUserIds.add(uid); else onlineUserIds.delete(uid);
+  renderMembers();
+});
+
 // ========== BARRA DE SERVIDORES (estilo Discord) ==========
 // O servidor já manda essa lista assim que registra o socket (login) —
 // é a mesma usada na tela inicial pra listar "meus servidores".
@@ -80,9 +118,12 @@ function switchServer(id) {
 
 function renderServerRail(list) {
   $('railServers').innerHTML = list.map(s => {
-    const initials = esc((s.name || '?').trim().slice(0, 2).toUpperCase());
     const active = s.id === serverId ? ' active' : '';
-    return `<div class="rail-icon${active}" data-server-id="${esc(s.id)}" title="${esc(s.name || 'Servidor')}">${initials}</div>`;
+    const isImg = s.icon && /^(https?:|data:)/.test(s.icon);
+    const inner = isImg
+      ? `<img src="${esc(s.icon)}" alt="" style="width:100%;height:100%;object-fit:cover">`
+      : esc(s.icon || (s.name || '?').trim().slice(0, 2).toUpperCase());
+    return `<div class="rail-icon${active}" data-server-id="${esc(s.id)}" title="${esc(s.name || 'Servidor')}">${inner}</div>`;
   }).join('');
   $('railServers').querySelectorAll('[data-server-id]').forEach(el => {
     el.onclick = () => switchServer(el.dataset.serverId);
@@ -99,13 +140,16 @@ async function load() {
     const r = await fetch('/api/servers/' + serverId, { headers: headers() });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Erro ao carregar servidor');
+    currentServer = d;
     $('serverName').textContent = d.name || 'Servidor';
     $('roomCode').textContent = d.code || '------';
     $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
+    if (d.banner_color) $('serverHead').style.background = d.banner_color;
     channels = d.channels || [];
     members = d.members || [];
     myRole = d.myRole || 'member';
     $('myRole').textContent = myRole === 'admin' ? 'admin' : 'membro';
+    $('serverSettingsBtn').hidden = myRole !== 'admin';
     renderChannelList();
     renderMembers();
     const firstText = channels.find(c => c.type === 'text');
@@ -168,8 +212,10 @@ function channelItemHtml(c) {
   const isActiveText = activeMainView === 'text' && c.id === selectedTextChannelId;
   const isActiveVoice = c.id === voiceChannelId;
   const active = isActiveText || (activeMainView === 'voice' && isActiveVoice);
-  return `<div class="channel-item ${active ? 'active' : ''}" data-id="${c.id}" data-type="${c.type}">
+  const unread = c.type === 'text' && unreadChannels.has(c.id) ? ' has-unread' : '';
+  return `<div class="channel-item ${active ? 'active' : ''}${unread}" data-id="${c.id}" data-type="${c.type}">
     <span class="icon">${icon}</span><span class="cname">${esc(c.name)}</span>
+    ${unread ? '<span class="unread-dot" title="Mensagens não lidas"></span>' : ''}
     ${c.type === 'voice' && c.id === voiceChannelId ? '<span class="live-dot" title="Conectado"></span>' : ''}
     ${myRole === 'admin' ? `<button class="del-btn" data-id="${c.id}" title="Excluir">✕</button>` : ''}
   </div>`;
@@ -179,12 +225,18 @@ function channelItemHtml(c) {
 function renderMembers() {
   $('memberCount').textContent = members.length;
   $('membersList').innerHTML = members.map(m => `
-    <div class="member-row">
-      <div class="m-avatar"><img src="${m.avatar || '/logo.svg'}" alt=""></div>
+    <div class="member-row" data-user-id="${esc(m.id)}">
+      <div class="m-avatar">
+        <img src="${m.avatar || '/logo.svg'}" alt="">
+        <span class="presence-dot ${onlineUserIds.has(m.id) ? 'online' : 'offline'}"></span>
+      </div>
       <div class="m-name">${esc(m.display_name || m.username)}</div>
       ${m.role === 'admin' ? '<span class="m-badge">ADMIN</span>' : ''}
     </div>
   `).join('');
+  $('membersList').querySelectorAll('[data-user-id]').forEach(el => {
+    el.addEventListener('click', () => openProfile(el.dataset.userId));
+  });
 }
 
 // ========== CRIAR CANAL ==========
@@ -236,6 +288,9 @@ function showView(view) {
 // ========== CANAL DE TEXTO ==========
 async function openTextChannel(channelId) {
   selectedTextChannelId = channelId;
+  unreadChannels.delete(channelId);
+  typingUsers.clear();
+  renderTypingIndicator();
   const ch = channels.find(c => c.id === channelId);
   $('chatChannelName').textContent = '# ' + (ch ? ch.name : 'canal');
   $('mobileTitle').textContent = ch ? ch.name : 'CAT EMPIRE';
@@ -268,27 +323,101 @@ function messageHtml(m) {
   } else if (m.file_data) {
     fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
-  return `<div class="message">
-    <div class="message-avatar"><img src="${m.avatar || '/logo.svg'}" alt=""></div>
+  const memberInfo = members.find(mem => mem.id === m.user_id);
+  const isAdminAuthor = memberInfo && memberInfo.role === 'admin';
+  const canManage = m.user_id === userId || myRole === 'admin';
+  const editedTag = m.edited_at ? '<span class="message-edited-tag">(editado)</span>' : '';
+  const toolbar = canManage ? `<div class="message-toolbar">
+      ${m.user_id === userId ? `<button class="msg-tool-btn" data-action="edit" title="Editar">✏️</button>` : ''}
+      <button class="msg-tool-btn" data-action="delete" title="Excluir">🗑️</button>
+    </div>` : '';
+  return `<div class="message" data-message-id="${esc(m.id)}" data-author-id="${esc(m.user_id || '')}">
+    <div class="message-avatar" data-user-id="${esc(m.user_id || '')}"><img src="${m.avatar || '/logo.svg'}" alt=""></div>
     <div class="message-body">
-      <div class="message-head"><span class="message-author">${esc(m.display_name || m.username || 'Membro')}</span><span class="message-time">${time}</span></div>
-      ${m.content ? `<div class="message-content">${esc(m.content)}</div>` : ''}
+      <div class="message-head">
+        <span class="message-author${isAdminAuthor ? ' author-admin' : ''}" data-user-id="${esc(m.user_id || '')}">${esc(m.display_name || m.username || 'Membro')}</span>
+        <span class="message-time">${time}</span>${editedTag}
+      </div>
+      <div class="message-content" data-raw="${esc(m.content || '')}">${m.content ? renderMarkdown(esc(m.content)) : ''}</div>
       ${fileHtml}
+      ${toolbar}
     </div>
   </div>`;
 }
 
 $('messagesList').addEventListener('click', (e) => {
   const img = e.target.closest('.message-image[data-file-url]');
-  if (img) window.open(img.dataset.fileUrl, '_blank');
+  if (img) { window.open(img.dataset.fileUrl, '_blank'); return; }
+
+  const toolBtn = e.target.closest('.msg-tool-btn');
+  if (toolBtn) {
+    const msgEl = toolBtn.closest('.message[data-message-id]');
+    const messageId = msgEl?.dataset.messageId;
+    if (!messageId) return;
+    if (toolBtn.dataset.action === 'delete') {
+      uiConfirm('Excluir esta mensagem?').then(ok => { if (ok) socket.emit('delete-message', { messageId }); });
+    } else if (toolBtn.dataset.action === 'edit') {
+      startEditMessage(msgEl, messageId);
+    }
+    return;
+  }
+
+  const who = e.target.closest('[data-user-id]');
+  if (who && who.dataset.userId) openProfile(who.dataset.userId);
+});
+
+// ---- Edição inline de mensagem ----
+function startEditMessage(msgEl, messageId) {
+  const contentEl = msgEl.querySelector('.message-content');
+  if (!contentEl || msgEl.querySelector('.edit-message-input')) return;
+  const raw = contentEl.dataset.raw || '';
+  const wrap = document.createElement('div');
+  wrap.className = 'edit-message-wrap';
+  wrap.innerHTML = `<input type="text" class="edit-message-input" maxlength="2000" value="">
+    <div class="edit-message-hint">enter pra salvar · esc pra cancelar</div>`;
+  contentEl.replaceWith(wrap);
+  const input = wrap.querySelector('.edit-message-input');
+  input.value = raw;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+
+  function finish(save) {
+    const newContent = input.value.trim();
+    wrap.replaceWith(contentEl);
+    if (save && newContent && newContent !== raw) {
+      socket.emit('edit-message', { messageId, content: newContent });
+    }
+  }
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
+socket.on('message-edited', (msg) => {
+  if (msg.channel_id !== selectedTextChannelId) return;
+  const el = $('messagesList').querySelector(`.message[data-message-id="${CSS.escape(msg.id)}"]`);
+  if (el) el.outerHTML = messageHtml(msg);
+});
+socket.on('message-deleted', ({ id, channel_id }) => {
+  if (channel_id !== selectedTextChannelId) return;
+  $('messagesList').querySelector(`.message[data-message-id="${CSS.escape(id)}"]`)?.remove();
 });
 
 socket.on('new-message', (msg) => {
-  if (msg.channel_id !== selectedTextChannelId) return;
+  if (msg.channel_id !== selectedTextChannelId) {
+    if (channels.some(c => c.id === msg.channel_id && c.type === 'text')) {
+      unreadChannels.add(msg.channel_id);
+      renderChannelList();
+    }
+    return;
+  }
   const empty = $('messagesList').querySelector('.empty-hint');
   if (empty) empty.remove();
   $('messagesList').insertAdjacentHTML('beforeend', messageHtml(msg));
   $('messagesList').scrollTop = $('messagesList').scrollHeight;
+  removeTypingUser(msg.user_id);
 });
 
 let pendingFile = null;
@@ -327,7 +456,58 @@ function sendMessage() {
   $('attachPreview').hidden = true;
   $('attachBtn').disabled = false;
   $('messageInput').focus();
+  stopTyping();
 }
+
+// ---- Indicador "está digitando…" ----
+let typingTimeout = null;
+let iAmTyping = false;
+function stopTyping() {
+  if (iAmTyping && selectedTextChannelId) socket.emit('typing-stop', { channelId: selectedTextChannelId });
+  iAmTyping = false;
+  clearTimeout(typingTimeout);
+}
+$('messageInput').addEventListener('input', () => {
+  if (!selectedTextChannelId) return;
+  if (!iAmTyping) {
+    iAmTyping = true;
+    socket.emit('typing-start', { channelId: selectedTextChannelId });
+  }
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(stopTyping, 3000);
+});
+
+const typingUsers = new Map(); // userId -> userName, só do canal aberto no momento
+function renderTypingIndicator() {
+  let el = $('typingIndicator');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'typingIndicator';
+    el.className = 'typing-indicator';
+    $('textView').insertBefore(el, $('voiceBar').nextSibling);
+  }
+  const names = Array.from(typingUsers.values());
+  if (!names.length) { el.hidden = true; el.textContent = ''; return; }
+  el.hidden = false;
+  const text = names.length === 1
+    ? `${names[0]} está digitando…`
+    : names.length === 2
+      ? `${names[0]} e ${names[1]} estão digitando…`
+      : `Várias pessoas estão digitando…`;
+  el.textContent = text;
+}
+function removeTypingUser(userId) {
+  if (typingUsers.delete(userId)) renderTypingIndicator();
+}
+socket.on('user-typing', ({ channelId, userId: uid, userName }) => {
+  if (channelId !== selectedTextChannelId || uid === userId) return;
+  typingUsers.set(uid, userName || 'Alguém');
+  renderTypingIndicator();
+});
+socket.on('user-stop-typing', ({ channelId, userId: uid }) => {
+  if (channelId !== selectedTextChannelId) return;
+  removeTypingUser(uid);
+});
 
 $('messageInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
@@ -803,6 +983,221 @@ socket.on('voice-signal', async ({ from, data }) => {
 $('leaveBtn').onclick = () => {
   if (voiceChannelId) leaveVoiceChannel(false);
   location.href = '/';
+};
+
+// ========== PERFIL DE USUÁRIO E CONFIGURAÇÕES DE SERVIDOR ==========
+const PROFILE_COLORS = ['#8b2bff', '#ff4fd8', '#ffcd3c', '#3ddc7a', '#ff3b55', '#4fc3ff', '#b56bff', '#ff8a3c'];
+let editSelectedColor = null;
+let serverSelectedColor = null;
+let pendingAvatarData = null;
+let pendingServerIconData = null;
+
+function renderSwatches(containerId, selected, onPick) {
+  const el = $(containerId);
+  el.innerHTML = PROFILE_COLORS.map(c =>
+    `<div class="color-swatch${c === selected ? ' selected' : ''}" data-color="${c}" style="background:${c}"></div>`
+  ).join('');
+  el.querySelectorAll('.color-swatch').forEach(sw => {
+    sw.onclick = () => { onPick(sw.dataset.color); renderSwatches(containerId, sw.dataset.color, onPick); };
+  });
+}
+
+function fileToDataUrl(file, maxBytes) {
+  return new Promise((resolve, reject) => {
+    if (file.size > maxBytes) { reject(new Error('Imagem muito grande (máx. ' + Math.round(maxBytes / 1024) + 'KB).')); return; }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Erro ao ler o arquivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ---- Ver/editar meu perfil ----
+async function openMyProfile() {
+  try {
+    const r = await fetch('/api/me', { headers: headers() });
+    const me = await r.json();
+    if (!r.ok) throw new Error(me.error || 'Erro ao carregar perfil');
+    pendingAvatarData = null;
+    editSelectedColor = me.banner_color || null;
+    $('editAvatarPreview').src = me.avatar || '/logo.svg';
+    $('editDisplayName').value = me.display_name || me.username || '';
+    $('editBio').value = me.bio || '';
+    $('editBioCount').textContent = (me.bio || '').length;
+    $('editProfileBanner').style.background = editSelectedColor || 'linear-gradient(135deg,var(--purple),var(--pink))';
+    renderSwatches('editColorSwatches', editSelectedColor, (c) => {
+      editSelectedColor = c;
+      $('editProfileBanner').style.background = c;
+    });
+    $('editProfileModal').classList.add('open');
+  } catch (e) { toast(e.message, 'error'); }
+}
+$('myAvatarBtn').onclick = openMyProfile;
+$('myInfoBtn').onclick = openMyProfile;
+$('cancelEditProfileBtn').onclick = () => $('editProfileModal').classList.remove('open');
+$('editBio').addEventListener('input', () => { $('editBioCount').textContent = $('editBio').value.length; });
+$('editAvatarWrap').onclick = () => $('avatarFileInput').click();
+$('avatarFileInput').onchange = async () => {
+  const f = $('avatarFileInput').files[0];
+  if (!f) return;
+  try {
+    pendingAvatarData = await fileToDataUrl(f, 500 * 1024);
+    $('editAvatarPreview').src = pendingAvatarData;
+  } catch (e) { toast(e.message, 'error'); }
+  $('avatarFileInput').value = '';
+};
+$('saveEditProfileBtn').onclick = async () => {
+  try {
+    const body = {
+      displayName: $('editDisplayName').value,
+      bio: $('editBio').value,
+      bannerColor: editSelectedColor
+    };
+    if (pendingAvatarData) body.avatar = pendingAvatarData;
+    const r = await fetch('/api/me/profile', { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erro ao salvar perfil');
+    $('myName').textContent = d.display_name || d.username;
+    if (d.avatar) $('myAvatarImg').src = d.avatar;
+    const meIdx = members.findIndex(m => m.id === userId);
+    if (meIdx >= 0) { members[meIdx] = { ...members[meIdx], display_name: d.display_name, avatar: d.avatar }; renderMembers(); }
+    $('editProfileModal').classList.remove('open');
+    toast('Perfil atualizado!', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+};
+
+// ---- Ver perfil de outra pessoa ----
+async function openProfile(targetUserId) {
+  if (!targetUserId) return;
+  if (targetUserId === userId) { openMyProfile(); return; }
+  try {
+    const r = await fetch('/api/users/' + targetUserId + '/profile', { headers: headers() });
+    const p = await r.json();
+    if (!r.ok) throw new Error(p.error || 'Erro ao carregar perfil');
+    $('viewProfileBanner').style.background = p.banner_color || 'linear-gradient(135deg,var(--purple),var(--pink))';
+    $('viewProfileAvatar').src = p.avatar || '/logo.svg';
+    $('viewProfileName').textContent = p.display_name || p.username;
+    $('viewProfileUsername').textContent = '@' + p.username;
+    $('viewProfileBio').textContent = p.bio || 'Sem bio.';
+    $('viewProfileModal').classList.add('open');
+  } catch (e) { toast(e.message, 'error'); }
+}
+$('closeViewProfileBtn').onclick = () => $('viewProfileModal').classList.remove('open');
+
+// ---- Configurações do servidor (admin) ----
+function openServerSettings() {
+  if (!currentServer) return;
+  pendingServerIconData = null;
+  serverSelectedColor = currentServer.banner_color || null;
+  const isImg = currentServer.icon && /^(https?:|data:)/.test(currentServer.icon);
+  $('editServerIconPreview').innerHTML = isImg
+    ? `<img src="${esc(currentServer.icon)}" alt="">`
+    : esc(currentServer.icon || '🐱');
+  $('editServerName').value = currentServer.name || '';
+  $('editServerDescription').value = currentServer.description || '';
+  $('editServerDescCount').textContent = (currentServer.description || '').length;
+  renderSwatches('serverColorSwatches', serverSelectedColor, (c) => { serverSelectedColor = c; });
+  $('serverSettingsModal').classList.add('open');
+}
+$('serverSettingsBtn').onclick = openServerSettings;
+$('cancelServerSettingsBtn').onclick = () => $('serverSettingsModal').classList.remove('open');
+$('editServerDescription').addEventListener('input', () => { $('editServerDescCount').textContent = $('editServerDescription').value.length; });
+$('editServerIconWrap').onclick = () => $('serverIconFileInput').click();
+$('serverIconFileInput').onchange = async () => {
+  const f = $('serverIconFileInput').files[0];
+  if (!f) return;
+  try {
+    pendingServerIconData = await fileToDataUrl(f, 500 * 1024);
+    $('editServerIconPreview').innerHTML = `<img src="${pendingServerIconData}" alt="">`;
+  } catch (e) { toast(e.message, 'error'); }
+  $('serverIconFileInput').value = '';
+};
+$('saveServerSettingsBtn').onclick = async () => {
+  try {
+    const body = {
+      name: $('editServerName').value,
+      description: $('editServerDescription').value,
+      bannerColor: serverSelectedColor
+    };
+    if (pendingServerIconData) body.icon = pendingServerIconData;
+    const r = await fetch('/api/servers/' + serverId, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erro ao salvar servidor');
+    currentServer = { ...currentServer, ...d };
+    $('serverName').textContent = d.name || 'Servidor';
+    $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
+    if (d.banner_color) $('serverHead').style.background = d.banner_color;
+    $('serverSettingsModal').classList.remove('open');
+    toast('Servidor atualizado!', 'success');
+  } catch (e) { toast(e.message, 'error'); }
+};
+
+// ---- Atualizações em tempo real de perfil/servidor ----
+socket.on('member-profile-updated', (u) => {
+  const idx = members.findIndex(m => m.id === u.id);
+  if (idx >= 0) { members[idx] = { ...members[idx], display_name: u.display_name, avatar: u.avatar }; renderMembers(); }
+  if (u.id === userId) { $('myName').textContent = u.display_name; if (u.avatar) $('myAvatarImg').src = u.avatar; }
+  renderVoiceGrid();
+});
+socket.on('server-updated', (s) => {
+  if (s.id !== serverId) return;
+  currentServer = { ...currentServer, ...s };
+  $('serverName').textContent = s.name || 'Servidor';
+  $('mobileTitle').textContent = s.name || 'CAT EMPIRE';
+  if (s.banner_color) $('serverHead').style.background = s.banner_color;
+});
+
+// ========== APP ANDROID NATIVO (transmissão de tela real via RTMP) ==========
+// Quando o site roda dentro do app Android (ver CatEmpireCast/…/MainActivity.kt),
+// a ponte "CatEmpireNative" fica disponível no window. Nesse caso trocamos o
+// botão de instruções (app externo tipo Larix) por transmissão nativa de
+// verdade, sem precisar de outro app.
+function hasNativeBroadcast() {
+  return !!window.CatEmpireNative && typeof window.CatEmpireNative.startBroadcast === 'function';
+}
+
+let nativeBroadcasting = false;
+if (hasNativeBroadcast()) {
+  $('mobileCastBtn').title = 'Transmitir a tela (nativo)';
+  $('mobileCastBtn').classList.add('native-broadcast-btn');
+}
+
+// Chamado pelo app Android (MainActivity.evaluateJavascript) quando o status
+// da transmissão nativa muda — sucesso, erro ou fim.
+window.onNativeBroadcastState = function (state, message) {
+  if (state === 'started') {
+    nativeBroadcasting = true;
+    $('mobileCastBtn').classList.add('active');
+    toast('Transmitindo a tela ao vivo!', 'success');
+  } else if (state === 'stopped') {
+    nativeBroadcasting = false;
+    $('mobileCastBtn').classList.remove('active');
+  } else if (state === 'error') {
+    nativeBroadcasting = false;
+    $('mobileCastBtn').classList.remove('active');
+    toast(message || 'Erro ao transmitir a tela.', 'error');
+  }
+};
+
+const originalMobileCastHandler = $('mobileCastBtn').onclick;
+$('mobileCastBtn').onclick = async () => {
+  if (!voiceChannelId) return;
+  if (hasNativeBroadcast()) {
+    try {
+      if (nativeBroadcasting) {
+        window.CatEmpireNative.stopBroadcast();
+        return;
+      }
+      const r = await fetch('/api/channels/' + voiceChannelId + '/cast-credentials', { headers: headers() });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
+      // O app cuida de pedir a permissão de captura de tela (MediaProjection)
+      // e sobe o RTMP num serviço em primeiro plano — ver BroadcastService.kt.
+      window.CatEmpireNative.startBroadcast(d.rtmpUrl, d.streamKey);
+    } catch (e) { toast(e.message, 'error'); }
+    return;
+  }
+  return originalMobileCastHandler();
 };
 
 load();
