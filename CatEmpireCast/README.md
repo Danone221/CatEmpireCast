@@ -17,21 +17,32 @@ tem e um navegador solto não:
 |---|---|
 | `getUserMedia()` (mic/câmera) | `onPermissionRequest` pede a permissão Android real e libera pro WebView |
 | `<input type="file">` (upload de imagem no chat) | `onShowFileChooser` abre galeria/câmera nativa |
-| `getDisplayMedia()` (compartilhar tela) | O próprio WebView/Chromium mostra o seletor nativo — ver ressalva abaixo |
+| `getDisplayMedia()` (compartilhar tela) | Depende do WebView do aparelho — ver ressalva abaixo |
 | Botão voltar do Android | Navega no histórico da própria WebView antes de fechar o app |
 | Login com Discord | Segue normal dentro do WebView (é só uma navegação a mais) |
 
 ## ⚠️ Ressalva sobre compartilhar tela
 
-`getDisplayMedia()` funcionando de dentro de um WebView embutido em app
-(diferente do Chrome solto) depende da versão do **Android System WebView**
-instalada no aparelho — em celulares atualizados (WebView de 2022+) costuma
-funcionar sozinho, sem código nenhum da nossa parte. Mantemos o
-`ScreenCaptureNotifier` rodando como rede de segurança pro requisito do
-Android 14+ de ter um foreground service tipo `mediaProjection` ativo
-durante a captura, mas **isso não foi testado em aparelho físico** — se não
-funcionar de primeira num certo device, o resto do app (chat, canais, mic,
-câmera) continua 100% funcional, e a gente ajusta a parte de tela depois.
+`getDisplayMedia()` (botão 🖥️ do site, compartilhar tela pelo navegador)
+dentro de um WebView embutido em app é inconsistente entre aparelhos/versões
+de Android System WebView — em alguns funciona, em outros o próprio Chromium
+recusa ou nunca abre o seletor, e não tem bandeira nenhuma que a gente possa
+forçar do lado do app pra garantir que funcione. **Não conte com ele no
+celular.** Por isso o site tem o botão **📱 Celular** dentro da chamada: ele
+usa RTMP (via app tipo Larix Broadcaster) em vez de `getDisplayMedia()`, e
+esse caminho funciona igual em qualquer Android ou iPhone, dentro ou fora
+desse app — é o caminho recomendado pra transmitir tela pelo celular.
+
+Chegamos a manter um `ScreenCaptureNotifier` (foreground service) rodando
+preventivamente só pra satisfazer a exigência do Android 14+ de ter um
+serviço tipo `mediaProjection` ativo durante captura de tela — só que isso
+causava o app **fechar sozinho** ao entrar numa sala: no Android 14+, só dá
+pra subir esse tipo de foreground service depois que o app já tem em mãos
+um token de MediaProjection válido (resultado do diálogo de permissão), e
+como quem trata `getDisplayMedia()` é o próprio Chromium (o app nunca vê
+esse token), start*ar o serviço de forma "preventiva" sempre falhava com
+`SecurityException`. Removido — mic, câmera, chat e canais continuam 100%
+funcionais.
 
 ## Como gerar o APK
 
