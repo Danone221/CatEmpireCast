@@ -89,6 +89,49 @@ router.get('/users/:userId/profile', authenticate, async (req, res) => {
   }
 });
 
+// ========== MENSAGENS PRIVADAS (DM) ==========
+const Dm = require('../database/models/Dm');
+
+// Lista de conversas — pra montar a lista lateral da aba de DMs.
+router.get('/dms', authenticate, async (req, res) => {
+  try {
+    const conversations = await Dm.getConversations(req.user.id);
+    res.json(conversations);
+  } catch (error) {
+    console.error('Erro ao listar DMs:', error);
+    res.status(500).json({ error: 'Erro ao listar mensagens privadas' });
+  }
+});
+
+// Total de DMs não lidas — pro badge no ícone que abre a aba de DMs.
+router.get('/dms/unread-count', authenticate, async (req, res) => {
+  try {
+    const count = await Dm.getUnreadTotal(req.user.id);
+    res.json({ count });
+  } catch (error) {
+    console.error('Erro ao contar DMs não lidas:', error);
+    res.status(500).json({ error: 'Erro ao contar mensagens não lidas' });
+  }
+});
+
+// Histórico de conversa com uma pessoa específica. Marca como lidas as
+// mensagens dela pra mim como efeito colateral de abrir a conversa.
+router.get('/dms/:userId', authenticate, async (req, res) => {
+  try {
+    if (req.params.userId === req.user.id) {
+      return res.status(400).json({ error: 'Não é possível enviar DM pra você mesmo' });
+    }
+    const otherUser = await User.getPublicProfile(req.params.userId);
+    if (!otherUser) return res.status(404).json({ error: 'Usuário não encontrado' });
+    const messages = await Dm.getMessages(req.user.id, req.params.userId);
+    await Dm.markRead(req.user.id, req.params.userId);
+    res.json({ user: otherUser, messages });
+  } catch (error) {
+    console.error('Erro ao carregar conversa:', error);
+    res.status(500).json({ error: 'Erro ao carregar conversa' });
+  }
+});
+
 // ========== SERVIDORES ==========
 
 // Criar servidor
