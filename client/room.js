@@ -130,8 +130,25 @@ function renderServerRail(list) {
   });
 }
 
-$('railHomeBtn').onclick = () => { location.href = '/'; };
+$('railHomeBtn').onclick = () => {
+  const params = new URLSearchParams({ userId, userName, token });
+  location.href = '/dms.html?' + params.toString();
+};
 $('railAddBtn').onclick = () => { location.href = '/'; };
+
+// Badge de DMs não lidas no ícone que agora leva pras mensagens privadas.
+async function refreshDmBadge() {
+  try {
+    const r = await fetch('/api/dms/unread-count', { headers: headers() });
+    const d = await r.json();
+    if (r.ok) {
+      $('dmUnreadBadge').hidden = !d.count;
+      $('dmUnreadBadge').textContent = d.count > 9 ? '9+' : d.count;
+    }
+  } catch (e) {}
+}
+refreshDmBadge();
+socket.on('new-dm', (msg) => { if (msg.recipient_id === userId) refreshDmBadge(); });
 
 // ========== CARREGAR SERVIDOR ==========
 async function load() {
@@ -557,6 +574,7 @@ function leaveVoiceChannel(switchView = true) {
   screenOn = false;
   micOn = true;
   removeExternalCastTile();
+  teardownAllSpeakingDetection();
   $('voiceGrid').innerHTML = '';
   if (switchView) showView('text');
   else { $('voiceBar').hidden = true; renderChannelList(); }
@@ -760,6 +778,85 @@ function removeExternalCastTile() {
 function tileId(uid) { return 'tile-' + uid; }
 function audioElId(uid) { return 'audio-' + uid; }
 
+// ---- Detecção de "está falando" (contorno verde, igual ao Discord) ----
+// Analisa o volume do áudio de cada participante em tempo real via Web
+// Audio API e liga/desliga a classe .speaking no tile correspondente.
+let sharedAudioCtx = null;
+function getAudioCtx() {
+  if (!sharedAudioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    sharedAudioCtx = new Ctx();
+  }
+  if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume().catch(() => {});
+  return sharedAudioCtx;
+}
+
+const speakingAnalysers = {}; // uid -> { source, analyser, data, stream, raf }
+
+function ensureSpeakingDetection(uid, stream) {
+  const audioTrack = stream && stream.getAudioTracks().find(t => t.readyState === 'live');
+  const existing = speakingAnalysers[uid];
+  if (!audioTrack) {
+    if (existing) teardownSpeakingDetection(uid);
+    return;
+  }
+  if (existing && existing.stream === stream) return; // já monitorando esse stream
+  if (existing) teardownSpeakingDetection(uid);
+
+  try {
+    const ctx = getAudioCtx();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.65;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    speakingAnalysers[uid] = { source, analyser, data, stream, raf: null };
+    tickSpeaking(uid);
+  } catch (e) {
+    // AudioContext pode falhar em navegadores restritos — sem animação,
+    // mas a chamada continua funcionando normalmente.
+  }
+}
+
+// Histerese: limiar mais alto pra "começar a falar" e mais baixo pra
+// "parar de falar", pra não ficar piscando com ruído de fundo.
+const SPEAKING_ON = 0.045;
+const SPEAKING_OFF = 0.02;
+
+function tickSpeaking(uid) {
+  const entry = speakingAnalysers[uid];
+  if (!entry) return;
+  entry.analyser.getByteTimeDomainData(entry.data);
+  let sumSquares = 0;
+  for (let i = 0; i < entry.data.length; i++) {
+    const v = (entry.data[i] - 128) / 128;
+    sumSquares += v * v;
+  }
+  const rms = Math.sqrt(sumSquares / entry.data.length);
+  const tile = document.getElementById(tileId(uid));
+  if (tile) {
+    const isMutedTile = tile.classList.contains('muted');
+    const currentlySpeaking = tile.classList.contains('speaking');
+    const threshold = currentlySpeaking ? SPEAKING_OFF : SPEAKING_ON;
+    const speaking = !isMutedTile && rms > threshold;
+    tile.classList.toggle('speaking', speaking);
+  }
+  entry.raf = requestAnimationFrame(() => tickSpeaking(uid));
+}
+
+function teardownSpeakingDetection(uid) {
+  const entry = speakingAnalysers[uid];
+  if (!entry) return;
+  if (entry.raf) cancelAnimationFrame(entry.raf);
+  try { entry.source.disconnect(); } catch (e) {}
+  delete speakingAnalysers[uid];
+  document.getElementById(tileId(uid))?.classList.remove('speaking');
+}
+function teardownAllSpeakingDetection() {
+  Object.keys(speakingAnalysers).forEach(teardownSpeakingDetection);
+}
+
 function ensureRemoteAudio(uid, stream) {
   let el = document.getElementById(audioElId(uid));
   if (!el) {
@@ -780,7 +877,13 @@ function renderVoiceGrid() {
   const existingIds = new Set([...grid.children].map(c => c.id));
   const wantIds = new Set([userId, ...Object.keys(peers)]);
 
-  existingIds.forEach(id => { if (![...wantIds].some(u => tileId(u) === id)) grid.querySelector('#' + id)?.remove(); });
+  existingIds.forEach(id => {
+    if (![...wantIds].some(u => tileId(u) === id)) {
+      grid.querySelector('#' + id)?.remove();
+      const uid = id.replace(/^tile-/, '');
+      teardownSpeakingDetection(uid);
+    }
+  });
 
   const meM = members.find(mm => mm.id === userId);
   upsertTile(userId, userName, meM && meM.avatar, localStream, true);
@@ -836,6 +939,8 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
     const wanted = avatar || '/logo.svg';
     if (img && img.getAttribute('src') !== wanted) img.src = wanted;
   }
+
+  ensureSpeakingDetection(uid, stream);
 }
 
 function requestTileFullscreen(video) {
@@ -947,6 +1052,7 @@ function closePeer(remoteId) {
   try { p.pc.close(); } catch (e) {}
   delete peers[remoteId];
   delete remoteMediaState[remoteId];
+  teardownSpeakingDetection(remoteId);
   $('voiceGrid').querySelector('#' + tileId(remoteId))?.remove();
   removeRemoteAudio(remoteId);
 }
@@ -1067,6 +1173,7 @@ $('saveEditProfileBtn').onclick = async () => {
 };
 
 // ---- Ver perfil de outra pessoa ----
+let viewingProfileId = null;
 async function openProfile(targetUserId) {
   if (!targetUserId) return;
   if (targetUserId === userId) { openMyProfile(); return; }
@@ -1074,6 +1181,7 @@ async function openProfile(targetUserId) {
     const r = await fetch('/api/users/' + targetUserId + '/profile', { headers: headers() });
     const p = await r.json();
     if (!r.ok) throw new Error(p.error || 'Erro ao carregar perfil');
+    viewingProfileId = targetUserId;
     $('viewProfileBanner').style.background = p.banner_color || 'linear-gradient(135deg,var(--purple),var(--pink))';
     $('viewProfileAvatar').src = p.avatar || '/logo.svg';
     $('viewProfileName').textContent = p.display_name || p.username;
@@ -1083,6 +1191,11 @@ async function openProfile(targetUserId) {
   } catch (e) { toast(e.message, 'error'); }
 }
 $('closeViewProfileBtn').onclick = () => $('viewProfileModal').classList.remove('open');
+$('dmFromProfileBtn').onclick = () => {
+  if (!viewingProfileId) return;
+  const params = new URLSearchParams({ userId, userName, token, with: viewingProfileId });
+  location.href = '/dms.html?' + params.toString();
+};
 
 // ---- Configurações do servidor (admin) ----
 function openServerSettings() {

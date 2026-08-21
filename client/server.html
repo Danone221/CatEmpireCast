@@ -19,7 +19,10 @@
 
   <div class="mobile-drawer" id="mobileDrawer">
     <aside class="server-rail" id="serverRail">
-      <div class="rail-icon rail-home" id="railHomeBtn" title="Início">🏠</div>
+      <div class="rail-icon rail-home" id="railHomeBtn" title="Mensagens privadas">
+        <img src="/logo.svg" alt="Cat Empire" class="rail-logo-img">
+        <span class="dm-unread-badge" id="dmUnreadBadge" hidden></span>
+      </div>
       <div class="rail-sep"></div>
       <div class="rail-servers" id="railServers"></div>
       <div class="rail-icon rail-add" id="railAddBtn" title="Adicionar servidor">＋</div>
@@ -165,7 +168,8 @@
     <div class="profile-username" id="viewProfileUsername">@—</div>
     <div class="profile-bio" id="viewProfileBio"></div>
     <div class="modal-actions">
-      <button class="btn btn-primary" id="closeViewProfileBtn">Fechar</button>
+      <button class="btn btn-primary" id="dmFromProfileBtn">✉️ Enviar mensagem</button>
+      <button class="btn" id="closeViewProfileBtn">Fechar</button>
     </div>
   </div>
 </div>

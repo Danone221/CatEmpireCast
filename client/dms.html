@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CAT EMPIRE — Mensagens</title>
+<link rel="stylesheet" href="/style.css">
+<script src="/socket.io/socket.io.js"></script>
+<script src="/ui.js"></script>
+</head>
+<body class="room-page discord-page">
+
+<div class="mobile-topbar">
+  <button class="hamburger" id="hamburgerBtn">☰</button>
+  <div class="mobile-title" id="mobileTitle">Mensagens</div>
+</div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<div class="app-shell">
+
+  <div class="mobile-drawer" id="mobileDrawer">
+    <aside class="server-rail" id="serverRail">
+      <div class="rail-icon rail-home active" id="railHomeBtn" title="Mensagens privadas">
+        <img src="/logo.svg" alt="Cat Empire" class="rail-logo-img">
+      </div>
+      <div class="rail-sep"></div>
+      <div class="rail-servers" id="railServers"></div>
+      <div class="rail-icon rail-add" id="railAddBtn" title="Adicionar servidor">＋</div>
+    </aside>
+
+    <aside class="channels-sidebar" id="dmSidebar">
+      <div class="server-head">
+        <div class="server-name">Mensagens</div>
+      </div>
+      <div class="channel-list" id="dmList"></div>
+      <div class="user-bar">
+        <div class="user-avatar" id="myAvatarBtn" title="Editar perfil"><img id="myAvatarImg" src="/logo.svg" alt=""></div>
+        <div class="user-info" id="myInfoBtn" title="Editar perfil">
+          <div class="user-name" id="myName">Membro</div>
+        </div>
+        <button class="leave-btn" id="backBtn" title="Voltar">🏠</button>
+      </div>
+    </aside>
+  </div>
+
+  <main class="main-panel">
+    <div class="text-view" id="textView">
+      <div class="panel-header" id="dmHeader">
+        <span id="dmHeaderEmpty">Selecione uma conversa</span>
+      </div>
+      <div class="messages-list" id="messagesList"></div>
+      <div class="typing-indicator" id="dmTypingIndicator" hidden></div>
+      <div class="attach-preview" id="attachPreview" hidden>
+        <img id="attachPreviewImg" alt="">
+        <span id="attachPreviewName"></span>
+        <button type="button" id="attachRemoveBtn">✕</button>
+      </div>
+      <form class="message-form" id="messageForm">
+        <button type="button" class="attach-btn" id="attachBtn" title="Enviar imagem">📎</button>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <input type="text" id="messageInput" placeholder="Enviar mensagem…" maxlength="2000" autocomplete="off" enterkeyhint="send" disabled>
+        <button type="button" id="sendBtn" class="send-btn" title="Enviar">➤</button>
+      </form>
+    </div>
+  </main>
+
+</div>
+
+<div class="modal" id="editProfileModal">
+  <div class="modal-box profile-modal-box">
+    <div class="profile-banner" id="editProfileBanner"></div>
+    <div class="profile-avatar-row">
+      <div class="avatar-edit-wrap profile-avatar-big" id="editAvatarWrap">
+        <img id="editAvatarPreview" src="/logo.svg" alt="">
+        <span class="avatar-edit-label">TROCAR<br>FOTO</span>
+      </div>
+    </div>
+    <h2>Editar perfil</h2>
+    <input id="editDisplayName" placeholder="Nome de exibição" maxlength="32">
+    <textarea id="editBio" class="bio-input" placeholder="Fale um pouco sobre você…" maxlength="190"></textarea>
+    <div class="char-counter"><span id="editBioCount">0</span>/190</div>
+    <div class="color-swatches" id="editColorSwatches"></div>
+    <input type="file" id="avatarFileInput" accept="image/*" hidden>
+    <div class="modal-actions">
+      <button class="btn" id="cancelEditProfileBtn">Cancelar</button>
+      <button class="btn btn-primary" id="saveEditProfileBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/dms.js"></script>
+</body>
+</html>
