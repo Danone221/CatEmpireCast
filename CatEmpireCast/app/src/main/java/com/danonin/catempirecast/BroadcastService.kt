@@ -103,7 +103,14 @@ class BroadcastService : Service(), ConnectChecker {
                 else -> VideoProfile(720, 1280, 3_000_000)
             }
             val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
-            val prepared = display.prepareVideo(profile.width, profile.height, profile.bitrate, safeFps) &&
+            val prepared = display.prepareVideo(
+                profile.width,
+                profile.height,
+                safeFps,
+                profile.bitrate,
+                2,
+                0
+            ) &&
                 display.prepareAudio(128_000, 44100, true)
 
             if (!prepared) {
