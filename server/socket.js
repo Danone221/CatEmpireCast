@@ -26,6 +26,7 @@ function setupSocket(server) {
   const userSockets = new Map(); // userId -> socketId
   const socketUsers = new Map(); // socketId -> userId
   const userChannels = new Map(); // userId -> channelId
+  const onlineUsers = new Set(); // userId presente com pelo menos 1 socket ativo
 
   io.on('connection', (socket) => {
     console.log('🔌 Conectado:', socket.id);
@@ -59,6 +60,16 @@ function setupSocket(server) {
         if (serverId) {
           socket.join(`server-${serverId}`);
           socket.serverId = serverId;
+        }
+
+        // ===== Presença online/offline (bolinha verde estilo Discord) =====
+        const wasOffline = !onlineUsers.has(userId);
+        onlineUsers.add(userId);
+        // Manda a lista atual pra quem acabou de entrar, pra ele já
+        // desenhar as bolinhas certas sem esperar um evento de outra pessoa.
+        socket.emit('presence-list', Array.from(onlineUsers));
+        if (wasOffline && serverId) {
+          io.to(`server-${serverId}`).emit('presence-update', { userId, online: true });
         }
 
         // Enviar servidores do usuário
@@ -241,6 +252,52 @@ function setupSocket(server) {
       }
     });
 
+    // ========== EDITAR MENSAGEM ==========
+    socket.on('edit-message', async ({ messageId, content }) => {
+      try {
+        const original = await Channel.getMessage(messageId);
+        if (!original) return socket.emit('error', { message: 'Mensagem não encontrada' });
+        if (original.user_id !== socket.userId) {
+          return socket.emit('error', { message: 'Você só pode editar suas próprias mensagens' });
+        }
+        const trimmed = (content || '').trim();
+        if (!trimmed) return;
+        const updated = await Channel.editMessage(messageId, trimmed.slice(0, 2000));
+        io.to(`channel-${original.channel_id}`).emit('message-edited', updated);
+      } catch (error) {
+        console.error('❌ Erro ao editar mensagem:', error);
+        socket.emit('error', { message: 'Erro ao editar mensagem' });
+      }
+    });
+
+    // ========== EXCLUIR MENSAGEM ==========
+    socket.on('delete-message', async ({ messageId }) => {
+      try {
+        const original = await Channel.getMessage(messageId);
+        if (!original) return;
+        const channel = await Channel.findById(original.channel_id);
+        const role = channel ? await ServerModel.getMemberRole(channel.server_id, socket.userId) : null;
+        const isOwner = original.user_id === socket.userId;
+        const isAdmin = role === 'admin';
+        if (!isOwner && !isAdmin) {
+          return socket.emit('error', { message: 'Você não pode excluir essa mensagem' });
+        }
+        await Channel.deleteMessage(messageId);
+        io.to(`channel-${original.channel_id}`).emit('message-deleted', { id: messageId, channel_id: original.channel_id });
+      } catch (error) {
+        console.error('❌ Erro ao excluir mensagem:', error);
+        socket.emit('error', { message: 'Erro ao excluir mensagem' });
+      }
+    });
+
+    // ========== INDICADOR "ESTÁ DIGITANDO…" ==========
+    socket.on('typing-start', ({ channelId }) => {
+      socket.to(`channel-${channelId}`).emit('user-typing', { channelId, userId: socket.userId, userName: socket.userName });
+    });
+    socket.on('typing-stop', ({ channelId }) => {
+      socket.to(`channel-${channelId}`).emit('user-stop-typing', { channelId, userId: socket.userId });
+    });
+
     // ========== GO LIVE ==========
     socket.on('start-go-live', ({ channelId }) => {
       try {
@@ -303,6 +360,17 @@ function setupSocket(server) {
         if (userSockets.get(userId) === socket.id) {
           userSockets.delete(userId);
           userChannels.delete(userId);
+          onlineUsers.delete(userId);
+          // Avisa todo mundo que divide servidor com essa pessoa que ela
+          // ficou offline (bolinha cinza), igual à entrada em 'register'.
+          try {
+            const servers = await User.getServers(userId);
+            for (const s of servers) {
+              io.to(`server-${s.id}`).emit('presence-update', { userId, online: false });
+            }
+          } catch (e) {
+            console.error('❌ Erro ao propagar presença offline:', e);
+          }
         }
       }
 
