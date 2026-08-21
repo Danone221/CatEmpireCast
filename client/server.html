@@ -283,5 +283,56 @@
 </div>
 
 <script src="/room.js"></script>
+<script>
+(function () {
+  const flipBtn = document.getElementById('flipCamBtn');
+  const camButton = document.getElementById('camBtn');
+  if (!flipBtn || !camButton) return;
+
+  function syncFlipButton() {
+    flipBtn.hidden = !camOn;
+  }
+
+  const originalCamClick = camButton.onclick;
+  camButton.onclick = async function (event) {
+    await originalCamClick?.call(this, event);
+    syncFlipButton();
+  };
+
+  flipBtn.addEventListener('click', async function () {
+    if (!camOn || !localStream) return;
+
+    const currentTrack = localStream.getVideoTracks()[0];
+    if (!currentTrack) return;
+
+    const currentFacing = currentTrack.getSettings?.().facingMode;
+    const nextFacing = currentFacing === 'environment' ? 'user' : 'environment';
+
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: nextFacing } }
+      });
+      const newTrack = newStream.getVideoTracks()[0];
+      if (!newTrack) throw new Error('Câmera não encontrada.');
+
+      Object.values(peers).forEach(peer => {
+        const sender = peer.pc.getSenders().find(s => s.track === currentTrack);
+        if (sender) sender.replaceTrack(newTrack).catch(() => {});
+      });
+
+      localStream.removeTrack(currentTrack);
+      currentTrack.stop();
+      localStream.addTrack(newTrack);
+
+      renderVoiceGrid();
+      socket.emit('voice-media-state', { muted: !micOn, camera: camOn, screen: screenOn });
+    } catch (e) {
+      toast('Não foi possível virar a câmera neste dispositivo.', 'error');
+    }
+  });
+
+  syncFlipButton();
+})();
+</script>
 </body>
 </html>
