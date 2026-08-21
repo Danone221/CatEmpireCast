@@ -3,6 +3,7 @@ const router = express.Router();
 const Server = require('../database/models/Server');
 const Channel = require('../database/models/Channel');
 const User = require('../database/models/User');
+const Invite = require('../database/models/Invite');
 const { queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
 
@@ -178,31 +179,150 @@ router.get('/servers/:serverId', authenticate, async (req, res) => {
   }
 });
 
-// Buscar servidor por código
-router.get('/servers/code/:code', authenticate, async (req, res) => {
+// ========== CONVITES DE SERVIDOR ==========
+
+// Criar convite para o servidor
+router.post('/servers/:serverId/invites', authenticate, async (req, res) => {
   try {
-    const server = await Server.findByCode(req.params.code);
-    if (!server) {
-      return res.status(404).json({ error: 'Servidor não encontrado' });
+    const role = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (!role) {
+      return res.status(403).json({ error: 'Você precisa ser membro do servidor para gerar convites' });
     }
-    res.json(server);
+    const { maxUses, expiresInHours } = req.body || {};
+    const invite = await Invite.create({
+      serverId: req.params.serverId,
+      creatorId: req.user.id,
+      maxUses: maxUses ? parseInt(maxUses, 10) : null,
+      expiresInHours: expiresInHours ? parseInt(expiresInHours, 10) : null
+    });
+    res.json(invite);
   } catch (error) {
-    console.error('Erro ao buscar servidor por código:', error);
-    res.status(500).json({ error: 'Erro ao buscar servidor' });
+    console.error('Erro ao criar convite:', error);
+    res.status(500).json({ error: 'Erro ao criar convite' });
   }
 });
 
-// Entrar em servidor
+// Listar convites do servidor (somente ADMIN)
+router.get('/servers/:serverId/invites', authenticate, async (req, res) => {
+  try {
+    const role = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas administradores podem visualizar todos os convites' });
+    }
+    const invites = await Invite.listByServer(req.params.serverId);
+    res.json(invites);
+  } catch (error) {
+    console.error('Erro ao listar convites:', error);
+    res.status(500).json({ error: 'Erro ao listar convites' });
+  }
+});
+
+// Revogar convite
+router.delete('/servers/:serverId/invites/:code', authenticate, async (req, res) => {
+  try {
+    const role = await Server.getMemberRole(req.params.serverId, req.user.id);
+    const invite = await Invite.findByCode(req.params.code);
+    if (!invite) return res.status(404).json({ error: 'Convite não encontrado' });
+    const isCreator = invite.creator_id === req.user.id;
+    if (role !== 'admin' && !isCreator) {
+      return res.status(403).json({ error: 'Você não tem permissão para revogar este convite' });
+    }
+    await Invite.revoke(req.params.code, req.params.serverId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao revogar convite:', error);
+    res.status(500).json({ error: 'Erro ao revogar convite' });
+  }
+});
+
+// Prévia pública de convite
+router.get('/invites/:code', async (req, res) => {
+  try {
+    const invite = await Invite.findByCode(req.params.code);
+    if (!invite) {
+      return res.status(404).json({ error: 'Convite inválido ou expirado' });
+    }
+    if (invite.expired) {
+      return res.status(410).json({ error: 'Este convite expirou' });
+    }
+    if (invite.maxUsesReached) {
+      return res.status(410).json({ error: 'Este convite atingiu o limite de usos' });
+    }
+
+    let isMember = false;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const config = require('../config');
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, config.jwtSecret);
+        if (decoded && decoded.id) {
+          const role = await Server.getMemberRole(invite.server_id, decoded.id);
+          isMember = !!role;
+        }
+      } catch (e) {}
+    }
+
+    res.json({
+      code: invite.code,
+      serverId: invite.server_id,
+      serverName: invite.server_name,
+      serverIcon: invite.server_icon,
+      serverBannerColor: invite.server_banner_color,
+      serverDescription: invite.server_description,
+      memberCount: parseInt(invite.member_count, 10) || 1,
+      creatorName: invite.creator_name,
+      expiresAt: invite.expires_at,
+      uses: invite.uses,
+      maxUses: invite.max_uses,
+      isMember
+    });
+  } catch (error) {
+    console.error('Erro ao buscar prévia de convite:', error);
+    res.status(500).json({ error: 'Erro ao buscar dados do convite' });
+  }
+});
+
+// Entrar em servidor usando convite
+router.post('/invites/:code/join', authenticate, async (req, res) => {
+  try {
+    const invite = await Invite.findByCode(req.params.code);
+    if (!invite) {
+      return res.status(404).json({ error: 'Convite inválido ou inexistente' });
+    }
+    if (invite.expired) {
+      return res.status(410).json({ error: 'Este convite expirou' });
+    }
+    if (invite.maxUsesReached) {
+      return res.status(410).json({ error: 'Este convite atingiu o limite de usos' });
+    }
+
+    await Server.addMember(invite.server_id, req.user.id);
+    await Invite.use(invite.code);
+
+    // Avisa quem já está com o servidor aberto
+    const io = req.app.get('io');
+    if (io) {
+      const members = await Server.getMembers(invite.server_id);
+      const newMember = members.find(m => m.id === req.user.id);
+      if (newMember) {
+        io.to(`server-${invite.server_id}`).emit('member-joined', newMember);
+      }
+    }
+
+    res.json({ success: true, serverId: invite.server_id });
+  } catch (error) {
+    console.error('Erro ao entrar via convite:', error);
+    res.status(500).json({ error: 'Erro ao entrar no servidor' });
+  }
+});
+
+// Entrar em servidor direto (se já tiver permissão)
 router.post('/servers/:serverId/join', authenticate, async (req, res) => {
   try {
     await Server.addMember(req.params.serverId, req.user.id);
 
-    // Avisa quem já está com a página do servidor aberta que um membro novo
-    // chegou. Antes disso não existia: o array de membros do cliente só era
-    // buscado uma vez (no load() inicial), então quem entrava depois nunca
-    // aparecia pra quem já estava lá — e como o nome nas chamadas de voz
-    // vem desse array local, esses membros novos caíam no fallback
-    // genérico "Membro".
     const io = req.app.get('io');
     if (io) {
       const members = await Server.getMembers(req.params.serverId);
@@ -212,7 +332,7 @@ router.post('/servers/:serverId/join', authenticate, async (req, res) => {
       }
     }
 
-    res.json({ success: true });
+    res.json({ success: true, serverId: req.params.serverId });
   } catch (error) {
     console.error('Erro ao entrar no servidor:', error);
     res.status(500).json({ error: 'Erro ao entrar no servidor' });

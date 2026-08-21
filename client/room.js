@@ -1,9 +1,11 @@
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const serverId = q.get('serverId');
-const userId = q.get('userId');
-const userName = q.get('userName') || 'Membro';
-const token = q.get('token') || localStorage.getItem('cat_token');
+const userId = localStorage.getItem('cat_user_id') || q.get('userId');
+const userName = localStorage.getItem('cat_user_name') || q.get('userName') || 'Membro';
+const token = localStorage.getItem('cat_token') || q.get('token');
+
+if (!userId || !token) { location.href = '/'; }
 
 const socket = io();
 
@@ -112,8 +114,8 @@ socket.on('servers-list', (list) => {
 
 function switchServer(id) {
   if (id === serverId) return;
-  const params = new URLSearchParams({ serverId: id, userId, userName, token });
-  location.href = '/server.html?' + params.toString();
+  localStorage.setItem('cat_last_server', id);
+  location.href = '/server.html?serverId=' + encodeURIComponent(id);
 }
 
 function renderServerRail(list) {
@@ -131,10 +133,9 @@ function renderServerRail(list) {
 }
 
 $('railHomeBtn').onclick = () => {
-  const params = new URLSearchParams({ userId, userName, token });
-  location.href = '/dms.html?' + params.toString();
+  location.href = '/dms.html';
 };
-$('railAddBtn').onclick = () => { location.href = '/'; };
+$('railAddBtn').onclick = () => { window.openAddServerModal(); };
 
 // Badge de DMs não lidas no ícone que agora leva pras mensagens privadas.
 async function refreshDmBadge() {
@@ -158,8 +159,8 @@ async function load() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Erro ao carregar servidor');
     currentServer = d;
+    localStorage.setItem('cat_last_server', serverId);
     $('serverName').textContent = d.name || 'Servidor';
-    $('roomCode').textContent = d.code || '------';
     $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
     if (d.banner_color) $('serverHead').style.background = d.banner_color;
     channels = d.channels || [];
@@ -175,7 +176,8 @@ async function load() {
     if (me && me.avatar) $('myAvatarImg').src = me.avatar;
   } catch (e) {
     toast(e.message, 'error');
-    location.href = '/';
+    localStorage.removeItem('cat_last_server');
+    location.href = '/dms.html';
   }
 }
 
@@ -1088,7 +1090,8 @@ socket.on('voice-signal', async ({ from, data }) => {
 // ========== SAIR DO SERVIDOR ==========
 $('leaveBtn').onclick = () => {
   if (voiceChannelId) leaveVoiceChannel(false);
-  location.href = '/';
+  localStorage.removeItem('cat_last_server');
+  location.href = '/dms.html';
 };
 
 // ========== PERFIL DE USUÁRIO E CONFIGURAÇÕES DE SERVIDOR ==========
@@ -1193,9 +1196,113 @@ async function openProfile(targetUserId) {
 $('closeViewProfileBtn').onclick = () => $('viewProfileModal').classList.remove('open');
 $('dmFromProfileBtn').onclick = () => {
   if (!viewingProfileId) return;
-  const params = new URLSearchParams({ userId, userName, token, with: viewingProfileId });
-  location.href = '/dms.html?' + params.toString();
+  location.href = '/dms.html?with=' + encodeURIComponent(viewingProfileId);
 };
+
+// ---- Gerenciamento de convites do servidor ----
+let currentActiveInviteCode = null;
+
+async function openInviteModal() {
+  $('inviteLinkText').textContent = 'Gerando link de convite…';
+  $('adminInvitesListWrap').hidden = true;
+  $('inviteModal').classList.add('open');
+
+  try {
+    // Tenta carregar os convites ativos se for admin ou gerar um padrão
+    if (myRole === 'admin') {
+      const rList = await fetch('/api/servers/' + serverId + '/invites', { headers: headers() });
+      const list = await rList.json();
+      if (rList.ok && list.length > 0) {
+        currentActiveInviteCode = list[0].code;
+        $('inviteLinkText').textContent = location.origin + '/invite/' + list[0].code;
+        renderAdminInvites(list);
+        return;
+      }
+    }
+    // Gera um novo convite inicial (padrão 24h, sem limite)
+    await generateInvite();
+  } catch (e) {
+    $('inviteLinkText').textContent = 'Erro ao gerar convite.';
+  }
+}
+
+async function generateInvite() {
+  const expiresInHours = parseInt($('inviteExpireSelect').value, 10);
+  const maxUses = parseInt($('inviteMaxUsesSelect').value, 10);
+  try {
+    const r = await fetch('/api/servers/' + serverId + '/invites', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ expiresInHours, maxUses })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erro ao criar convite');
+    currentActiveInviteCode = d.code;
+    const url = location.origin + '/invite/' + d.code;
+    $('inviteLinkText').textContent = url;
+    toast('🔗 Novo link de convite gerado!', 'success');
+    if (myRole === 'admin') {
+      const rList = await fetch('/api/servers/' + serverId + '/invites', { headers: headers() });
+      const list = await rList.json();
+      if (rList.ok) renderAdminInvites(list);
+    }
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function renderAdminInvites(list) {
+  if (!list || !list.length) {
+    $('adminInvitesListWrap').hidden = true;
+    return;
+  }
+  $('adminInvitesListWrap').hidden = false;
+  $('adminInvitesList').innerHTML = list.map(inv => {
+    const exp = inv.expires_at ? new Date(inv.expires_at * 1000).toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Nunca';
+    const uses = inv.max_uses ? `${inv.uses || 0}/${inv.max_uses}` : `${inv.uses || 0} usos`;
+    return `
+      <div class="active-invite-row" data-code="${esc(inv.code)}" style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #29104b;font-family:monospace;font-size:10px">
+        <div>
+          <strong style="color:var(--gold)">${esc(inv.code)}</strong> · ${uses} · Expira: ${exp}
+        </div>
+        <button type="button" class="del-btn revoke-invite-btn" data-code="${esc(inv.code)}" title="Revogar convite" style="display:block;color:#ff5369;background:none;border:none;cursor:pointer">✕</button>
+      </div>
+    `;
+  }).join('');
+
+  $('adminInvitesList').querySelectorAll('.revoke-invite-btn').forEach(btn => {
+    btn.onclick = async () => {
+      const code = btn.dataset.code;
+      if (!(await uiConfirm('Deseja revogar este convite?'))) return;
+      try {
+        const r = await fetch('/api/servers/' + serverId + '/invites/' + encodeURIComponent(code), {
+          method: 'DELETE',
+          headers: headers()
+        });
+        if (!r.ok) throw new Error('Erro ao revogar');
+        toast('Convite revogado.', 'success');
+        const rList = await fetch('/api/servers/' + serverId + '/invites', { headers: headers() });
+        const list2 = await rList.json();
+        if (rList.ok) renderAdminInvites(list2);
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    };
+  });
+}
+
+$('serverInviteBtn')?.addEventListener('click', openInviteModal);
+$('closeInviteModalBtn')?.addEventListener('click', () => $('inviteModal').classList.remove('open'));
+$('generateInviteBtn')?.addEventListener('click', generateInvite);
+$('copyInviteBtn')?.addEventListener('click', () => {
+  const text = $('inviteLinkText').textContent;
+  if (!text || text.includes('…') || text.includes('Erro')) return;
+  navigator.clipboard?.writeText(text).then(() => {
+    const original = $('copyInviteBtn').textContent;
+    $('copyInviteBtn').textContent = 'Copiado!';
+    setTimeout(() => ($('copyInviteBtn').textContent = original), 1200);
+  }).catch(() => toast('Não foi possível copiar.', 'error'));
+});
 
 // ---- Configurações do servidor (admin) ----
 function openServerSettings() {

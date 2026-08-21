@@ -34,7 +34,9 @@
           <div class="server-name" id="serverName">Servidor</div>
           <button class="server-gear-btn" id="serverSettingsBtn" title="Configurações do servidor" hidden>⚙️</button>
         </div>
-        <div class="server-code">Código: <b id="roomCode">------</b></div>
+        <div class="server-invite-bar">
+          <button type="button" class="btn-server-invite" id="serverInviteBtn">🔗 Convidar</button>
+        </div>
       </div>
       <div class="channel-list" id="channelList"></div>
       <div class="user-bar">
@@ -191,6 +193,51 @@
     <div class="modal-actions">
       <button class="btn" id="cancelServerSettingsBtn">Cancelar</button>
       <button class="btn btn-primary" id="saveServerSettingsBtn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="inviteModal">
+  <div class="modal-box">
+    <h2>Convidar amigos</h2>
+    <p class="modal-hint">Compartilhe o link abaixo para convidar amigos para este servidor:</p>
+    <div class="kv-row">
+      <span class="kv-value" id="inviteLinkText">—</span>
+      <button type="button" class="btn kv-copy" id="copyInviteBtn">Copiar</button>
+    </div>
+    
+    <div class="invite-config-panel" style="margin-top:14px">
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1">
+          <label class="kv-label" style="display:block;margin-bottom:6px">EXPIRA EM</label>
+          <select id="inviteExpireSelect" class="styled-select" style="width:100%;padding:8px;background:#09020f;border:2px solid #3b1b68;color:#eee8ff;font-family:monospace;font-size:11px">
+            <option value="0">Nunca expira</option>
+            <option value="1">1 hora</option>
+            <option value="24" selected>24 horas</option>
+            <option value="168">7 dias</option>
+          </select>
+        </div>
+        <div style="flex:1">
+          <label class="kv-label" style="display:block;margin-bottom:6px">LIMITE DE USOS</label>
+          <select id="inviteMaxUsesSelect" class="styled-select" style="width:100%;padding:8px;background:#09020f;border:2px solid #3b1b68;color:#eee8ff;font-family:monospace;font-size:11px">
+            <option value="0" selected>Sem limite</option>
+            <option value="1">1 uso</option>
+            <option value="5">5 usos</option>
+            <option value="10">10 usos</option>
+            <option value="25">25 usos</option>
+          </select>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" id="generateInviteBtn">Gerar Novo Link</button>
+    </div>
+
+    <div id="adminInvitesListWrap" style="margin-top:18px" hidden>
+      <h4 style="font-size:9px;color:var(--gold);margin-bottom:8px;letter-spacing:1px">CONVITES ATIVOS</h4>
+      <div id="adminInvitesList" class="admin-invites-list"></div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn" id="closeInviteModalBtn">Fechar</button>
     </div>
   </div>
 </div>

@@ -53,4 +53,134 @@
       });
     });
   };
+
+  // ========== MODAL UNIFICADO "+": CRIAR OU ENTRAR VIA CONVITE ==========
+  window.openAddServerModal = function () {
+    let overlay = document.getElementById('globalAddServerModal');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'globalAddServerModal';
+      overlay.className = 'modal';
+      overlay.innerHTML =
+        '<div class="modal-box">' +
+          '<div class="type-toggle" style="margin-bottom:18px">' +
+            '<button type="button" class="type-opt active" id="tabCreateServerBtn">＋ Criar Servidor</button>' +
+            '<button type="button" class="type-opt" id="tabJoinInviteBtn">🔗 Entrar com Convite</button>' +
+          '</div>' +
+          '<div id="paneCreateServer">' +
+            '<p class="modal-hint">Dê um nome ao seu novo servidor:</p>' +
+            '<input type="text" id="addServerNameInput" placeholder="Nome do servidor (ex: Império dos Gatos)" maxlength="40">' +
+            '<div class="modal-actions">' +
+              '<button type="button" class="btn" id="closeAddServerBtn1">Cancelar</button>' +
+              '<button type="button" class="btn btn-primary" id="confirmCreateServerBtn">Criar Servidor</button>' +
+            '</div>' +
+          '</div>' +
+          '<div id="paneJoinInvite" hidden>' +
+            '<p class="modal-hint">Cole o link completo ou o código do convite:</p>' +
+            '<input type="text" id="addInviteInput" placeholder="https://catempire.cast/invite/... ou código">' +
+            '<div class="modal-actions">' +
+              '<button type="button" class="btn" id="closeAddServerBtn2">Cancelar</button>' +
+              '<button type="button" class="btn btn-primary" id="confirmJoinInviteBtn">Entrar no Servidor</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+
+      const tabCreate = overlay.querySelector('#tabCreateServerBtn');
+      const tabJoin = overlay.querySelector('#tabJoinInviteBtn');
+      const paneCreate = overlay.querySelector('#paneCreateServer');
+      const paneJoin = overlay.querySelector('#paneJoinInvite');
+      const inputName = overlay.querySelector('#addServerNameInput');
+      const inputInvite = overlay.querySelector('#addInviteInput');
+
+      function switchTab(mode) {
+        if (mode === 'create') {
+          tabCreate.classList.add('active');
+          tabJoin.classList.remove('active');
+          paneCreate.hidden = false;
+          paneJoin.hidden = true;
+          inputName.focus();
+        } else {
+          tabCreate.classList.remove('active');
+          tabJoin.classList.add('active');
+          paneCreate.hidden = true;
+          paneJoin.hidden = false;
+          inputInvite.focus();
+        }
+      }
+
+      tabCreate.onclick = () => switchTab('create');
+      tabJoin.onclick = () => switchTab('join');
+
+      function close() {
+        overlay.classList.remove('open');
+      }
+
+      overlay.querySelector('#closeAddServerBtn1').onclick = close;
+      overlay.querySelector('#closeAddServerBtn2').onclick = close;
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+
+      overlay.querySelector('#confirmCreateServerBtn').onclick = async () => {
+        const name = inputName.value.trim() || 'Cat Empire';
+        const token = localStorage.getItem('cat_token');
+        if (!token) return toast('Sessão expirada. Faça login novamente.', 'error');
+        try {
+          const r = await fetch('/api/servers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({ name })
+          });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || 'Erro ao criar servidor');
+          localStorage.setItem('cat_last_server', d.id);
+          close();
+          toast('🐱 Servidor criado com sucesso!', 'success');
+          location.href = '/server.html?serverId=' + encodeURIComponent(d.id);
+        } catch (e) {
+          toast(e.message, 'error');
+        }
+      };
+
+      overlay.querySelector('#confirmJoinInviteBtn').onclick = async () => {
+        let raw = inputInvite.value.trim();
+        if (!raw) return toast('Cole o link ou código de convite.', 'error');
+        // Extrai o código caso o usuário cole a URL inteira (ex: https://.../invite/abc123)
+        const match = raw.match(/invite\/([a-zA-Z0-9_-]+)/);
+        const code = match ? match[1] : raw;
+
+        const token = localStorage.getItem('cat_token');
+        if (!token) return toast('Sessão expirada. Faça login novamente.', 'error');
+
+        try {
+          const r = await fetch('/api/invites/' + encodeURIComponent(code) + '/join', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }
+          });
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.error || 'Convite inválido ou expirado');
+          localStorage.setItem('cat_last_server', d.serverId);
+          close();
+          toast('🐱 Você entrou no servidor!', 'success');
+          location.href = '/server.html?serverId=' + encodeURIComponent(d.serverId);
+        } catch (e) {
+          toast(e.message, 'error');
+        }
+      };
+    }
+
+    overlay.querySelector('#addServerNameInput').value = '';
+    overlay.querySelector('#addInviteInput').value = '';
+    overlay.classList.add('open');
+    setTimeout(() => overlay.querySelector('#addServerNameInput').focus(), 50);
+  };
+
+  // Escuta cliques globais em botões de adicionar servidor (#railAddBtn)
+  document.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('#railAddBtn, .rail-add');
+    if (addBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.openAddServerModal();
+    }
+  });
 })();

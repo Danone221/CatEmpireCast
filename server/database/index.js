@@ -105,12 +105,24 @@ async function initSchema() {
       read_at BIGINT
     );
 
+    -- Links de convite para servidores
+    CREATE TABLE IF NOT EXISTS invites (
+      code TEXT PRIMARY KEY,
+      server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      creator_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      uses INTEGER DEFAULT 0,
+      max_uses INTEGER,
+      expires_at BIGINT,
+      created_at BIGINT NOT NULL DEFAULT extract(epoch FROM now())::bigint
+    );
+
     CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
     CREATE INDEX IF NOT EXISTS idx_server_members_server ON server_members(server_id);
     CREATE INDEX IF NOT EXISTS idx_channels_server ON channels(server_id);
     CREATE INDEX IF NOT EXISTS idx_dm_sender ON dm_messages(sender_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_dm_recipient ON dm_messages(recipient_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_invites_server ON invites(server_id);
   `);
 
   // ===== Migração: coluna discord_id em bancos já existentes =====

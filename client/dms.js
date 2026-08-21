@@ -50,13 +50,18 @@ function renderServerRail(list) {
   }).join('');
   $('railServers').querySelectorAll('[data-server-id]').forEach(el => {
     el.onclick = () => {
-      const params = new URLSearchParams({ serverId: el.dataset.serverId, userId, userName, token });
-      location.href = '/server.html?' + params.toString();
+      localStorage.setItem('cat_last_server', el.dataset.serverId);
+      location.href = '/server.html?serverId=' + encodeURIComponent(el.dataset.serverId);
     };
   });
 }
-$('railAddBtn').onclick = () => { location.href = '/'; };
-$('backBtn').onclick = () => { location.href = '/'; };
+$('railAddBtn').onclick = () => { window.openAddServerModal(); };
+$('backBtn').onclick = () => {
+  const last = localStorage.getItem('cat_last_server');
+  if (last) {
+    location.href = '/server.html?serverId=' + encodeURIComponent(last);
+  }
+};
 
 // ========== LISTA DE CONVERSAS ==========
 async function loadConversations() {

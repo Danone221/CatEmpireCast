@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CAT EMPIRE — Convite para Servidor</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="landing-page">
+<div class="sky">
+  <div class="moon"></div>
+  <div class="stars"></div>
+  <div class="skyline"></div>
+</div>
+
+<header class="landing-topbar">
+  <div class="brand">
+    <a href="/" style="text-decoration:none;color:inherit;display:flex;align-items:center;gap:12px">
+      <img src="/logo.svg" class="brand-logo" alt="Cat Empire"> <span>CAT EMPIRE</span>
+    </a>
+  </div>
+</header>
+
+<main class="landing-main" style="grid-template-columns:minmax(0,520px);justify-content:center;">
+  <section class="hero" style="width:100%">
+    <div class="form-card invite-card" id="inviteCard">
+      <div id="inviteLoading" class="empty-hint">Carregando dados do convite…</div>
+      
+      <div id="inviteContent" hidden>
+        <div class="invite-banner" id="inviteBanner"></div>
+        <div class="invite-head">
+          <div class="invite-icon-wrap" id="inviteIconWrap">
+            <span id="inviteIcon">🐱</span>
+          </div>
+        </div>
+        <div class="invite-sub" id="inviteInviter">Você foi convidado para entrar em</div>
+        <h1 class="invite-title" id="inviteServerName">Servidor</h1>
+        <p class="invite-desc" id="inviteDescription"></p>
+        <div class="invite-stats">
+          <span class="dot success"></span>
+          <span id="inviteMembers">0 Membros</span>
+        </div>
+
+        <div id="inviteActions" style="margin-top:24px">
+          <button class="btn btn-primary" id="acceptInviteBtn">ACEITAR CONVITE</button>
+        </div>
+
+        <div id="inviteAuth" hidden style="margin-top:20px">
+          <p class="hint" style="text-align:center;margin-bottom:12px">Você precisa de uma conta para entrar:</p>
+          <button class="btn btn-discord" id="inviteDiscordBtn" style="margin-bottom:12px">🎮 ENTRAR COM DISCORD</button>
+          <div class="form-card" style="margin-top:0">
+            <input id="guestName" maxlength="16" placeholder="Como você quer ser chamado?">
+            <button class="btn btn-primary" id="guestJoinBtn">ENTRAR COMO CONVIDADO</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="inviteError" hidden>
+        <p class="error" id="inviteErrorText" style="font-size:13px;margin:20px 0"></p>
+        <a href="/" class="btn" style="text-decoration:none">VOLTAR AO INÍCIO</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="landing-footer">
+  <div class="footer-item">
+    <span class="deco-icon" aria-hidden="true">☺</span>
+    <div>
+      <h4>COMUNIDADE</h4>
+      <p>Faça parte de uma comunidade incrível</p>
+    </div>
+  </div>
+</footer>
+<p class="landing-copyright">© CAT EMPIRE • Desenvolvido por Danonin</p>
+
+<script src="/ui.js"></script>
+<script>
+(async function() {
+  const $ = id => document.getElementById(id);
+  const pathParts = location.pathname.split('/invite/');
+  const code = (pathParts[1] || new URLSearchParams(location.search).get('code') || '').trim();
+
+  if (!code) {
+    showError('Código de convite não encontrado.');
+    return;
+  }
+
+  let token = localStorage.getItem('cat_token');
+  let userId = localStorage.getItem('cat_user_id');
+
+  function headers() {
+    return { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+  }
+
+  function showError(msg) {
+    $('inviteLoading').hidden = true;
+    $('inviteContent').hidden = true;
+    $('inviteError').hidden = false;
+    $('inviteErrorText').textContent = msg;
+  }
+
+  try {
+    const r = await fetch('/api/invites/' + encodeURIComponent(code), { headers: headers() });
+    const d = await r.json();
+    if (!r.ok) {
+      showError(d.error || 'Convite inválido ou expirado.');
+      return;
+    }
+
+    $('inviteLoading').hidden = true;
+    $('inviteContent').hidden = false;
+
+    if (d.creatorName) {
+      $('inviteInviter').textContent = d.creatorName + ' convidou você para entrar em';
+    }
+    $('inviteServerName').textContent = d.serverName;
+    $('inviteDescription').textContent = d.serverDescription || '';
+    $('inviteMembers').textContent = d.memberCount + (d.memberCount === 1 ? ' Membro' : ' Membros');
+
+    if (d.serverBannerColor) {
+      $('inviteBanner').style.background = d.serverBannerColor;
+    }
+
+    const isImg = d.serverIcon && /^(https?:|data:)/.test(d.serverIcon);
+    if (isImg) {
+      $('inviteIconWrap').innerHTML = '<img src="' + d.serverIcon + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+    } else {
+      $('inviteIcon').textContent = d.serverIcon || '🐱';
+    }
+
+    if (d.isMember) {
+      $('acceptInviteBtn').textContent = 'VOCÊ JÁ ESTÁ NO SERVIDOR — ABRIR';
+      $('acceptInviteBtn').onclick = () => {
+        localStorage.setItem('cat_last_server', d.serverId);
+        location.href = '/server.html?serverId=' + encodeURIComponent(d.serverId);
+      };
+      return;
+    }
+
+    if (!token || !userId) {
+      $('inviteActions').hidden = true;
+      $('inviteAuth').hidden = false;
+    } else {
+      $('acceptInviteBtn').onclick = () => joinServer(code);
+    }
+
+    $('inviteDiscordBtn').onclick = () => {
+      // Salva o convite para retornar após autenticação Discord se necessário
+      localStorage.setItem('cat_pending_invite', code);
+      location.href = '/auth/discord';
+    };
+
+    $('guestJoinBtn').onclick = async () => {
+      const clean = ($('guestName').value.trim() || 'Cat' + Math.random().toString(36).slice(2, 7)).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 16) || 'Cat';
+      const password = crypto.randomUUID() + 'Aa1!';
+      const username = (clean.toLowerCase() + '_' + Math.random().toString(36).slice(2, 7)).slice(0, 30);
+      try {
+        const rReg = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, displayName: clean })
+        });
+        const dReg = await rReg.json();
+        if (!rReg.ok) throw new Error(dReg.error || 'Erro ao criar conta');
+        token = dReg.token;
+        userId = dReg.user.id;
+        localStorage.setItem('cat_user_id', userId);
+        localStorage.setItem('cat_user_name', dReg.user.display_name || dReg.user.username);
+        localStorage.setItem('cat_token', token);
+        await joinServer(code);
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    };
+
+  } catch (e) {
+    showError(e.message || 'Erro ao carregar convite.');
+  }
+
+  async function joinServer(invCode) {
+    try {
+      const r = await fetch('/api/invites/' + encodeURIComponent(invCode) + '/join', {
+        method: 'POST',
+        headers: headers()
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Não foi possível entrar no servidor');
+      localStorage.setItem('cat_last_server', d.serverId);
+      location.href = '/server.html?serverId=' + encodeURIComponent(d.serverId);
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  }
+})();
+</script>
+</body>
+</html>

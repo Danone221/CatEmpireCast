@@ -43,6 +43,11 @@ app.use(express.static(path.join(__dirname, '../client')));
 app.use('/api', apiRoutes);
 app.use('/auth', authRoutes);
 
+// Rota de convite
+app.get('/invite/:code', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/invite.html'));
+});
+
 // Fallback para SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/index.html'));

@@ -20,11 +20,6 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 
-// forceNew=true ignora qualquer sessão salva e cria uma conta convidada do
-// zero. Sem isso, quem já tinha testado como convidado uma vez ficava PRESO
-// nessa mesma conta pra sempre nesse navegador: clicar em "criar conta
-// convidada" com um nome novo não fazia nada, porque a função via que já
-// existia token e devolvia a conta antiga sem nem olhar pro nome digitado.
 async function ensureGuest(name, forceNew = false) {
   if (!forceNew && token && userId) return true;
   const clean = (name || 'Cat' + Math.random().toString(36).slice(2, 7)).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 16) || 'Cat';
@@ -42,10 +37,8 @@ async function ensureGuest(name, forceNew = false) {
 }
 
 window.enterServer = id => {
-  location.href = '/server.html?serverId=' + encodeURIComponent(id) +
-    '&userId=' + encodeURIComponent(userId) +
-    '&userName=' + encodeURIComponent(userName) +
-    '&token=' + encodeURIComponent(token);
+  localStorage.setItem('cat_last_server', id);
+  location.href = '/server.html?serverId=' + encodeURIComponent(id);
 };
 
 async function loadServers() {
@@ -54,37 +47,63 @@ async function loadServers() {
     const r = await fetch('/api/servers', { headers: headers() });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Erro');
-    $('serversList').innerHTML = (d || []).map(s => `
-      <div class="server-card" data-server-id="${s.id}">
-        <img class="server-logo" src="/logo.svg" alt="">
-        <div class="name">${esc(s.name)}</div>
-        <div class="code">Código: ${s.code}</div>
-      </div>
-    `).join('') || '<p class="hint">Nenhum servidor ainda.</p>';
+    const el = $('serversList');
+    if (el) {
+      el.innerHTML = (d || []).map(s => {
+        const isImg = s.icon && /^(https?:|data:)/.test(s.icon);
+        const iconHtml = isImg
+          ? `<img class="server-logo" src="${esc(s.icon)}" alt="">`
+          : `<div class="server-logo" style="display:grid;place-items:center;font-size:24px">${esc(s.icon || '🐱')}</div>`;
+        return `
+          <div class="server-card" data-server-id="${s.id}">
+            ${iconHtml}
+            <div class="name">${esc(s.name)}</div>
+          </div>
+        `;
+      }).join('');
+    }
   } catch (e) {
     console.error(e);
   }
 }
 
-// clique nos cards de servidor (delegado — evita onclick inline, que o CSP bloqueia)
-$('serversList').addEventListener('click', (e) => {
-  const card = e.target.closest('.server-card');
-  if (card) enterServer(card.dataset.serverId);
-});
+// clique nos cards de servidor
+if ($('serversList')) {
+  $('serversList').addEventListener('click', (e) => {
+    const card = e.target.closest('.server-card');
+    if (card) enterServer(card.dataset.serverId);
+  });
+}
 
 async function active() {
   try {
     const r = await fetch('/api/servers/active');
     const d = await r.json();
     if (typeof d.count === 'number') {
-      $('activeRooms').textContent = d.count;
+      if ($('activeRooms')) $('activeRooms').textContent = d.count;
       if ($('activeRoomsTop')) $('activeRoomsTop').textContent = d.count;
     }
   } catch (e) {}
 }
 
-// Corrige sessão "fantasma": se havia token salvo de um banco antigo
-// (ex: recriado no servidor), valida no backend antes de usar; se inválido, limpa.
+async function resumeUserDestination() {
+  const pendingInvite = localStorage.getItem('cat_pending_invite');
+  if (pendingInvite) {
+    localStorage.removeItem('cat_pending_invite');
+    location.href = '/invite/' + encodeURIComponent(pendingInvite);
+    return;
+  }
+
+  const lastServer = localStorage.getItem('cat_last_server');
+  if (lastServer) {
+    location.href = '/server.html?serverId=' + encodeURIComponent(lastServer);
+    return;
+  }
+
+  // Se não há servidor salvo, vai direto para a tela de DMs (que tem a rail lateral de servidores)
+  location.href = '/dms.html';
+}
+
 async function restoreSession() {
   // Retorno do fluxo OAuth do Discord chega como #discord_token=... na URL
   const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
@@ -94,26 +113,35 @@ async function restoreSession() {
     try {
       const r = await fetch('/auth/verify', { headers: { Authorization: 'Bearer ' + discordToken } });
       const d = await r.json();
-      if (r.ok) { setSession(d.user, discordToken); await loadServers(); return; }
+      if (r.ok) {
+        setSession(d.user, discordToken);
+        await resumeUserDestination();
+        return;
+      }
     } catch (e) {}
   }
+
   const params = new URLSearchParams(location.search);
   const discordError = params.get('discordError');
   if (discordError) {
     history.replaceState(null, '', location.pathname);
     toast('Não foi possível entrar com Discord. Tente novamente.', 'error');
   }
+
   if (!token) return;
+
   try {
     const r = await fetch('/auth/verify', { headers: headers() });
     if (!r.ok) throw new Error('sessão inválida');
-    await loadServers();
+    // Sessão ativa e válida: redireciona automaticamente para o último servidor ou dms
+    await resumeUserDestination();
   } catch (e) {
-    // Token salvo não existe mais no banco (ex: banco recriado) — limpa a sessão travada.
+    // Token salvo inválido — limpa sessão
     userId = ''; userName = ''; token = '';
     localStorage.removeItem('cat_user_id');
     localStorage.removeItem('cat_user_name');
     localStorage.removeItem('cat_token');
+    localStorage.removeItem('cat_last_server');
   }
 }
 
@@ -124,45 +152,14 @@ $('guestBtn').onclick = () => {
 
 $('guestGo').onclick = async () => {
   try {
-    // forceNew: true — clicar aqui é uma intenção explícita de criar uma
-    // conta convidada (nova), então sempre gera uma nova, mesmo se já
-    // havia uma salva neste navegador.
     await ensureGuest($('guestName').value.trim(), true);
     $('guestForm').hidden = true;
-    await loadServers();
     toast('🐱 Conta criada!', 'success');
+    await resumeUserDestination();
   } catch (e) { toast(e.message, 'error'); }
 };
 
 $('discordBtn').onclick = () => { location.href = '/auth/discord'; };
-
-$('createServerBtn').onclick = async () => {
-  try {
-    await ensureGuest();
-    const name = $('serverName').value.trim() || 'Cat Empire';
-    const r = await fetch('/api/servers', { method: 'POST', headers: headers(), body: JSON.stringify({ name }) });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Erro ao criar servidor');
-    await loadServers();
-    toast('🐱 Servidor criado! Código: ' + d.code, 'success');
-    enterServer(d.id);
-  } catch (e) { toast(e.message, 'error'); }
-};
-
-$('joinServerBtn').onclick = async () => {
-  const code = $('joinCode').value.trim();
-  if (!/^\d{6}$/.test(code)) return toast('Digite um código de 6 dígitos.', 'error');
-  try {
-    await ensureGuest();
-    const r = await fetch('/api/servers/code/' + encodeURIComponent(code), { headers: headers() });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Servidor não encontrado');
-    const j = await fetch('/api/servers/' + d.id + '/join', { method: 'POST', headers: headers() });
-    const jd = await j.json();
-    if (!j.ok) throw new Error(jd.error || 'Não foi possível entrar');
-    enterServer(d.id);
-  } catch (e) { toast(e.message, 'error'); }
-};
 
 active();
 setInterval(active, 30000);

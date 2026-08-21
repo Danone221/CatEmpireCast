@@ -1,14 +1,20 @@
 package com.danonin.catempirecast
 
 import android.Manifest
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.net.http.SslError
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.provider.MediaStore
 import android.view.View
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.SslErrorHandler
 import android.webkit.ValueCallback
@@ -54,6 +60,85 @@ class MainActivity : AppCompatActivity() {
         }.toTypedArray()
 
         if (granted.isNotEmpty()) request.grant(granted) else request.deny()
+    }
+
+    // ===== Transmissão nativa de tela (RTMP via BroadcastService) =====
+    private var broadcastService: BroadcastService? = null
+    private var broadcastBound = false
+    private var pendingCastUrl: String? = null
+    private var pendingCastKey: String? = null
+
+    private val broadcastConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, service: IBinder) {
+            val binder = service as BroadcastService.LocalBinder
+            broadcastService = binder.getService()
+            broadcastBound = true
+            broadcastService?.setListener(object : BroadcastService.BroadcastStateListener {
+                override fun onState(state: String, message: String?) {
+                    runOnUiThread { notifyWebBroadcastState(state, message) }
+                }
+            })
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            broadcastService = null
+            broadcastBound = false
+        }
+    }
+
+    private val screenCaptureLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val url = pendingCastUrl
+        val key = pendingCastKey
+        pendingCastUrl = null
+        pendingCastKey = null
+        if (result.resultCode != RESULT_OK || result.data == null || url == null || key == null) {
+            notifyWebBroadcastState("error", "Permissão de captura de tela negada.")
+            return@registerForActivityResult
+        }
+        val intent = BroadcastService.intent(this)
+        bindService(intent, broadcastConnection, Context.BIND_AUTO_CREATE)
+        // Pequeno atraso pro bind terminar antes de chamar startBroadcast;
+        // como alternativa mais robusta a própria activity poderia guardar
+        // os dados e disparar de dentro de onServiceConnected, mas como o
+        // bind local é praticamente instantâneo isso é suficiente aqui.
+        binding.webView.postDelayed({
+            broadcastService?.startBroadcast(result.resultCode, result.data!!, url, key)
+        }, 150)
+    }
+
+    private inner class WebAppInterface {
+        @JavascriptInterface
+        fun startBroadcast(rtmpUrl: String, streamKey: String) {
+            runOnUiThread {
+                pendingCastUrl = rtmpUrl
+                pendingCastKey = streamKey
+                val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                try {
+                    screenCaptureLauncher.launch(projectionManager.createScreenCaptureIntent())
+                } catch (e: Exception) {
+                    notifyWebBroadcastState("error", "Não foi possível abrir a captura de tela.")
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun stopBroadcast() {
+            runOnUiThread {
+                broadcastService?.stopBroadcast()
+                if (broadcastBound) {
+                    unbindService(broadcastConnection)
+                    broadcastBound = false
+                }
+            }
+        }
+    }
+
+    private fun notifyWebBroadcastState(state: String, message: String?) {
+        val safeMessage = (message ?: "").replace("\\", "\\\\").replace("'", "\\'")
+        val js = "window.onNativeBroadcastState && window.onNativeBroadcastState('$state', '$safeMessage');"
+        binding.webView.evaluateJavascript(js, null)
     }
 
     private val fileChooserLauncher = registerForActivityResult(
@@ -122,6 +207,11 @@ class MainActivity : AppCompatActivity() {
         s.loadWithOverviewMode = true
         s.useWideViewPort = true
         s.userAgentString = s.userAgentString + " CatEmpireApp/1.0"
+
+        // Ponte JS <-> nativo: expõe window.CatEmpireNative.startBroadcast(rtmpUrl, streamKey)
+        // e .stopBroadcast() pra sala usar transmissão de tela via RTMP nativo
+        // (sem precisar de app externo) — ver client/room.js.
+        binding.webView.addJavascriptInterface(WebAppInterface(), "CatEmpireNative")
 
         binding.webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -239,6 +329,11 @@ class MainActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     override fun onDestroy() {
+        if (broadcastBound) {
+            broadcastService?.stopBroadcast()
+            unbindService(broadcastConnection)
+            broadcastBound = false
+        }
         binding.webView.destroy()
         super.onDestroy()
     }
