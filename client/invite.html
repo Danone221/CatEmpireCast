@@ -20,10 +20,13 @@
   </div>
 </header>
 
-<main class="landing-main" style="grid-template-columns:minmax(0,520px);justify-content:center;">
+<main class="landing-main" style="grid-template-columns:minmax(0,480px);justify-content:center;">
   <section class="hero" style="width:100%">
     <div class="form-card invite-card" id="inviteCard">
-      <div id="inviteLoading" class="empty-hint">Carregando dados do convite…</div>
+      <div id="inviteLoading" style="padding:40px 20px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;color:#b5bac1">
+        <span style="display:inline-block;margin-bottom:12px;font-size:24px">⏳</span>
+        <div>Carregando convite do servidor…</div>
+      </div>
       
       <div id="inviteContent" hidden>
         <div class="invite-banner" id="inviteBanner"></div>
@@ -32,31 +35,39 @@
             <span id="inviteIcon">🐱</span>
           </div>
         </div>
-        <div class="invite-sub" id="inviteInviter">Você foi convidado para entrar em</div>
-        <h1 class="invite-title" id="inviteServerName">Servidor</h1>
-        <p class="invite-desc" id="inviteDescription"></p>
-        <div class="invite-stats">
-          <span class="dot success"></span>
-          <span id="inviteMembers">0 Membros</span>
-        </div>
+        
+        <div class="invite-body">
+          <div class="invite-sub" id="inviteInviter">VOCÊ FOI CONVIDADO PARA ENTRAR EM</div>
+          <h1 class="invite-title" id="inviteServerName">Servidor</h1>
+          <p class="invite-desc" id="inviteDescription" hidden></p>
+          
+          <div class="invite-stats">
+            <span class="online-count">
+              <span class="dot"></span>
+              <span id="inviteMembers">0 Membros</span>
+            </span>
+          </div>
 
-        <div id="inviteActions" style="margin-top:24px">
-          <button class="btn btn-primary" id="acceptInviteBtn">ACEITAR CONVITE</button>
-        </div>
+          <div id="inviteActions" style="margin-top:22px">
+            <button class="btn btn-discord" id="acceptInviteBtn" style="font-size:13px;padding:14px">ACEITAR CONVITE</button>
+          </div>
 
-        <div id="inviteAuth" hidden style="margin-top:20px">
-          <p class="hint" style="text-align:center;margin-bottom:12px">Você precisa de uma conta para entrar:</p>
-          <button class="btn btn-discord" id="inviteDiscordBtn" style="margin-bottom:12px">🎮 ENTRAR COM DISCORD</button>
-          <div class="form-card" style="margin-top:0">
-            <input id="guestName" maxlength="16" placeholder="Como você quer ser chamado?">
-            <button class="btn btn-primary" id="guestJoinBtn">ENTRAR COMO CONVIDADO</button>
+          <div id="inviteAuth" hidden style="margin-top:20px;border-top:1px solid #2b2d31;padding-top:16px">
+            <p class="hint" style="text-align:center;margin-top:0;margin-bottom:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:12px;color:#949ba4">Você precisa estar conectado para entrar neste servidor:</p>
+            <button class="btn btn-discord" id="inviteDiscordBtn" style="margin-bottom:14px">🎮 ENTRAR COM DISCORD</button>
+            <div class="form-card" style="margin-top:0;padding:14px;background:#111214;border:1px solid #2b2d31">
+              <input id="guestName" maxlength="16" placeholder="Como quer ser chamado?" style="background:#1e1f22;border:1px solid #3b1b68;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+              <button class="btn btn-primary" id="guestJoinBtn" style="font-size:12px">ENTRAR COMO CONVIDADO</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <div id="inviteError" hidden>
-        <p class="error" id="inviteErrorText" style="font-size:13px;margin:20px 0"></p>
-        <a href="/" class="btn" style="text-decoration:none">VOLTAR AO INÍCIO</a>
+      <div id="inviteError" hidden style="padding:32px 24px;text-align:center">
+        <div style="font-size:36px;margin-bottom:12px">😿</div>
+        <h2 style="font-size:15px;color:#ff5369;margin-bottom:10px">Convite Inválido</h2>
+        <p class="error" id="inviteErrorText" style="font-size:12px;margin:12px 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"></p>
+        <a href="/" class="btn btn-primary" style="text-decoration:none;display:inline-block">VOLTAR AO INÍCIO</a>
       </div>
     </div>
   </section>
@@ -77,11 +88,25 @@
 <script>
 (async function() {
   const $ = id => document.getElementById(id);
-  const pathParts = location.pathname.split('/invite/');
-  const code = (pathParts[1] || new URLSearchParams(location.search).get('code') || '').trim();
+
+  function getInviteCode() {
+    const searchCode = new URLSearchParams(location.search).get('code');
+    if (searchCode && searchCode.trim()) return searchCode.trim();
+
+    const parts = location.pathname.split('/');
+    const invIdx = parts.findIndex(p => p === 'invite' || p === 'invite.html');
+    if (invIdx >= 0 && parts[invIdx + 1] && parts[invIdx + 1].trim()) {
+      return parts[invIdx + 1].trim().split('?')[0];
+    }
+    const last = (parts[parts.length - 1] || '').trim().split('?')[0];
+    if (last && last !== 'invite' && last !== 'invite.html') return last;
+    return '';
+  }
+
+  const code = getInviteCode();
 
   if (!code) {
-    showError('Código de convite não encontrado.');
+    showError('Nenhum código de convite informado na URL.');
     return;
   }
 
@@ -90,6 +115,18 @@
 
   function headers() {
     return { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+  }
+
+  function applyBannerStyle(el, banner) {
+    if (!el) return;
+    if (banner && /^(data:|https?:)/.test(banner)) {
+      el.style.backgroundImage = 'url("' + banner + '")';
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+    } else {
+      el.style.backgroundImage = 'none';
+      el.style.backgroundColor = banner || '#5865f2';
+    }
   }
 
   function showError(msg) {
@@ -112,20 +149,27 @@
 
     if (d.creatorName) {
       $('inviteInviter').textContent = d.creatorName + ' convidou você para entrar em';
+    } else {
+      $('inviteInviter').textContent = 'VOCÊ FOI CONVIDADO PARA ENTRAR EM';
     }
-    $('inviteServerName').textContent = d.serverName;
-    $('inviteDescription').textContent = d.serverDescription || '';
-    $('inviteMembers').textContent = d.memberCount + (d.memberCount === 1 ? ' Membro' : ' Membros');
+    $('inviteServerName').textContent = d.serverName || 'Servidor';
+    
+    if (d.serverDescription && d.serverDescription.trim()) {
+      $('inviteDescription').hidden = false;
+      $('inviteDescription').textContent = d.serverDescription.trim();
+    } else {
+      $('inviteDescription').hidden = true;
+    }
 
-    if (d.serverBannerColor) {
-      $('inviteBanner').style.background = d.serverBannerColor;
-    }
+    $('inviteMembers').textContent = (d.memberCount || 1) + (d.memberCount === 1 ? ' Membro' : ' Membros');
+
+    applyBannerStyle($('inviteBanner'), d.serverBannerColor || '#5865f2');
 
     const isImg = d.serverIcon && /^(https?:|data:)/.test(d.serverIcon);
     if (isImg) {
       $('inviteIconWrap').innerHTML = '<img src="' + d.serverIcon + '" alt="" style="width:100%;height:100%;object-fit:cover">';
     } else {
-      $('inviteIcon').textContent = d.serverIcon || '🐱';
+      $('inviteIconWrap').innerHTML = '<span id="inviteIcon">' + (d.serverIcon || '🐱') + '</span>';
     }
 
     if (d.isMember) {
@@ -145,7 +189,6 @@
     }
 
     $('inviteDiscordBtn').onclick = () => {
-      // Salva o convite para retornar após autenticação Discord se necessário
       localStorage.setItem('cat_pending_invite', code);
       location.href = '/auth/discord';
     };
@@ -169,7 +212,8 @@
         localStorage.setItem('cat_token', token);
         await joinServer(code);
       } catch (e) {
-        toast(e.message, 'error');
+        if (window.toast) toast(e.message, 'error');
+        else alert(e.message);
       }
     };
 
@@ -188,7 +232,8 @@
       localStorage.setItem('cat_last_server', d.serverId);
       location.href = '/server.html?serverId=' + encodeURIComponent(d.serverId);
     } catch (e) {
-      toast(e.message, 'error');
+      if (window.toast) toast(e.message, 'error');
+      else alert(e.message);
     }
   }
 })();

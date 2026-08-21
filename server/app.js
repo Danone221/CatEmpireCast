@@ -43,8 +43,8 @@ app.use(express.static(path.join(__dirname, '../client')));
 app.use('/api', apiRoutes);
 app.use('/auth', authRoutes);
 
-// Rota de convite
-app.get('/invite/:code', (req, res) => {
+// Rotas de convite
+app.get(['/invite', '/invite/:code', '/invite/:code/*'], (req, res) => {
   res.sendFile(path.join(__dirname, '../client/invite.html'));
 });
 

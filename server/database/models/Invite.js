@@ -24,6 +24,8 @@ class Invite {
   }
 
   static async findByCode(code) {
+    if (!code) return null;
+    const cleanCode = String(code).trim();
     const now = Math.floor(Date.now() / 1000);
     const invite = await queryOne(
       `SELECT i.*, 
@@ -32,12 +34,12 @@ class Invite {
               s.banner_color AS server_banner_color,
               s.description AS server_description,
               (SELECT COUNT(*) FROM server_members WHERE server_id = s.id) AS member_count,
-              u.display_name AS creator_name
+              COALESCE(u.display_name, u.username, 'Um membro') AS creator_name
        FROM invites i
-       JOIN servers s ON i.server_id = s.id
-       JOIN users u ON i.creator_id = u.id
+       LEFT JOIN servers s ON i.server_id = s.id
+       LEFT JOIN users u ON i.creator_id = u.id
        WHERE i.code = $1`,
-      [code]
+      [cleanCode]
     );
 
     if (!invite) return null;
@@ -57,9 +59,9 @@ class Invite {
 
   static async listByServer(serverId) {
     return query(
-      `SELECT i.*, u.display_name AS creator_name
+      `SELECT i.*, COALESCE(u.display_name, u.username, 'Um membro') AS creator_name
        FROM invites i
-       JOIN users u ON i.creator_id = u.id
+       LEFT JOIN users u ON i.creator_id = u.id
        WHERE i.server_id = $1
        ORDER BY i.created_at DESC`,
       [serverId]

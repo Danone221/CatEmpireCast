@@ -1220,9 +1220,6 @@ async function openMyProfile() {
 
     if ($('accountUsername')) $('accountUsername').textContent = '@' + (me.username || 'usuario');
     if ($('accountUserId')) $('accountUserId').textContent = me.id || userId;
-    if ($('currentPasswordInput')) $('currentPasswordInput').value = '';
-    if ($('newPasswordInput')) $('newPasswordInput').value = '';
-    if ($('confirmPasswordInput')) $('confirmPasswordInput').value = '';
 
     // Reseta abas para perfil
     switchUserTab('profile');
@@ -1258,36 +1255,6 @@ $('copyUserIdBtn')?.addEventListener('click', () => {
   navigator.clipboard.writeText(uid).then(() => toast('ID da conta copiado!', 'success')).catch(() => toast('Erro ao copiar', 'error'));
 });
 
-$('changePasswordBtn')?.addEventListener('click', async () => {
-  const currentPassword = $('currentPasswordInput')?.value || '';
-  const newPassword = $('newPasswordInput')?.value || '';
-  const confirmPassword = $('confirmPasswordInput')?.value || '';
-
-  if (!newPassword || newPassword.length < 4) {
-    toast('A nova senha deve ter no mínimo 4 caracteres.', 'error');
-    return;
-  }
-  if (newPassword !== confirmPassword) {
-    toast('A nova senha e a confirmação não conferem.', 'error');
-    return;
-  }
-
-  try {
-    const r = await fetch('/api/me/password', {
-      method: 'PUT',
-      headers: headers(),
-      body: JSON.stringify({ currentPassword, newPassword })
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Erro ao alterar senha');
-    if ($('currentPasswordInput')) $('currentPasswordInput').value = '';
-    if ($('newPasswordInput')) $('newPasswordInput').value = '';
-    if ($('confirmPasswordInput')) $('confirmPasswordInput').value = '';
-    toast('Senha alterada com sucesso!', 'success');
-  } catch (e) {
-    toast(e.message, 'error');
-  }
-});
 
 $('myAvatarBtn').onclick = openMyProfile;
 $('myInfoBtn').onclick = openMyProfile;
