@@ -50,14 +50,26 @@ function renderMarkdown(escapedText) {
   return t;
 }
 
+async function loadServersRail() {
+  try {
+    const r = await fetch('/api/servers', { headers: headers() });
+    if (r.ok) {
+      const list = await r.json();
+      if (Array.isArray(list)) renderServerRail(list);
+    }
+  } catch (e) {}
+}
+
 socket.on('connect', () => {
   socket.emit('register', { userId, token });
+  loadServersRail();
 });
 socket.on('error', d => { if (d?.message) toast(d.message, 'error'); });
 socket.on('servers-list', (list) => renderServerRail(list || []));
 
 function renderServerRail(list) {
-  $('railServers').innerHTML = list.map(s => {
+  if (!$('railServers')) return;
+  $('railServers').innerHTML = (list || []).map(s => {
     const isImg = s.icon && /^(https?:|data:)/.test(s.icon);
     const inner = isImg
       ? `<img src="${esc(s.icon)}" alt="" style="width:100%;height:100%;object-fit:cover">`
@@ -71,13 +83,13 @@ function renderServerRail(list) {
     };
   });
 }
-$('railAddBtn').onclick = () => { window.openAddServerModal(); };
-$('backBtn').onclick = () => {
+$('railAddBtn')?.addEventListener('click', () => { window.openAddServerModal(); });
+$('backBtn')?.addEventListener('click', () => {
   const last = localStorage.getItem('cat_last_server');
   if (last) {
     location.href = '/server.html?serverId=' + encodeURIComponent(last);
   }
-};
+});
 
 // ========== LISTA DE CONVERSAS ==========
 async function loadConversations() {
@@ -551,6 +563,7 @@ $('saveEditProfileBtn').onclick = async () => {
 
 // ========== INÍCIO ==========
 (async function init() {
+  loadServersRail();
   await loadConversations();
   if (openWith) {
     if (!conversations.some(c => c.id === openWith)) {

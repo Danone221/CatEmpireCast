@@ -135,14 +135,19 @@ async function initSchema() {
     await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)');
   }
 
-  // ===== Migração: personalização de perfil (bio, cor de banner) e de
-  // servidor (cor de banner, descrição) — fidelidade estilo Discord. =====
   await addColumnIfMissing('users', 'bio', 'TEXT');
   await addColumnIfMissing('users', 'banner_color', 'TEXT');
   await addColumnIfMissing('servers', 'banner_color', 'TEXT');
   await addColumnIfMissing('servers', 'description', 'TEXT');
-  // Fidelidade Discord: mensagens editáveis (marca "(editado)") e exclusão.
   await addColumnIfMissing('messages', 'edited_at', 'BIGINT');
+  await addColumnIfMissing('dm_messages', 'file_name', 'TEXT');
+  await addColumnIfMissing('dm_messages', 'file_type', 'TEXT');
+  await addColumnIfMissing('dm_messages', 'file_size', 'INTEGER');
+  await addColumnIfMissing('dm_messages', 'file_data', 'TEXT');
+  await addColumnIfMissing('dm_messages', 'edited_at', 'BIGINT');
+  await addColumnIfMissing('dm_messages', 'read_at', 'BIGINT');
+  await addColumnIfMissing('invites', 'max_uses', 'INTEGER');
+  await addColumnIfMissing('invites', 'expires_at', 'BIGINT');
 
   console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
 }

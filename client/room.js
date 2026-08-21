@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-const serverId = q.get('serverId');
+const serverId = q.get('serverId') || localStorage.getItem('cat_last_server');
 const userId = localStorage.getItem('cat_user_id') || q.get('userId');
 const userName = localStorage.getItem('cat_user_name') || q.get('userName') || 'Membro';
 const token = localStorage.getItem('cat_token') || q.get('token');
@@ -80,9 +80,20 @@ function renderMarkdown(escapedText) {
   return t;
 }
 
+async function loadServersRail() {
+  try {
+    const r = await fetch('/api/servers', { headers: headers() });
+    if (r.ok) {
+      const list = await r.json();
+      if (Array.isArray(list)) renderServerRail(list);
+    }
+  } catch (e) {}
+}
+
 let hadConnectedBefore = false;
 socket.on('connect', () => {
   socket.emit('register', { userId, token, serverId });
+  loadServersRail();
   if (selectedTextChannelId) socket.emit('join-text-channel', { channelId: selectedTextChannelId });
   
   if (voiceChannelId) {
@@ -122,8 +133,6 @@ socket.on('presence-update', ({ userId: uid, online }) => {
 });
 
 // ========== BARRA DE SERVIDORES (estilo Discord) ==========
-// O servidor já manda essa lista assim que registra o socket (login) —
-// é a mesma usada na tela inicial pra listar "meus servidores".
 socket.on('servers-list', (list) => {
   renderServerRail(list || []);
 });
@@ -135,7 +144,8 @@ function switchServer(id) {
 }
 
 function renderServerRail(list) {
-  $('railServers').innerHTML = list.map(s => {
+  if (!$('railServers')) return;
+  $('railServers').innerHTML = (list || []).map(s => {
     const active = s.id === serverId ? ' active' : '';
     const isImg = s.icon && /^(https?:|data:)/.test(s.icon);
     const inner = isImg
@@ -1104,11 +1114,11 @@ socket.on('voice-signal', async ({ from, data }) => {
 });
 
 // ========== SAIR DO SERVIDOR ==========
-$('leaveBtn').onclick = () => {
+$('leaveBtn')?.addEventListener('click', () => {
   if (voiceChannelId) leaveVoiceChannel(false);
   localStorage.removeItem('cat_last_server');
   location.href = '/dms.html';
-};
+});
 
 // ========== PERFIL DE USUÁRIO E CONFIGURAÇÕES DE SERVIDOR ==========
 const PROFILE_COLORS = [
