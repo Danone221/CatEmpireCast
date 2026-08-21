@@ -296,7 +296,7 @@ textarea.bio-input{width:100%;padding:12px;background:#09020f;border:2px solid #
 .channel-item.has-unread .cname{color:#fff;font-weight:bold}
 .unread-dot{position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 6px #fff}
 
-.typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;color:var(--muted);font-style:italic;min-height:14px}
+typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;color:var(--muted);font-style:italic;min-height:14px}
 .typing-indicator[hidden]{display:none}
 
 .inline-code{background:#0d0618;border:1px solid #3b1c68;padding:1px 5px;border-radius:2px;font-family:monospace;font-size:11px;color:#ffcd3c}
@@ -376,4 +376,72 @@ textarea.bio-input{width:100%;padding:12px;background:#09020f;border:2px solid #
 .btn-kick-member:hover{background:#a11c35;color:#fff}
 .danger-zone-box{border:2px solid #a11c35;background:rgba(40,10,20,.6);padding:14px;margin-top:16px}
 
+/* ===== FIX: botões de ação do Perfil e do Servidor ===== */
+/* Os dois editores usam o mesmo layout: conteúdo com rolagem própria e
+   rodapé de ações fixo. Assim os botões não ficam escondidos abaixo do
+   conteúdo e permanecem acessíveis mesmo quando a janela é menor. */
+.profile-modal-box,
+#serverSettingsModal .modal-box{
+  max-height:min(88dvh,760px);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
 
+#userPaneProfile,
+#serverPaneOverview{
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding-right:4px;
+  padding-bottom:8px;
+}
+
+#userPaneProfile .profile-settings-actions,
+#serverPaneOverview .profile-settings-actions{
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:10px;
+  margin-top:12px;
+  padding-top:12px;
+  border-top:2px solid #29104b;
+  background:#120820;
+  position:sticky;
+  bottom:0;
+  z-index:5;
+}
+
+#userPaneProfile .profile-settings-actions .btn,
+#serverPaneOverview .profile-settings-actions .btn{
+  width:100%;
+  min-width:0 !important;
+  width:100%;
+  height:54px;
+  min-height:54px !important;
+  margin:0 !important;
+  padding:0 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+@media(max-width:520px){
+  .profile-modal-box,
+  #serverSettingsModal .modal-box{
+    max-height:calc(100dvh - 24px);
+  }
+
+  #userPaneProfile .profile-settings-actions,
+  #serverPaneOverview .profile-settings-actions{
+    gap:8px;
+  }
+
+  #userPaneProfile .profile-settings-actions .btn,
+  #serverPaneOverview .profile-settings-actions .btn{
+    height:52px;
+    min-height:52px !important;
+    font-size:10px;
+    padding:0 8px;
+  }
+}
