@@ -6,7 +6,8 @@
  * 2) usa deviceId como fallback quando facingMode falhar;
  * 3) cria o modal de convite ANTES de room.js registrar os eventos;
  * 4) carrega os aprimoramentos Discord-like depois que room.js termina;
- * 5) aplica pequenos ajustes depois do carregamento assíncrono do servidor.
+ * 5) carrega o pacote de recursos v2 depois dos aprimoramentos;
+ * 6) aplica pequenos ajustes depois do carregamento assíncrono do servidor.
  */
 (function () {
   'use strict';
@@ -106,12 +107,10 @@
     const profileBox = document.querySelector('#viewProfileModal .modal-box');
     profileBox?.classList.add('profile-horizontal');
 
-    // Convite no cabeçalho: ícone compacto igual ao padrão mostrado na referência.
     const invite = document.getElementById('serverInviteBtn');
     const row = document.querySelector('#serverHead .server-head-row');
     if (invite && row && !invite.dataset.compactInvite) {
       invite.dataset.compactInvite = '1';
-      const wrapper = invite.parentElement;
       invite.textContent = '👥+';
       invite.title = 'Convidar para o servidor';
       invite.setAttribute('aria-label', 'Convidar para o servidor');
@@ -125,26 +124,8 @@
       invite.style.border = '2px solid #5a2a95';
       invite.style.background = '#15092a';
       row.appendChild(invite);
-      wrapper?.remove();
+      invite.parentElement?.remove();
     }
-
-    ['myAvatarBtn', 'myInfoBtn', 'userSettingsBtn'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.onclick = null;
-    });
-
-    const editOwn = document.getElementById('editOwnProfileBtn');
-    if (editOwn) {
-      editOwn.onclick = () => {
-        document.getElementById('viewProfileModal')?.classList.remove('open');
-        if (typeof window.__catOriginalOpenMyProfile === 'function') window.__catOriginalOpenMyProfile();
-      };
-    }
-
-    const leave = document.getElementById('hangupBtn');
-    if (leave) leave.onclick = () => window.leaveVoiceChannel?.(true);
-    const leaveBar = document.getElementById('voiceBarLeave');
-    if (leaveBar) leaveBar.onclick = () => window.leaveVoiceChannel?.(false);
 
     let attempts = 0;
     const timer = setInterval(() => {
@@ -165,7 +146,16 @@
     script.id = 'catEmpireEnhancementsScript';
     script.src = '/enhancements.js?v=20260821';
     script.async = false;
-    script.onload = () => setTimeout(applyPostEnhancementFixes, 350);
+    script.onload = () => {
+      setTimeout(applyPostEnhancementFixes, 350);
+      if (!document.getElementById('catEmpireFeaturesV2Script')) {
+        const v2 = document.createElement('script');
+        v2.id = 'catEmpireFeaturesV2Script';
+        v2.src = '/features-v2.js?v=20260821';
+        v2.async = false;
+        document.body.appendChild(v2);
+      }
+    };
     document.body.appendChild(script);
   }
 
