@@ -1616,6 +1616,8 @@ socket.on('member-profile-updated', (u) => {
 
 let liveServerRefreshTimer = null;
 let lastLiveServerRefreshAt = 0;
+let serverStateRevision = 0;
+let liveServerRequestId = 0;
 function scheduleLiveServerRefresh(delay = 120) {
   clearTimeout(liveServerRefreshTimer);
   liveServerRefreshTimer = setTimeout(refreshServerDataLive, delay);
@@ -1623,10 +1625,13 @@ function scheduleLiveServerRefresh(delay = 120) {
 async function refreshServerDataLive() {
   if (document.hidden || Date.now() - lastLiveServerRefreshAt < 500) return;
   lastLiveServerRefreshAt = Date.now();
+  const requestId = ++liveServerRequestId;
+  const revisionAtStart = serverStateRevision;
   try {
     const response = await fetch('/api/servers/' + serverId, { headers: headers(), cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Erro ao sincronizar servidor');
+    if (requestId !== liveServerRequestId || revisionAtStart !== serverStateRevision) return;
     currentServer = data;
     channels = Array.isArray(data.channels) ? data.channels : [];
     members = Array.isArray(data.members) ? data.members : [];
@@ -1647,6 +1652,7 @@ async function refreshServerDataLive() {
       const firstText = channels.find(channel => channel.type === 'text');
       if (firstText) openTextChannel(firstText.id);
     }
+    await loadServersRail();
     document.dispatchEvent(new CustomEvent('cat:server-live-data', { detail: data }));
     const settingsPanel = document.querySelector('.cat-v5-settings');
     if (settingsPanel && !settingsPanel.hidden) {
@@ -1656,7 +1662,10 @@ async function refreshServerDataLive() {
   } catch (error) { console.error('Sincronização do servidor:', error); }
 }
 socket.on('server-data-changed', payload => {
-  if (!payload || payload.serverId === serverId) scheduleLiveServerRefresh();
+  if (!payload || payload.serverId === serverId) {
+    serverStateRevision++;
+    scheduleLiveServerRefresh(180);
+  }
 });
 socket.on('profile-updated', profile => {
   const index = members.findIndex(member => member.id === profile?.id);
@@ -1668,6 +1677,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) sche
 
 socket.on('server-updated', (s) => {
   if (s.id !== serverId) return;
+  serverStateRevision++;
+  liveServerRequestId++;
   currentServer = { ...currentServer, ...s };
   $('serverName').textContent = s.name || 'Servidor';
   $('serverName').title = s.name || 'Servidor';
@@ -1675,6 +1686,7 @@ socket.on('server-updated', (s) => {
   if ($('serverProfileName')) $('serverProfileName').textContent = s.name || 'Servidor';
   if ($('serverProfileIconImg')) $('serverProfileIconImg').src = s.icon && /^(data:|https?:)/.test(s.icon) ? s.icon : '/logo.svg';
   applyBannerStyle($('serverHead'), s.banner || s.banner_color);
+  loadServersRail();
 });
 
 socket.on('member-role-updated', ({ userId: uid, role }) => {
