@@ -7,7 +7,8 @@
  * 3) cria o modal de convite ANTES de room.js registrar os eventos;
  * 4) carrega os aprimoramentos Discord-like depois que room.js termina;
  * 5) carrega o pacote de recursos v2 depois dos aprimoramentos;
- * 6) aplica pequenos ajustes depois do carregamento assíncrono do servidor.
+ * 6) carrega o pacote v3 para interações/configurações finais;
+ * 7) aplica pequenos ajustes depois do carregamento assíncrono do servidor.
  */
 (function () {
   'use strict';
@@ -33,8 +34,8 @@
     }
     mediaDevices.getUserMedia = async function (constraints) {
       if (!hasVideoRequest(constraints)) return originalGetUserMedia(constraints);
-      const previousStream = activeCameraStream, previousDeviceId = activeCameraDeviceId;
-      if (previousStream) { previousStream.getVideoTracks().forEach(track => { try { track.stop(); } catch (_) {} }); activeCameraStream = null; }
+      const previousDeviceId = activeCameraDeviceId;
+      if (activeCameraStream) { activeCameraStream.getVideoTracks().forEach(track => { try { track.stop(); } catch (_) {} }); activeCameraStream = null; }
       try { return rememberCameraStream(await originalGetUserMedia(constraints)); }
       catch (firstError) {
         const facing = constraints.video.facingMode;
@@ -79,8 +80,10 @@
   function loadEnhancements() {
     if (document.getElementById('catEmpireEnhancementsScript')) return;
     const script = document.createElement('script'); script.id='catEmpireEnhancementsScript'; script.src='/enhancements.js?v=20260821'; script.async=false;
-    script.onload=()=>{ setTimeout(applyPostEnhancementFixes,350); if(!document.getElementById('catEmpireFeaturesV2Script')){const v2=document.createElement('script');v2.id='catEmpireFeaturesV2Script';v2.src='/features-v2.js?v=20260821';v2.async=false;document.body.appendChild(v2);} };
+    script.onload=()=>{ setTimeout(applyPostEnhancementFixes,350); if(!document.getElementById('catEmpireFeaturesV2Script')){const v2=document.createElement('script');v2.id='catEmpireFeaturesV2Script';v2.src='/features-v2.js?v=20260821';v2.async=false;document.body.appendChild(v2); v2.onload=loadV3;} };
     document.body.appendChild(script);
   }
+  function loadV3(){ if(document.getElementById('catEmpireFeaturesV3Script'))return; const v3=document.createElement('script');v3.id='catEmpireFeaturesV3Script';v3.src='/features-v3.js?v=20260821';v3.async=false;document.body.appendChild(v3); }
+  if(document.getElementById('catEmpireFeaturesV2Script')) loadV3();
   if(document.readyState==='complete')loadEnhancements();else window.addEventListener('load',loadEnhancements,{once:true});
 })();
