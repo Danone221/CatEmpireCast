@@ -18,15 +18,14 @@ const PORT = config.port;
 async function start() {
   try {
     await db.initSchema();
-    // Todas as ampliações são aditivas e preservam os dados existentes.
     await initPlatformSchema();
     await initMessagingSchema();
     await initStageSchema();
     await initExpansionSchema();
 
-    // Compatibilidade estrutural: categorias continuam separadas dos canais,
-    // e canais novos podem ser text/voice/stage/forum sem alterar dados antigos.
     await db.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS banner TEXT;
+      ALTER TABLE servers ADD COLUMN IF NOT EXISTS banner TEXT;
       ALTER TABLE channel_categories ADD COLUMN IF NOT EXISTS collapsed BOOLEAN NOT NULL DEFAULT FALSE;
       ALTER TABLE channel_categories ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{}'::jsonb;
       ALTER TABLE channels ADD COLUMN IF NOT EXISTS category_id TEXT REFERENCES channel_categories(id) ON DELETE SET NULL;
