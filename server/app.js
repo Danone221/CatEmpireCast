@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const config = require('./config');
 const apiRoutes = require('./routes/api');
+const profileRoutes = require('./routes/profile');
 const extraRoutes = require('./routes/extra');
 const authRoutes = require('./routes/auth');
 const featureRoutes = require('./routes/features');
@@ -60,6 +61,9 @@ app.use((req, res, next) => {
 
 app.use(express.static(clientDir));
 
+// Perfil específico vem antes do legado para permitir o novo campo de banner
+// sem remover nem quebrar o restante do contrato /api.
+app.use('/api', profileRoutes);
 app.use('/api', apiRoutes);
 app.use('/api', extraRoutes);
 app.use('/api', socialRoutes);
