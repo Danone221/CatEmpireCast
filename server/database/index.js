@@ -173,7 +173,7 @@ async function initSchema() {
       FROM channels
       WHERE category IS NOT NULL AND trim(category) <> ''
     ) x
-    ON CONFLICT (server_id, name) DO NOTHING
+    ON CONFLICT DO NOTHING
   `);
 
   const usernameCollision = await pool.query('SELECT lower(username) AS normalized FROM users GROUP BY lower(username) HAVING COUNT(*) > 1 LIMIT 1');
