@@ -12,22 +12,30 @@ function getActiveCastInfo(channelId) {
   return { playbackUrl: buildPlaybackUrl(channelId) };
 }
 
+function isConfigured() {
+  return !!(config.media.publicRtmpHost && config.media.publicHttpBase);
+}
+
 function buildRtmpUrl() {
-  const host = config.media.publicRtmpHost || `rtmp://SEU_HOST_DE_MIDIA:${config.media.rtmpPort}`;
+  if (!config.media.publicRtmpHost) return null;
+  const host = config.media.publicRtmpHost;
   return `${host.replace(/\/$/, '')}/live`;
 }
 
 function buildPlaybackUrl(channelId) {
-  const base = config.media.publicHttpBase || `http://SEU_HOST_DE_MIDIA:${config.media.httpPort}`;
+  if (!config.media.publicHttpBase) return null;
+  const base = config.media.publicHttpBase;
   return `${base.replace(/\/$/, '')}/live/${channelId}.flv`;
 }
 
 function getCastCredentials(channelId) {
+  const configured = isConfigured();
   return {
-    rtmpUrl: buildRtmpUrl(),
-    streamKey: channelId,
-    playbackUrl: buildPlaybackUrl(channelId),
-    configured: !!(config.media.publicRtmpHost && config.media.publicHttpBase)
+    rtmpUrl: configured ? buildRtmpUrl() : null,
+    streamKey: configured ? channelId : null,
+    playbackUrl: configured ? buildPlaybackUrl(channelId) : null,
+    configured,
+    error: configured ? null : 'Servidor RTMP não configurado. Defina MEDIA_PUBLIC_RTMP_HOST e MEDIA_PUBLIC_HTTP_BASE.'
   };
 }
 
