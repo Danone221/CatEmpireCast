@@ -59,6 +59,15 @@ async function initSchema() {
       PRIMARY KEY (server_id, user_id)
     );
 
+    CREATE TABLE IF NOT EXISTS channel_categories (
+      id TEXT PRIMARY KEY,
+      server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at BIGINT NOT NULL DEFAULT extract(epoch FROM now())::bigint,
+      UNIQUE (server_id, name)
+    );
+
     CREATE TABLE IF NOT EXISTS channels (
       id TEXT PRIMARY KEY,
       server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
@@ -120,6 +129,7 @@ async function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at);
     CREATE INDEX IF NOT EXISTS idx_server_members_server ON server_members(server_id);
     CREATE INDEX IF NOT EXISTS idx_channels_server ON channels(server_id);
+    CREATE INDEX IF NOT EXISTS idx_channel_categories_server ON channel_categories(server_id, position);
     CREATE INDEX IF NOT EXISTS idx_dm_sender ON dm_messages(sender_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_dm_recipient ON dm_messages(recipient_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_invites_server ON invites(server_id);
@@ -148,6 +158,20 @@ async function initSchema() {
   await addColumnIfMissing('dm_messages', 'read_at', 'BIGINT');
   await addColumnIfMissing('invites', 'max_uses', 'INTEGER');
   await addColumnIfMissing('invites', 'expires_at', 'BIGINT');
+
+  // Migração dos canais existentes: cada nome de categoria passa a existir
+  // também como uma categoria persistente, inclusive categorias vazias criadas depois.
+  await pool.query(`
+    INSERT INTO channel_categories (id, server_id, name, position)
+    SELECT gen_random_uuid()::text, x.server_id, x.category,
+           ROW_NUMBER() OVER (PARTITION BY x.server_id ORDER BY x.category) - 1
+    FROM (
+      SELECT DISTINCT server_id, trim(category) AS category
+      FROM channels
+      WHERE category IS NOT NULL AND trim(category) <> ''
+    ) x
+    ON CONFLICT (server_id, name) DO NOTHING
+  `);
 
   console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
 }
