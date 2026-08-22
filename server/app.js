@@ -12,6 +12,7 @@ const featureRoutes = require('./routes/features');
 const settingsRoutes = require('./routes/settings');
 const socialRoutes = require('./routes/social');
 const platformRoutes = require('./routes/platform');
+const messagingRoutes = require('./routes/messaging');
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api', apiRoutes);
 app.use('/api', extraRoutes);
 app.use('/api', socialRoutes);
 app.use('/api/platform', platformRoutes);
+app.use('/api/platform', messagingRoutes);
 app.use('/api/features', featureRoutes);
 app.use('/api/features', settingsRoutes);
 app.use('/auth', authRoutes);
