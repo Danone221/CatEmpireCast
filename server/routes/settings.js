@@ -62,10 +62,15 @@ router.put('/servers/:serverId/settings', async (req, res) => {
     const data = {};
     if (typeof req.body?.name === 'string' && req.body.name.trim()) data.name = req.body.name.trim().slice(0, 50);
     if (typeof req.body?.description === 'string') data.description = req.body.description.slice(0, 300);
-    if (typeof req.body?.icon === 'string') data.icon = req.body.icon;
+    if (typeof req.body?.icon === 'string' || req.body?.icon === null) {
+      if (req.body.icon && req.body.icon.length > 700000) return res.status(413).json({ error: 'Imagem do servidor muito grande.' });
+      if (req.body.icon && !/^(data:image\/(png|jpeg|webp|gif);base64,|https:\/\/)/i.test(req.body.icon) && Array.from(req.body.icon).length > 12) return res.status(400).json({ error: 'Formato da imagem do servidor inválido.' });
+      data.icon = req.body.icon || null;
+    }
     if (typeof req.body?.bannerColor === 'string' || req.body?.bannerColor === null) data.banner_color = req.body.bannerColor || null;
     if (typeof req.body?.banner === 'string' || req.body?.banner === null) {
-      if (req.body.banner && req.body.banner.length > 1200000) return res.status(400).json({ error: 'Banner muito grande.' });
+      if (req.body.banner && req.body.banner.length > 1250000) return res.status(413).json({ error: 'Banner muito grande.' });
+      if (req.body.banner && !/^(data:image\/(png|jpeg|webp|gif);base64,|https:\/\/)/i.test(req.body.banner)) return res.status(400).json({ error: 'Formato do banner inválido.' });
       data.banner = req.body.banner || null;
     }
     const updated = Object.keys(data).length ? await Server.update(req.params.serverId, data) : server;

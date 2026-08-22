@@ -1609,8 +1609,11 @@ socket.on('server-updated', (s) => {
   if (s.id !== serverId) return;
   currentServer = { ...currentServer, ...s };
   $('serverName').textContent = s.name || 'Servidor';
+  $('serverName').title = s.name || 'Servidor';
   $('mobileTitle').textContent = s.name || 'CAT EMPIRE';
-  applyBannerStyle($('serverHead'), s.banner_color);
+  if ($('serverProfileName')) $('serverProfileName').textContent = s.name || 'Servidor';
+  if ($('serverProfileIconImg')) $('serverProfileIconImg').src = s.icon && /^(data:|https?:)/.test(s.icon) ? s.icon : '/logo.svg';
+  applyBannerStyle($('serverHead'), s.banner || s.banner_color);
 });
 
 socket.on('member-role-updated', ({ userId: uid, role }) => {
