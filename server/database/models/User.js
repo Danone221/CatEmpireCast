@@ -15,16 +15,14 @@ class User {
 
   static async findById(id) {
     return queryOne(
-      'SELECT id, username, display_name, avatar, bio, banner_color, created_at FROM users WHERE id = $1',
+      'SELECT id, username, display_name, avatar, banner, bio, banner_color, created_at FROM users WHERE id = $1',
       [id]
     );
   }
 
-  // Perfil público — o que qualquer membro do mesmo servidor pode ver.
-  // Nunca inclui password_hash, discord_id ou email.
   static async getPublicProfile(id) {
     return queryOne(
-      'SELECT id, username, display_name, avatar, bio, banner_color, created_at FROM users WHERE id = $1',
+      'SELECT id, username, display_name, avatar, banner, bio, banner_color, created_at FROM users WHERE id = $1',
       [id]
     );
   }
@@ -37,20 +35,12 @@ class User {
     return queryOne('SELECT * FROM users WHERE discord_id = $1', [discordId]);
   }
 
-  // Encontra o usuário vinculado a esse ID do Discord, ou cria uma conta nova.
-  // Não recebe senha: contas via Discord autenticam só pelo OAuth.
   static async findOrCreateByDiscord({ discordId, username, displayName, avatar }) {
     const existing = await this.findByDiscordId(discordId);
-    if (existing) {
-      // Mantém nome/avatar sincronizados com o Discord a cada login.
-      return this.update(existing.id, { display_name: displayName, avatar });
-    }
+    if (existing) return this.update(existing.id, { display_name: displayName, avatar });
     const id = uuidv4();
-    // username local precisa ser único; usa o discord_id como sufixo caso já exista.
     let localUsername = username;
-    if (await this.findByUsername(localUsername)) {
-      localUsername = `${username}_${discordId.slice(-5)}`;
-    }
+    if (await this.findByUsername(localUsername)) localUsername = `${username}_${discordId.slice(-5)}`;
     await query(
       `INSERT INTO users (id, username, display_name, avatar, password_hash, discord_id)
        VALUES ($1, $2, $3, $4, NULL, $5)`,
@@ -61,7 +51,7 @@ class User {
 
   static async authenticate(username, password) {
     const user = await this.findByUsername(username);
-    if (!user || !user.password_hash) return null; // conta só-Discord não tem senha local
+    if (!user || !user.password_hash) return null;
     const isValid = bcrypt.compareSync(password, user.password_hash);
     if (!isValid) return null;
     return this.findById(user.id);
