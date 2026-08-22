@@ -11,21 +11,21 @@ const authRoutes = require('./routes/auth');
 const featureRoutes = require('./routes/features');
 const settingsRoutes = require('./routes/settings');
 const socialRoutes = require('./routes/social');
+const platformRoutes = require('./routes/platform');
 
 const app = express();
 
-// Middleware
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https://cdn.discordapp.com"],
-      mediaSrc: ["'self'", "blob:"],
-      connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"]
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com'],
+      mediaSrc: ["'self'", 'blob:'],
+      connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:']
     }
   }
 }));
@@ -34,8 +34,7 @@ app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Injeta somente a camada funcional V4 nas páginas HTML existentes.
-// O CSS/HTML-base continua intacto: nenhuma troca de tema ou layout é feita aqui.
+// A camada V4/VNext é funcional: o HTML/CSS-base existente continua sendo a identidade visual.
 const clientDir = path.join(__dirname, '../client');
 const htmlFiles = new Set(['/', '/index.html', '/server.html', '/dms.html', '/invite.html']);
 app.use((req, res, next) => {
@@ -51,23 +50,20 @@ app.use((req, res, next) => {
   });
 });
 
-// Arquivos estáticos
 app.use(express.static(clientDir));
 
-// Rotas
 app.use('/api', apiRoutes);
 app.use('/api', extraRoutes);
 app.use('/api', socialRoutes);
+app.use('/api/platform', platformRoutes);
 app.use('/api/features', featureRoutes);
 app.use('/api/features', settingsRoutes);
 app.use('/auth', authRoutes);
 
-// Rotas de convite
 app.get(['/invite', '/invite/:code', '/invite/:code/*'], (req, res) => {
   res.sendFile(path.join(__dirname, '../client/invite.html'));
 });
 
-// Fallback para SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/index.html'));
 });
