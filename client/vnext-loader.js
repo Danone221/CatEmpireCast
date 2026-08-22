@@ -16,13 +16,12 @@
     if (window.__catEmpireVNextLoaded || window.__catEmpireVNextLoading) return;
     window.__catEmpireVNextLoading = true;
 
-    loadScript('/platform-api.js?v=20260822-v5', 'data-cat-empire-platform')
+    // Only the canonical layers are loaded. The former features-v4-final layer
+    // duplicated interaction handlers and was responsible for TDZ/runtime
+    // failures around invite and profile actions.
+    loadScript('/platform-api.js?v=20260822-v6', 'data-cat-empire-platform')
       .then(function () {
-        if (window.__catEmpireV4Loaded || document.querySelector('script[data-cat-empire-v4]')) return;
-        return loadScript('/features-v4-final.js?v=20260822-v5', 'data-cat-empire-v4');
-      })
-      .then(function () {
-        return loadScript('/runtime-v6.js?v=20260822-v6', 'data-cat-empire-v6');
+        return loadScript('/runtime-v6.js?v=20260822-v7', 'data-cat-empire-v6');
       })
       .then(function () {
         window.__catEmpireVNextLoaded = true;
