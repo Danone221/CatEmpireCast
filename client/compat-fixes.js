@@ -88,9 +88,6 @@
     };
   }
 
-  // ================================================================
-  // CONVITES — o modal precisa existir ANTES de room.js registrar eventos
-  // ================================================================
   function ensureInviteModal() {
     if (document.getElementById('inviteModal')) return;
     const modal = document.createElement('div');
@@ -107,63 +104,43 @@
         <div class="invite-generation-box" style="margin-top:14px;padding:12px;border:1px solid #3b1b68;background:#0d0618">
           <div class="kv-row" style="margin-bottom:10px">
             <span class="kv-label">EXPIRAÇÃO</span>
-            <select id="inviteExpireSelect">
-              <option value="1">1 hora</option>
-              <option value="24" selected>24 horas</option>
-              <option value="72">3 dias</option>
-              <option value="168">7 dias</option>
-              <option value="0">Nunca</option>
-            </select>
+            <select id="inviteExpireSelect"><option value="1">1 hora</option><option value="24" selected>24 horas</option><option value="72">3 dias</option><option value="168">7 dias</option><option value="0">Nunca</option></select>
           </div>
           <div class="kv-row">
             <span class="kv-label">LIMITE DE USOS</span>
-            <select id="inviteMaxUsesSelect">
-              <option value="0" selected>Ilimitado</option>
-              <option value="1">1 uso</option>
-              <option value="5">5 usos</option>
-              <option value="10">10 usos</option>
-              <option value="50">50 usos</option>
-            </select>
+            <select id="inviteMaxUsesSelect"><option value="0" selected>Ilimitado</option><option value="1">1 uso</option><option value="5">5 usos</option><option value="10">10 usos</option><option value="50">50 usos</option></select>
           </div>
-          <div class="modal-actions" style="margin-top:12px">
-            <button type="button" class="btn btn-primary" id="generateInviteBtn">Gerar novo convite</button>
-          </div>
+          <div class="modal-actions" style="margin-top:12px"><button type="button" class="btn btn-primary" id="generateInviteBtn">Gerar novo convite</button></div>
         </div>
-        <div id="adminInvitesListWrap" hidden style="margin-top:16px">
-          <h3 style="font-size:10px;margin:0 0 8px">CONVITES ATIVOS</h3>
-          <div id="adminInvitesList"></div>
-        </div>
-        <div class="modal-actions" style="margin-top:16px">
-          <button type="button" class="btn btn-primary" id="closeInviteModalBtn">Fechar</button>
-        </div>
+        <div id="adminInvitesListWrap" hidden style="margin-top:16px"><h3 style="font-size:10px;margin:0 0 8px">CONVITES ATIVOS</h3><div id="adminInvitesList"></div></div>
+        <div class="modal-actions" style="margin-top:16px"><button type="button" class="btn btn-primary" id="closeInviteModalBtn">Fechar</button></div>
       </div>`;
     document.body.appendChild(modal);
   }
 
   ensureInviteModal();
 
-  // ================================================================
-  // APRIMORAMENTOS — carregar somente depois de room.js
-  // ================================================================
   function applyPostEnhancementFixes() {
-    // Perfil de terceiros: modal horizontal. O editor próprio continua vertical.
     document.querySelector('#viewProfileModal .modal-box')?.classList.add('profile-horizontal');
 
-    // O próprio perfil deve abrir como cartão pequeno; o editor só aparece
-    // depois de clicar explicitamente em "Editar perfil".
     ['myAvatarBtn', 'myInfoBtn', 'userSettingsBtn'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.onclick = null;
     });
 
-    // O timer acompanha todas as formas de saída da call.
+    const editOwn = document.getElementById('editOwnProfileBtn');
+    if (editOwn) {
+      editOwn.onclick = () => {
+        document.getElementById('viewProfileModal')?.classList.remove('open');
+        if (typeof window.__catOriginalOpenMyProfile === 'function') window.__catOriginalOpenMyProfile();
+      };
+    }
+
     const leave = document.getElementById('hangupBtn');
     if (leave) leave.onclick = () => window.leaveVoiceChannel?.(true);
     const leaveBar = document.getElementById('voiceBarLeave');
     if (leaveBar) leaveBar.onclick = () => window.leaveVoiceChannel?.(false);
 
-    // room.js carrega o servidor por fetch assíncrono. Reaplica a camada visual
-    // quando os dados finalmente chegam, sem depender da ordem do window.load.
     let attempts = 0;
     const timer = setInterval(() => {
       attempts++;
