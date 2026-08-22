@@ -63,7 +63,11 @@ router.put('/servers/:serverId/settings', async (req, res) => {
     if (typeof req.body?.name === 'string' && req.body.name.trim()) data.name = req.body.name.trim().slice(0, 40);
     if (typeof req.body?.description === 'string') data.description = req.body.description.slice(0, 300);
     if (typeof req.body?.icon === 'string') data.icon = req.body.icon;
-    if (typeof req.body?.bannerColor === 'string') data.banner_color = req.body.bannerColor;
+    if (typeof req.body?.bannerColor === 'string' || req.body?.bannerColor === null) data.banner_color = req.body.bannerColor || null;
+    if (typeof req.body?.banner === 'string' || req.body?.banner === null) {
+      if (req.body.banner && req.body.banner.length > 1200000) return res.status(400).json({ error: 'Banner muito grande.' });
+      data.banner = req.body.banner || null;
+    }
     const updated = Object.keys(data).length ? await Server.update(req.params.serverId, data) : server;
     const row = await queryOne('SELECT security, updated_at FROM server_settings WHERE server_id = $1', [req.params.serverId]);
     const io = req.app.get('io');
