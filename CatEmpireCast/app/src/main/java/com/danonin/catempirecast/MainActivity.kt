@@ -32,9 +32,7 @@ import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.danonin.catempirecast.databinding.ActivityMainBinding
 
-/**
- * Cat Empire — app-casca em WebView.
- */
+/** Cat Empire — app-casca em WebView. */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -51,10 +49,8 @@ class MainActivity : AppCompatActivity() {
 
         val granted = request.resources.filter { resource ->
             when (resource) {
-                PermissionRequest.RESOURCE_AUDIO_CAPTURE ->
-                    hasPermission(Manifest.permission.RECORD_AUDIO)
-                PermissionRequest.RESOURCE_VIDEO_CAPTURE ->
-                    hasPermission(Manifest.permission.CAMERA)
+                PermissionRequest.RESOURCE_AUDIO_CAPTURE -> hasPermission(Manifest.permission.RECORD_AUDIO)
+                PermissionRequest.RESOURCE_VIDEO_CAPTURE -> hasPermission(Manifest.permission.CAMERA)
                 else -> false
             }
         }.toTypedArray()
@@ -103,19 +99,35 @@ class MainActivity : AppCompatActivity() {
         }
         val intent = BroadcastService.intent(this)
         bindService(intent, broadcastConnection, Context.BIND_AUTO_CREATE)
-        // Pequeno atraso pro bind terminar antes de chamar startBroadcast;
-        // como alternativa mais robusta a própria activity poderia guardar
-        // os dados e disparar de dentro de onServiceConnected, mas como o
-        // bind local é praticamente instantâneo isso é suficiente aqui.
         binding.webView.postDelayed({
             broadcastService?.startBroadcast(result.resultCode, result.data!!, url, key, quality, fps)
         }, 150)
+    }
+
+    private fun validateRtmpEndpoint(rtmpUrl: String, streamKey: String): String? {
+        val raw = rtmpUrl.trim()
+        if (raw.isBlank()) return "Servidor RTMP não configurado."
+        if (raw.contains("SEU_HOST_DE_MIDIA", ignoreCase = true)) {
+            return "Servidor RTMP não configurado. Defina o host público de mídia no backend."
+        }
+        val uri = try { Uri.parse(raw) } catch (_: Exception) { null }
+        val scheme = uri?.scheme?.lowercase()
+        val host = uri?.host
+        if (scheme != "rtmp" && scheme != "rtmps") return "Endpoint RTMP inválido."
+        if (host.isNullOrBlank()) return "Endpoint RTMP sem endereço de servidor."
+        if (streamKey.isBlank()) return "Chave de transmissão inválida."
+        return null
     }
 
     private inner class WebAppInterface {
         @JavascriptInterface
         fun startBroadcast(rtmpUrl: String, streamKey: String, quality: Int, fps: Int) {
             runOnUiThread {
+                val validationError = validateRtmpEndpoint(rtmpUrl, streamKey)
+                if (validationError != null) {
+                    notifyWebBroadcastState("error", validationError)
+                    return@runOnUiThread
+                }
                 pendingCastUrl = rtmpUrl
                 pendingCastKey = streamKey
                 pendingCastQuality = if (quality in setOf(480, 720, 1080)) quality else 720
@@ -153,7 +165,6 @@ class MainActivity : AppCompatActivity() {
         val callback = filePathCallback
         filePathCallback = null
         if (callback == null) return@registerForActivityResult
-
         if (result.resultCode != RESULT_OK || result.data == null) {
             callback.onReceiveValue(null)
             return@registerForActivityResult
@@ -172,18 +183,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Usando ViewBinding
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // ===== CORREÇÃO DO BOTÃO VOLTAR (SOLUÇÃO SIMPLES E SEGURA) =====
-        // Não use override fun onBackPressed()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (binding.webView.canGoBack()) {
-                    binding.webView.goBack()
-                } else {
+                if (binding.webView.canGoBack()) binding.webView.goBack()
+                else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
                 }
@@ -192,11 +198,7 @@ class MainActivity : AppCompatActivity() {
 
         setupWebView()
         binding.swipeRefresh.setOnRefreshListener { reload() }
-
-        if (savedInstanceState == null) {
-            binding.webView.loadUrl(getString(R.string.app_base_url))
-        }
-
+        if (savedInstanceState == null) binding.webView.loadUrl(getString(R.string.app_base_url))
         binding.retryButton.setOnClickListener { reload() }
     }
 
@@ -214,28 +216,16 @@ class MainActivity : AppCompatActivity() {
         s.useWideViewPort = true
         s.userAgentString = s.userAgentString + " CatEmpireApp/1.0"
 
-        // Ponte JS <-> nativo: expõe window.CatEmpireNative.startBroadcast(rtmpUrl, streamKey)
-        // e .stopBroadcast() pra sala usar transmissão de tela via RTMP nativo
-        // (sem precisar de app externo) — ver client/room.js.
         binding.webView.addJavascriptInterface(WebAppInterface(), "CatEmpireNative")
 
         binding.webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                val url = request.url.toString()
                 val host = request.url.host ?: ""
-
-                if (host.endsWith("onrender.com") ||
-                    host.endsWith("discord.com") ||
-                    host == Uri.parse(getString(R.string.app_base_url)).host
-                ) {
-                    return false
-                }
+                if (host.endsWith("onrender.com") || host.endsWith("discord.com") || host == Uri.parse(getString(R.string.app_base_url)).host) return false
                 return try {
                     startActivity(Intent(Intent.ACTION_VIEW, request.url))
                     true
-                } catch (e: Exception) {
-                    false
-                }
+                } catch (e: Exception) { false }
             }
 
             override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
@@ -247,11 +237,7 @@ class MainActivity : AppCompatActivity() {
                 binding.swipeRefresh.isRefreshing = false
             }
 
-            override fun onReceivedError(
-                view: WebView,
-                request: WebResourceRequest,
-                error: WebResourceError
-            ) {
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) {
                     binding.loadingOverlay.visibility = View.GONE
                     binding.errorOverlay.visibility = View.VISIBLE
@@ -293,23 +279,16 @@ class MainActivity : AppCompatActivity() {
                 pendingPermissionRequest = null
             }
 
-            override fun onShowFileChooser(
-                webView: WebView,
-                callback: ValueCallback<Array<Uri>>,
-                params: FileChooserParams
-            ): Boolean {
+            override fun onShowFileChooser(webView: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                 filePathCallback?.onReceiveValue(null)
                 filePathCallback = callback
-
                 val galleryIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
                     type = "image/*"
                     putExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
                 }
                 val captureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
                 val chooser = Intent.createChooser(galleryIntent, "Escolher imagem").apply {
-                    if (captureIntent.resolveActivity(packageManager) != null) {
-                        putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(captureIntent))
-                    }
+                    if (captureIntent.resolveActivity(packageManager) != null) putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(captureIntent))
                 }
                 return try {
                     fileChooserLauncher.launch(chooser)
