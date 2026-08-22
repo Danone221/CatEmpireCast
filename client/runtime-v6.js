@@ -86,7 +86,7 @@
   function applyServerBanner(server) {
     const banner = server?.banner || server?.banner_color;
     if (!banner) return;
-    const targets = [$('serverHead'), $('viewProfileBanner')].filter(Boolean);
+    const targets = [$('serverHead')].filter(Boolean);
     targets.forEach(el => {
       if (/^(data:|https?:)/.test(String(banner))) {
         el.style.backgroundImage = `url("${String(banner).replace(/"/g,'\\"')}")`;
@@ -104,37 +104,6 @@
   async function syncServerBanner() {
     if (!isServer) return;
     try { applyServerBanner(await api('/api/servers/' + encodeURIComponent(serverId))); } catch (_) {}
-  }
-
-  function ensureOwnProfileFullView() {
-    const modal = $('viewProfileModal');
-    if (!modal) return;
-    const open = async () => {
-      try {
-        const p = await api('/api/me');
-        if ($('viewProfileAvatar')) $('viewProfileAvatar').src = p.avatar || '/logo.svg';
-        if ($('viewProfileName')) $('viewProfileName').textContent = p.display_name || p.username || 'Membro';
-        if ($('viewProfileUsername')) $('viewProfileUsername').textContent = '@' + (p.username || 'usuario');
-        if ($('viewProfileBio')) $('viewProfileBio').textContent = p.bio || 'Sem bio.';
-        const banner = $('viewProfileBanner');
-        if (banner) {
-          const value = p.banner || p.banner_color;
-          if (value && /^(data:|https?:)/.test(value)) banner.style.backgroundImage = `url("${value.replace(/"/g,'\\"')}")`;
-          else banner.style.backgroundImage = 'none';
-          banner.style.backgroundColor = value && !/^(data:|https?:)/.test(value) ? value : '';
-          banner.classList.add('cat-v6-banner-large');
-        }
-        const actions = modal.querySelector('.modal-actions');
-        if (actions) actions.innerHTML = '<button type="button" class="btn" id="catV6CloseProfile">Fechar</button>';
-        $('catV6CloseProfile')?.addEventListener('click', () => modal.classList.remove('open'), {once:true});
-        modal.classList.add('open');
-      } catch (e) { window.toast?.(e.message, 'error'); }
-    };
-    ['myAvatarBtn','myInfoBtn'].forEach(id => {
-      const el = $(id); if (!el || el.dataset.catV6Profile) return;
-      el.dataset.catV6Profile = '1';
-      el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); open(); }, true);
-    });
   }
 
   function removeGifControls() {
@@ -204,5 +173,4 @@
     addServerSettingsEnhancements();
     setTimeout(syncServerBanner, 1200);
   }
-  ensureOwnProfileFullView();
 })();
