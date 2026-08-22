@@ -325,6 +325,58 @@ socket.on('dm-user-typing', ({ userId: uid, userName: uname }) => {
 });
 socket.on('dm-user-stop-typing', ({ userId: uid }) => removeTypingUser(uid));
 
+// ========== ADICIONAR AMIGO ==========
+function closeAddFriendModal() {
+  $('addFriendModal')?.classList.remove('open');
+  if ($('addFriendStatus')) $('addFriendStatus').textContent = '';
+}
+$('openAddFriendBtn')?.addEventListener('click', () => {
+  $('addFriendModal')?.classList.add('open');
+  if ($('addFriendUsername')) {
+    $('addFriendUsername').value = '';
+    requestAnimationFrame(() => $('addFriendUsername').focus());
+  }
+});
+$('closeAddFriendBtn')?.addEventListener('click', closeAddFriendModal);
+$('cancelAddFriendBtn')?.addEventListener('click', closeAddFriendModal);
+$('addFriendModal')?.addEventListener('click', event => {
+  if (event.target === $('addFriendModal')) closeAddFriendModal();
+});
+async function submitFriendRequest() {
+  const input = $('addFriendUsername');
+  const button = $('confirmAddFriendBtn');
+  const status = $('addFriendStatus');
+  const username = input?.value.trim().replace(/^@/, '');
+  if (!username) {
+    if (status) status.textContent = 'Digite um username.';
+    input?.focus();
+    return;
+  }
+  button.disabled = true;
+  if (status) status.textContent = 'Enviando…';
+  try {
+    const r = await fetch('/api/social/friends/request', {
+      method: 'POST', headers: headers(), body: JSON.stringify({ username })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Não foi possível enviar a solicitação.');
+    toast(data.message || 'Solicitação de amizade enviada.', 'success');
+    closeAddFriendModal();
+    document.dispatchEvent(new CustomEvent('cat:friends-changed'));
+  } catch (error) {
+    if (status) status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+$('confirmAddFriendBtn')?.addEventListener('click', submitFriendRequest);
+$('addFriendUsername')?.addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    submitFriendRequest();
+  }
+});
+
 // ========== MOBILE SIDEBAR ==========
 $('hamburgerBtn').onclick = () => { $('mobileDrawer').classList.add('open'); $('sidebarOverlay').classList.add('open'); };
 $('sidebarOverlay').onclick = closeMobileSidebar;

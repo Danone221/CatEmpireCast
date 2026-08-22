@@ -17,7 +17,7 @@
       <div class="rail-sep"></div><div class="rail-servers" id="railServers"></div><div class="rail-icon rail-add" id="railAddBtn" title="Adicionar servidor">＋</div>
     </aside>
     <aside class="channels-sidebar" id="dmSidebar">
-      <div class="server-head"><div class="server-name">Mensagens</div></div>
+      <div class="server-head dm-server-head"><div class="server-name">Mensagens</div><button type="button" class="btn-add-friend" id="openAddFriendBtn">＋ Adicionar amigo</button></div>
       <div class="channel-list" id="dmList"></div>
       <div class="user-bar">
         <div class="user-avatar" id="myAvatarBtn" title="Configurações do usuário"><img id="myAvatarImg" src="/logo.svg" alt=""></div>
@@ -60,6 +60,15 @@
   </div>
 </div>
 
+<div class="modal" id="addFriendModal">
+  <div class="modal-box add-friend-dialog" role="dialog" aria-modal="true" aria-labelledby="addFriendTitle">
+    <div class="invite-dialog-head"><div><div class="invite-kicker">AMIGOS</div><h2 id="addFriendTitle">Adicionar amigo</h2><p class="modal-hint">Digite o username exato da pessoa.</p></div><button type="button" class="invite-close" id="closeAddFriendBtn" aria-label="Fechar">×</button></div>
+    <label class="invite-link-label" for="addFriendUsername">USERNAME</label>
+    <input id="addFriendUsername" class="add-friend-input" placeholder="@username" autocomplete="off" maxlength="30">
+    <p class="add-friend-status" id="addFriendStatus" aria-live="polite"></p>
+    <div class="modal-actions"><button type="button" class="btn" id="cancelAddFriendBtn">Cancelar</button><button type="button" class="btn btn-primary" id="confirmAddFriendBtn">Enviar solicitação</button></div>
+  </div>
+</div>
 <script src="/dms.js"></script>
 <script src="/runtime-v5.js?v=20260822"></script>
 <script src="/interaction-fixes-v6.js?v=20260822"></script>

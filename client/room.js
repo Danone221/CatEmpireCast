@@ -325,9 +325,26 @@ $('confirmChannelBtn').onclick = async () => {
 };
 
 // ========== MOBILE SIDEBAR ==========
-$('hamburgerBtn').onclick = () => { $('mobileDrawer').classList.add('open'); $('sidebarOverlay').classList.add('open'); };
+$('hamburgerBtn').onclick = () => {
+  $('membersSidebar')?.classList.remove('mobile-open');
+  $('membersToggleBtn')?.setAttribute('aria-expanded', 'false');
+  $('mobileDrawer').classList.add('open');
+  $('sidebarOverlay').classList.add('open');
+};
+$('membersToggleBtn')?.addEventListener('click', () => {
+  $('mobileDrawer').classList.remove('open');
+  const open = !$('membersSidebar').classList.contains('mobile-open');
+  $('membersSidebar').classList.toggle('mobile-open', open);
+  $('membersToggleBtn').setAttribute('aria-expanded', String(open));
+  $('sidebarOverlay').classList.toggle('open', open);
+});
 $('sidebarOverlay').onclick = closeMobileSidebar;
-function closeMobileSidebar() { $('mobileDrawer').classList.remove('open'); $('sidebarOverlay').classList.remove('open'); }
+function closeMobileSidebar() {
+  $('mobileDrawer').classList.remove('open');
+  $('membersSidebar')?.classList.remove('mobile-open');
+  $('membersToggleBtn')?.setAttribute('aria-expanded', 'false');
+  $('sidebarOverlay').classList.remove('open');
+}
 
 // ========== VIEW SWITCHING ==========
 function showView(view) {
@@ -1417,7 +1434,9 @@ $('saveEditProfileBtn').onclick = async () => {
 // ---- Ver perfil de outra pessoa ----
 let viewingProfileId = null;
 async function openProfile(targetUserId) {
+  targetUserId = String(targetUserId || '').trim();
   if (!targetUserId) return;
+  closeMobileSidebar();
   if (targetUserId === userId) { openMyProfile(); return; }
   try {
     const r = await fetch('/api/users/' + targetUserId + '/profile', { headers: headers() });
