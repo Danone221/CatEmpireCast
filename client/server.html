@@ -135,99 +135,33 @@
 <div class="modal" id="mobileCastModal">
   <div class="modal-box">
     <h2>📱 Transmitir a tela do celular</h2>
-    <p class="modal-hint">
-      Use um app de RTMP grátis — <b>Larix Broadcaster</b> (Android/iOS) — ou qualquer
-      encoder RTMP (OBS, etc). Cole a URL e a CHAVE abaixo lá dentro e dá GO LIVE.
-    </p>
-    <div class="kv-row">
-      <span class="kv-label">URL RTMP</span>
-      <span class="kv-value" id="castRtmpUrl">—</span>
-      <button type="button" class="btn kv-copy" data-copy="castRtmpUrl">Copiar</button>
-    </div>
-    <div class="kv-row">
-      <span class="kv-label">CHAVE</span>
-      <span class="kv-value" id="castStreamKey">—</span>
-      <button type="button" class="btn kv-copy" data-copy="castStreamKey">Copiar</button>
-    </div>
-    <p class="modal-hint warn" id="castWarning" hidden>
-      ⚠️ Esse servidor de mídia externo não está configurado. Veja o README (seção
-      "Transmissão de tela pelo celular") pra apontar um host de RTMP.
-    </p>
-    <p class="modal-hint">
-      ⏳ Latência de ~2 a 4s. A transmissão entra na chamada como um tile de vídeo e
-      qualquer pessoa pode colocar em tela cheia.
-    </p>
-    <div class="modal-actions">
-      <button class="btn btn-primary" id="closeCastModalBtn">Fechar</button>
-    </div>
+    <p class="modal-hint">Use um app de RTMP grátis ou qualquer encoder RTMP. Cole a URL e a chave no encoder.</p>
+    <div class="kv-row"><span class="kv-label">URL RTMP</span><span class="kv-value" id="castRtmpUrl">—</span><button type="button" class="btn kv-copy" data-copy="castRtmpUrl">Copiar</button></div>
+    <div class="kv-row"><span class="kv-label">CHAVE</span><span class="kv-value" id="castStreamKey">—</span><button type="button" class="btn kv-copy" data-copy="castStreamKey">Copiar</button></div>
+    <p class="modal-hint warn" id="castWarning" hidden>⚠️ Servidor de mídia externo não configurado.</p>
+    <div class="modal-actions"><button class="btn btn-primary" id="closeCastModalBtn">Fechar</button></div>
   </div>
 </div>
 
 <div class="modal" id="editProfileModal">
   <div class="modal-box profile-modal-box">
-    <div class="type-toggle" style="margin-bottom:14px">
-      <button type="button" class="type-opt active" id="userTabProfileBtn">👤 Meu Perfil</button>
-      <button type="button" class="type-opt" id="userTabAccountBtn">⚙️ Minha Conta</button>
-    </div>
-
+    <div class="type-toggle" style="margin-bottom:14px"><button type="button" class="type-opt active" id="userTabProfileBtn">👤 Meu Perfil</button><button type="button" class="type-opt" id="userTabAccountBtn">⚙️ Minha Conta</button></div>
     <div id="userPaneProfile">
-      <div class="profile-banner banner-edit-wrap" id="editProfileBanner">
-        <div class="banner-btn-group">
-          <button type="button" class="banner-upload-btn" id="editProfileBannerBtn">📷 Imagem</button>
-          <button type="button" class="banner-clear-btn" id="removeProfileBannerBtn">🎨 Cor Padrão</button>
-        </div>
-      </div>
-      <div class="profile-avatar-row">
-        <div class="avatar-edit-wrap profile-avatar-big" id="editAvatarWrap">
-          <img id="editAvatarPreview" src="/logo.svg" alt="">
-          <span class="avatar-edit-label">TROCAR<br>FOTO</span>
-        </div>
-      </div>
+      <div class="profile-banner banner-edit-wrap" id="editProfileBanner"><div class="banner-btn-group"><button type="button" class="banner-upload-btn" id="editProfileBannerBtn">📷 Imagem</button><button type="button" class="banner-clear-btn" id="removeProfileBannerBtn">🎨 Cor Padrão</button></div></div>
+      <div class="profile-avatar-row"><div class="avatar-edit-wrap profile-avatar-big" id="editAvatarWrap"><img id="editAvatarPreview" src="/logo.svg" alt=""><span class="avatar-edit-label">TROCAR<br>FOTO</span></div></div>
       <h2 style="font-size:11px">Personalizar Perfil</h2>
-      <label class="kv-label" style="display:block;margin-bottom:6px">NOME DE EXIBIÇÃO</label>
-      <input id="editDisplayName" placeholder="Nome de exibição" maxlength="32">
-      
-      <label class="kv-label" style="display:block;margin-bottom:6px">SOBRE MIM (BIO)</label>
-      <textarea id="editBio" class="bio-input" placeholder="Fale um pouco sobre você…" maxlength="190"></textarea>
-      <div class="char-counter"><span id="editBioCount">0</span>/190</div>
-      
-      <label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER</label>
-      <div class="color-picker-layout" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px">
-        <div class="color-swatches" id="editColorSwatches" style="margin-bottom:0;flex:1 1 100%;width:100%"></div>
-        <input type="color" id="editCustomColorInput" class="custom-color-input" title="Cor personalizada">
-      </div>
-
-      <input type="file" id="avatarFileInput" accept="image/*" hidden>
-      <input type="file" id="profileBannerFileInput" accept="image/*" hidden>
-
-      <div class="modal-actions profile-settings-actions">
-        <button class="btn" id="cancelEditProfileBtn" style="flex:1 1 0;min-width:0;min-height:54px">Cancelar</button>
-        <button class="btn btn-primary" id="saveEditProfileBtn" style="flex:1 1 0;min-width:0;min-height:54px">Salvar Alterações</button>
-      </div>
+      <label class="kv-label" style="display:block;margin-bottom:6px">NOME DE EXIBIÇÃO</label><input id="editDisplayName" placeholder="Nome de exibição" maxlength="32">
+      <label class="kv-label" style="display:block;margin-bottom:6px">SOBRE MIM (BIO)</label><textarea id="editBio" class="bio-input" placeholder="Fale um pouco sobre você…" maxlength="190"></textarea><div class="char-counter"><span id="editBioCount">0</span>/190</div>
+      <label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER</label><div class="color-picker-layout" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px"><div class="color-swatches" id="editColorSwatches" style="margin-bottom:0;flex:1 1 100%;width:100%"></div><input type="color" id="editCustomColorInput" class="custom-color-input" title="Cor personalizada"></div>
+      <input type="file" id="avatarFileInput" accept="image/*" hidden><input type="file" id="profileBannerFileInput" accept="image/*" hidden>
+      <div class="modal-actions profile-settings-actions"><button class="btn" id="cancelEditProfileBtn">Cancelar</button><button class="btn btn-primary" id="saveEditProfileBtn">Salvar Alterações</button></div>
     </div>
-
     <div id="userPaneAccount" hidden>
       <h2 style="font-size:11px;margin-bottom:14px">Configurações da Conta</h2>
-      <div class="kv-row">
-        <span class="kv-label">USUÁRIO</span>
-        <span class="kv-value" id="accountUsername">—</span>
-      </div>
-      <div class="kv-row">
-        <span class="kv-label">ID DA CONTA</span>
-        <span class="kv-value" id="accountUserId">—</span>
-        <button type="button" class="btn kv-copy" id="copyUserIdBtn" style="padding:4px 8px;font-size:8px">Copiar</button>
-      </div>
-
-
-      <div class="danger-zone-box" style="margin-top:20px">
-        <h4 style="font-size:9px;color:#ff5369;margin-bottom:8px">DESCONECTAR</h4>
-        <p class="modal-hint" style="font-size:12px;margin-bottom:12px">Sair da sua conta atual neste navegador e voltar à tela inicial.</p>
-        <button type="button" class="btn" id="accountLogoutBtn" style="background:#a11c35;color:#fff;border-color:#ff3b55;font-size:10px">🔴 Sair da Conta</button>
-      </div>
-
-      <div class="modal-actions" style="margin-top:20px">
-        <button class="btn" id="closeAccountTabBtn">Fechar</button>
-      </div>
+      <div class="kv-row"><span class="kv-label">USUÁRIO</span><span class="kv-value" id="accountUsername">—</span></div>
+      <div class="kv-row"><span class="kv-label">ID DA CONTA</span><span class="kv-value" id="accountUserId">—</span><button type="button" class="btn kv-copy" id="copyUserIdBtn">Copiar</button></div>
+      <div class="danger-zone-box" style="margin-top:20px"><h4>DESCONECTAR</h4><p class="modal-hint">Sair da sua conta atual neste navegador.</p><button type="button" class="btn" id="accountLogoutBtn">🔴 Sair da Conta</button></div>
+      <div class="modal-actions"><button class="btn" id="closeAccountTabBtn">Fechar</button></div>
     </div>
   </div>
 </div>
@@ -235,78 +169,16 @@
 <div class="modal" id="viewProfileModal">
   <div class="modal-box profile-modal-box">
     <div class="profile-banner" id="viewProfileBanner"></div>
-    <div class="profile-avatar-row">
-      <div class="profile-avatar-big"><img id="viewProfileAvatar" src="/logo.svg" alt=""></div>
-    </div>
+    <div class="profile-avatar-row"><div class="profile-avatar-big"><img id="viewProfileAvatar" src="/logo.svg" alt=""></div></div>
     <h2 class="profile-display-name" id="viewProfileName">—</h2>
     <div class="profile-username" id="viewProfileUsername">@—</div>
     <div class="profile-bio" id="viewProfileBio"></div>
-    <div class="modal-actions">
-      <button class="btn btn-primary" id="dmFromProfileBtn">✉️ Enviar mensagem</button>
-      <button class="btn" id="closeViewProfileBtn">Fechar</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal" id="serverSettingsModal">
-  <div class="modal-box" style="width:min(520px,94vw)">
-    <h2>Configurações do Servidor</h2>
-    <div class="type-toggle" style="margin-bottom:16px">
-      <button type="button" class="type-opt active" id="serverTabOverviewBtn">⚙️ Visão Geral</button>
-      <button type="button" class="type-opt" id="serverTabMembersBtn">👥 Membros & Cargos</button>
-      <button type="button" class="type-opt" id="serverTabDangerBtn">⚠️ Zona de Perigo</button>
-    </div>
-
-    <div id="serverPaneOverview">
-      <div class="profile-banner banner-edit-wrap" id="editServerBanner" style="height:70px;margin-bottom:14px">
-        <div class="banner-btn-group">
-          <button type="button" class="banner-upload-btn" id="editServerBannerBtn">📷 Imagem</button>
-          <button type="button" class="banner-clear-btn" id="removeServerBannerBtn">🎨 Cor Padrão</button>
-        </div>
-      </div>
-      <div class="profile-avatar-row" style="margin-top:0">
-        <div class="avatar-edit-wrap server-icon-preview" id="editServerIconWrap">
-          <span id="editServerIconPreview">🐱</span>
-          <span class="avatar-edit-label">TROCAR<br>ÍCONE</span>
-        </div>
-      </div>
-      <label class="kv-label" style="display:block;margin-bottom:6px">NOME DO SERVIDOR</label>
-      <input id="editServerName" placeholder="Nome do servidor" maxlength="40">
-      
-      <label class="kv-label" style="display:block;margin-bottom:6px">DESCRIÇÃO</label>
-      <textarea id="editServerDescription" class="bio-input" placeholder="Descrição do servidor…" maxlength="300"></textarea>
-      <div class="char-counter"><span id="editServerDescCount">0</span>/300</div>
-      
-      <label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER</label>
-      <div class="color-picker-layout" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px">
-        <div class="color-swatches" id="serverColorSwatches" style="margin-bottom:0;flex:1 1 100%;width:100%"></div>
-        <input type="color" id="serverCustomColorInput" class="custom-color-input" title="Cor personalizada">
-      </div>
-
-      <input type="file" id="serverIconFileInput" accept="image/*" hidden>
-      <input type="file" id="serverBannerFileInput" accept="image/*" hidden>
-
-      <div class="modal-actions profile-settings-actions">
-        <button class="btn" id="cancelServerSettingsBtn" style="flex:1 1 0;min-width:0;min-height:54px">Cancelar</button>
-        <button class="btn btn-primary" id="saveServerSettingsBtn" style="flex:1 1 0;min-width:0;min-height:54px">Salvar Alterações</button>
-      </div>
-    </div>
-
-    <div id="serverPaneMembers" hidden>
-      <div id="serverMembersList"></div>
-    </div>
-
-    <div id="serverPaneDanger" hidden>
-      <div class="danger-zone-box">
-        <h4>⚠️ ZONA DE PERIGO</h4>
-        <p class="modal-hint">Excluir o servidor remove canais, mensagens e configurações. Essa ação não pode ser desfeita.</p>
-        <button class="btn danger" id="deleteServerBtn">Excluir Servidor</button>
-      </div>
-    </div>
+    <div class="modal-actions"><button class="btn btn-primary" id="dmFromProfileBtn">✉️ Enviar mensagem</button><button class="btn" id="closeViewProfileBtn">Fechar</button></div>
   </div>
 </div>
 
 <script src="/compat-fixes.js"></script>
 <script src="/room.js"></script>
+<script src="/runtime-v5.js?v=20260822"></script>
 </body>
 </html>
