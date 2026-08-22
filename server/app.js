@@ -13,6 +13,7 @@ const settingsRoutes = require('./routes/settings');
 const socialRoutes = require('./routes/social');
 const platformRoutes = require('./routes/platform');
 const structureRoutes = require('./routes/structure');
+const dmRoutes = require('./routes/dm');
 const messagingRoutes = require('./routes/messaging');
 
 const app = express();
@@ -24,7 +25,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+      fontSrc: ["'self'", 'https://fonts.gstatic.com"],
       imgSrc: ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com'],
       mediaSrc: ["'self'", 'blob:'],
       connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:']
@@ -59,6 +60,7 @@ app.use('/api', extraRoutes);
 app.use('/api', socialRoutes);
 app.use('/api/platform', platformRoutes);
 app.use('/api/platform', structureRoutes);
+app.use('/api/platform', dmRoutes);
 app.use('/api/platform', messagingRoutes);
 app.use('/api/features', featureRoutes);
 app.use('/api/features', settingsRoutes);
