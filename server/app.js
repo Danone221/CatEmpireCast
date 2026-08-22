@@ -50,10 +50,11 @@ app.use((req, res, next) => {
   const fullPath = path.join(clientDir, file);
   fs.readFile(fullPath, 'utf8', (err, html) => {
     if (err) return next();
-    if (!html.includes('data-cat-empire-v4')) {
-      html = html.replace('</body>', '<script src="/vnext-loader.js" data-cat-empire-loader></script><script src="/profile-v5.js?v=20260822"></script></body>');
-    } else if (!html.includes('/profile-v5.js')) {
-      html = html.replace('</body>', '<script src="/profile-v5.js?v=20260822"></script></body>');
+    // Keep HTML pages deterministic. Do not inject legacy profile/runtime layers
+    // at request time; the pages explicitly load their canonical scripts.
+    html = html.replace(/<script[^>]+(?:profile-v5|features-v4-final)[^>]*><\/script>/gi, '');
+    if (!html.includes('data-cat-empire-v4') && !html.includes('vnext-loader.js')) {
+      html = html.replace('</body>', '<script src="/vnext-loader.js?v=20260822" data-cat-empire-loader></script></body>');
     }
     res.type('html').send(html);
   });
@@ -61,8 +62,6 @@ app.use((req, res, next) => {
 
 app.use(express.static(clientDir));
 
-// Perfil específico vem antes do legado para permitir o novo campo de banner
-// sem remover nem quebrar o restante do contrato /api.
 app.use('/api', profileRoutes);
 app.use('/api', apiRoutes);
 app.use('/api', extraRoutes);
