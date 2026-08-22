@@ -200,7 +200,7 @@ async function load() {
     members = d.members || [];
     myRole = d.myRole || 'member';
     const canManageServer = ['admin', 'owner'].includes(myRole);
-    $('myRole').textContent = myRole === 'owner' ? 'dono' : myRole === 'admin' ? 'admin' : 'membro';
+    $('myRole').textContent = myRole === 'owner' ? 'dono' : ['admin', 'owner'].includes(myRole) ? 'admin' : 'membro';
     $('serverSettingsBtn').hidden = !canManageServer;
     renderChannelList();
     renderMembers();
@@ -227,11 +227,11 @@ function renderChannelList() {
     <div class="channel-category">
       <div class="channel-cat-header">
         <span>${esc(cat)}</span>
-        ${myRole === 'admin' ? `<button class="add-channel-btn" data-cat="${esc(cat)}" data-type="${byCategory[cat][0].type === 'voice' ? 'voice' : 'text'}" title="Criar canal">＋</button>` : ''}
+        ${['admin', 'owner'].includes(myRole) ? `<button class="add-channel-btn" data-cat="${esc(cat)}" data-type="${byCategory[cat][0].type === 'voice' ? 'voice' : 'text'}" title="Criar canal">＋</button>` : ''}
       </div>
       ${byCategory[cat].map(c => channelItemHtml(c)).join('')}
     </div>
-  `).join('') + (myRole === 'admin' ? `<button class="add-channel-btn add-channel-generic" id="addChannelGeneric">＋ Criar canal</button>` : '');
+  `).join('') + (['admin', 'owner'].includes(myRole) ? `<button class="add-channel-btn add-channel-generic" id="addChannelGeneric">＋ Criar canal</button>` : '');
 
   document.querySelectorAll('.channel-item').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -270,7 +270,7 @@ function channelItemHtml(c) {
     <span class="icon">${icon}</span><span class="cname">${esc(c.name)}</span>
     ${unread ? '<span class="unread-dot" title="Mensagens não lidas"></span>' : ''}
     ${c.type === 'voice' && c.id === voiceChannelId ? '<span class="live-dot" title="Conectado"></span>' : ''}
-    ${myRole === 'admin' ? `<button class="del-btn" data-id="${c.id}" title="Excluir">✕</button>` : ''}
+    ${['admin', 'owner'].includes(myRole) ? `<button class="del-btn" data-id="${c.id}" title="Excluir">✕</button>` : ''}
   </div>`;
 }
 
@@ -1438,231 +1438,7 @@ $('dmFromProfileBtn').onclick = () => {
   location.href = '/dms.html?with=' + encodeURIComponent(viewingProfileId);
 };
 
-// ---- Configurações completas do servidor (admin) ----
-function switchServerSettingsTab(tab) {
-  $('serverTabOverviewBtn')?.classList.toggle('active', tab === 'overview');
-  $('serverTabMembersBtn')?.classList.toggle('active', tab === 'members');
-  $('serverTabDangerBtn')?.classList.toggle('active', tab === 'danger');
-
-  if ($('serverPaneOverview')) $('serverPaneOverview').hidden = (tab !== 'overview');
-  if ($('serverPaneMembers')) $('serverPaneMembers').hidden = (tab !== 'members');
-  if ($('serverPaneDanger')) $('serverPaneDanger').hidden = (tab !== 'danger');
-}
-
-$('serverTabOverviewBtn')?.addEventListener('click', () => switchServerSettingsTab('overview'));
-$('serverTabMembersBtn')?.addEventListener('click', () => switchServerSettingsTab('members'));
-$('serverTabDangerBtn')?.addEventListener('click', () => switchServerSettingsTab('danger'));
-$('closeServerMembersTabBtn')?.addEventListener('click', () => $('serverSettingsModal').classList.remove('open'));
-$('closeServerDangerTabBtn')?.addEventListener('click', () => $('serverSettingsModal').classList.remove('open'));
-
-function openServerSettings() {
-  if (!currentServer) return;
-  pendingServerIconData = null;
-  pendingServerBannerData = null;
-  serverSelectedColor = currentServer.banner_color || '#5865f2';
-
-  const isImg = currentServer.icon && /^(https?:|data:)/.test(currentServer.icon);
-  $('editServerIconPreview').innerHTML = isImg
-    ? `<img src="${esc(currentServer.icon)}" alt="">`
-    : esc(currentServer.icon || '🐱');
-  $('editServerName').value = currentServer.name || '';
-  $('editServerDescription').value = currentServer.description || '';
-  $('editServerDescCount').textContent = (currentServer.description || '').length;
-
-  applyBannerStyle($('editServerBanner'), serverSelectedColor);
-  renderSwatches('serverColorSwatches', serverSelectedColor, (c) => {
-    serverSelectedColor = c;
-    pendingServerBannerData = null;
-    applyBannerStyle($('editServerBanner'), c);
-  });
-
-  const isCreator = currentServer && currentServer.creator_id === userId;
-  if ($('deleteServerBox')) $('deleteServerBox').hidden = !isCreator;
-  if ($('leaveServerBox')) $('leaveServerBox').hidden = isCreator;
-
-  renderServerMembersManageList();
-  switchServerSettingsTab('overview');
-  $('serverSettingsModal').classList.add('open');
-}
-
-function renderServerMembersManageList() {
-  if (!$('serverMembersManageList')) return;
-  if ($('manageMembersCount')) $('manageMembersCount').textContent = members.length;
-  const isCreator = currentServer && currentServer.creator_id === userId;
-
-  $('serverMembersManageList').innerHTML = members.map(m => {
-    const isMemberCreator = currentServer && currentServer.creator_id === m.id;
-    const isSelf = m.id === userId;
-    const isMAdmin = m.role === 'admin';
-
-    let roleSelectHtml = `<span class="m-badge" style="font-size:9px">${isMAdmin ? 'ADMIN' : 'MEMBRO'}</span>`;
-    if (myRole === 'admin' && !isMemberCreator && !isSelf) {
-      roleSelectHtml = `
-        <select class="role-select" data-user-id="${esc(m.id)}">
-          <option value="member" ${!isMAdmin ? 'selected' : ''}>Membro</option>
-          <option value="admin" ${isMAdmin ? 'selected' : ''}>Admin</option>
-        </select>
-      `;
-    }
-
-    let kickBtnHtml = '';
-    if (myRole === 'admin' && !isMemberCreator && !isSelf) {
-      kickBtnHtml = `<button type="button" class="btn-kick-member" data-user-id="${esc(m.id)}" title="Expulsar">Expulsar</button>`;
-    }
-
-    return `
-      <div class="server-member-manage-row">
-        <div class="m-avatar"><img src="${esc(m.avatar || '/logo.svg')}" alt=""></div>
-        <div class="m-name">${esc(m.display_name || m.username)}${isMemberCreator ? ' 👑' : ''}</div>
-        <div>${roleSelectHtml}</div>
-        <div>${kickBtnHtml}</div>
-      </div>
-    `;
-  }).join('');
-
-  // Eventos de alteração de cargo
-  $('serverMembersManageList').querySelectorAll('.role-select').forEach(sel => {
-    sel.onchange = async () => {
-      const targetUid = sel.dataset.userId;
-      const newRole = sel.value;
-      try {
-        const r = await fetch('/api/servers/' + serverId + '/members/' + targetUid + '/role', {
-          method: 'PUT',
-          headers: headers(),
-          body: JSON.stringify({ role: newRole })
-        });
-        const d = await r.json();
-        if (!r.ok) throw new Error(d.error || 'Erro ao alterar cargo');
-        const mIdx = members.findIndex(m => m.id === targetUid);
-        if (mIdx >= 0) members[mIdx].role = newRole;
-        renderMembers();
-        toast('Cargo atualizado!', 'success');
-      } catch (e) {
-        toast(e.message, 'error');
-        renderServerMembersManageList();
-      }
-    };
-  });
-
-  // Eventos de expulsão de membro
-  $('serverMembersManageList').querySelectorAll('.btn-kick-member').forEach(btn => {
-    btn.onclick = async () => {
-      const targetUid = btn.dataset.userId;
-      const m = members.find(mm => mm.id === targetUid);
-      const name = m ? (m.display_name || m.username) : 'este membro';
-      if (!(await uiConfirm(`Tem certeza que deseja expulsar ${name} do servidor?`))) return;
-      try {
-        const r = await fetch('/api/servers/' + serverId + '/members/' + targetUid, {
-          method: 'DELETE',
-          headers: headers()
-        });
-        if (!r.ok) throw new Error('Erro ao expulsar membro');
-        members = members.filter(mm => mm.id !== targetUid);
-        renderMembers();
-        renderServerMembersManageList();
-        toast('Membro expulso.', 'success');
-      } catch (e) { toast(e.message, 'error'); }
-    };
-  });
-}
-
-$('leaveServerBtn')?.addEventListener('click', async () => {
-  if (!(await uiConfirm('Tem certeza que deseja sair deste servidor?'))) return;
-  try {
-    const r = await fetch('/api/servers/' + serverId + '/members/me', {
-      method: 'DELETE',
-      headers: headers()
-    });
-    if (!r.ok) {
-      const d = await r.json();
-      throw new Error(d.error || 'Erro ao sair do servidor');
-    }
-    localStorage.removeItem('cat_last_server');
-    toast('Você saiu do servidor.', 'success');
-    location.href = '/dms.html';
-  } catch (e) { toast(e.message, 'error'); }
-});
-
-$('deleteServerBtn')?.addEventListener('click', async () => {
-  if (!(await uiConfirm('⚠️ ATENÇÃO: Deseja EXCLUIR permanentemente este servidor? Esta ação não pode ser desfeita.'))) return;
-  try {
-    const r = await fetch('/api/servers/' + serverId, {
-      method: 'DELETE',
-      headers: headers()
-    });
-    if (!r.ok) throw new Error('Erro ao excluir servidor');
-    localStorage.removeItem('cat_last_server');
-    toast('Servidor excluído.', 'success');
-    location.href = '/dms.html';
-  } catch (e) { toast(e.message, 'error'); }
-});
-
-$('serverSettingsBtn').onclick = openServerSettings;
-$('cancelServerSettingsBtn').onclick = () => $('serverSettingsModal').classList.remove('open');
-$('editServerDescription').addEventListener('input', () => { $('editServerDescCount').textContent = $('editServerDescription').value.length; });
-$('editServerIconWrap').onclick = () => $('serverIconFileInput').click();
-
-$('serverIconFileInput').onchange = async () => {
-  const f = $('serverIconFileInput').files[0];
-  if (!f) return;
-  try {
-    pendingServerIconData = await fileToDataUrl(f, 500 * 1024);
-    $('editServerIconPreview').innerHTML = `<img src="${pendingServerIconData}" alt="">`;
-  } catch (e) { toast(e.message, 'error'); }
-  $('serverIconFileInput').value = '';
-};
-
-$('editServerBannerBtn')?.addEventListener('click', () => $('serverBannerFileInput').click());
-$('serverBannerFileInput')?.addEventListener('change', async () => {
-  const f = $('serverBannerFileInput').files[0];
-  if (!f) return;
-  try {
-    pendingServerBannerData = await fileToDataUrl(f, 500 * 1024);
-    serverSelectedColor = pendingServerBannerData;
-    applyBannerStyle($('editServerBanner'), pendingServerBannerData);
-  } catch (e) { toast(e.message, 'error'); }
-  $('serverBannerFileInput').value = '';
-});
-
-$('removeServerBannerBtn')?.addEventListener('click', () => {
-  pendingServerBannerData = null;
-  serverSelectedColor = '#5865f2';
-  applyBannerStyle($('editServerBanner'), serverSelectedColor);
-  renderSwatches('serverColorSwatches', serverSelectedColor, (c) => {
-    serverSelectedColor = c;
-    pendingServerBannerData = null;
-    applyBannerStyle($('editServerBanner'), c);
-  });
-  toast('Banner do servidor redefinido para a cor padrão.', 'info');
-});
-
-$('serverCustomColorInput')?.addEventListener('input', (e) => {
-  serverSelectedColor = e.target.value;
-  pendingServerBannerData = null;
-  applyBannerStyle($('editServerBanner'), serverSelectedColor);
-  renderSwatches('serverColorSwatches', null, (c) => { serverSelectedColor = c; applyBannerStyle($('editServerBanner'), c); });
-});
-
-$('saveServerSettingsBtn').onclick = async () => {
-  try {
-    const body = {
-      name: $('editServerName').value,
-      description: $('editServerDescription').value,
-      bannerColor: pendingServerBannerData || serverSelectedColor
-    };
-    if (pendingServerIconData) body.icon = pendingServerIconData;
-    const r = await fetch('/api/servers/' + serverId, { method: 'PUT', headers: headers(), body: JSON.stringify(body) });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Erro ao salvar servidor');
-    currentServer = { ...currentServer, ...d };
-    $('serverName').textContent = d.name || 'Servidor';
-    $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
-    applyBannerStyle($('serverHead'), d.banner_color);
-    $('serverSettingsModal').classList.remove('open');
-    toast('Servidor atualizado com sucesso!', 'success');
-  } catch (e) { toast(e.message, 'error'); }
-};
-
+// Configurações avançadas são gerenciadas exclusivamente por runtime-v5.js.
 // ---- Gerenciamento de convites do servidor ----
 let currentActiveInviteCode = null;
 
@@ -1673,7 +1449,7 @@ async function openInviteModal() {
 
   try {
     // Tenta carregar os convites ativos se for admin ou gerar um padrão
-    if (myRole === 'admin') {
+    if (['admin', 'owner'].includes(myRole)) {
       const rList = await fetch('/api/servers/' + serverId + '/invites', { headers: headers() });
       const list = await rList.json();
       if (rList.ok && list.length > 0) {
@@ -1705,7 +1481,7 @@ async function generateInvite() {
     const url = location.origin + '/invite/' + d.code;
     $('inviteLinkText').textContent = url;
     toast('🔗 Novo link de convite gerado!', 'success');
-    if (myRole === 'admin') {
+    if (['admin', 'owner'].includes(myRole)) {
       const rList = await fetch('/api/servers/' + serverId + '/invites', { headers: headers() });
       const list = await rList.json();
       if (rList.ok) renderAdminInvites(list);
@@ -1794,7 +1570,7 @@ socket.on('member-role-updated', ({ userId: uid, role }) => {
   if (uid === userId) {
     myRole = role;
     const canManageServer = ['admin', 'owner'].includes(myRole);
-    $('myRole').textContent = myRole === 'owner' ? 'dono' : myRole === 'admin' ? 'admin' : 'membro';
+    $('myRole').textContent = myRole === 'owner' ? 'dono' : ['admin', 'owner'].includes(myRole) ? 'admin' : 'membro';
     $('serverSettingsBtn').hidden = !canManageServer;
     toast('Seu cargo foi atualizado para: ' + (role === 'admin' ? 'Administrador' : 'Membro'), 'success');
   }

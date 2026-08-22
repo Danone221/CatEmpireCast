@@ -21,7 +21,7 @@ router.get('/servers/:serverId/categories', authenticate, async (req, res) => {
 router.post('/servers/:serverId/categories', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
-    if (role !== 'admin') return res.status(403).json({ error: 'Apenas administradores podem criar categorias' });
+    if (!['admin', 'owner'].includes(role)) return res.status(403).json({ error: 'Apenas administradores podem criar categorias' });
     const category = await Category.create(req.params.serverId, req.body?.name);
     const io = req.app.get('io');
     if (io) io.to(`server-${req.params.serverId}`).emit('category-updated', { serverId: req.params.serverId });
@@ -35,7 +35,7 @@ router.post('/servers/:serverId/categories', authenticate, async (req, res) => {
 router.put('/servers/:serverId/categories/:categoryId', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
-    if (role !== 'admin') return res.status(403).json({ error: 'Apenas administradores podem editar categorias' });
+    if (!['admin', 'owner'].includes(role)) return res.status(403).json({ error: 'Apenas administradores podem editar categorias' });
     const category = await Category.rename(req.params.serverId, req.params.categoryId, req.body?.name);
     const io = req.app.get('io');
     if (io) io.to(`server-${req.params.serverId}`).emit('category-updated', { serverId: req.params.serverId });
@@ -49,7 +49,7 @@ router.put('/servers/:serverId/categories/:categoryId', authenticate, async (req
 router.delete('/servers/:serverId/categories/:categoryId', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
-    if (role !== 'admin') return res.status(403).json({ error: 'Apenas administradores podem excluir categorias' });
+    if (!['admin', 'owner'].includes(role)) return res.status(403).json({ error: 'Apenas administradores podem excluir categorias' });
     const result = await Category.remove(req.params.serverId, req.params.categoryId);
     const io = req.app.get('io');
     if (io) io.to(`server-${req.params.serverId}`).emit('category-updated', { serverId: req.params.serverId });
