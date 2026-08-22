@@ -17,6 +17,7 @@ const roleRoutes = require('./routes/roles');
 const dmRoutes = require('./routes/dm');
 const messagingRoutes = require('./routes/messaging');
 const stageRoutes = require('./routes/stage');
+const expansionRoutes = require('./routes/expansion');
 
 const app = express();
 
@@ -66,6 +67,7 @@ app.use('/api/platform', roleRoutes);
 app.use('/api/platform', dmRoutes);
 app.use('/api/platform', messagingRoutes);
 app.use('/api/platform', stageRoutes);
+app.use('/api/v4', expansionRoutes);
 app.use('/api/features', featureRoutes);
 app.use('/api/features', settingsRoutes);
 app.use('/auth', authRoutes);
