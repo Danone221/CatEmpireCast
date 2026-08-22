@@ -8,7 +8,10 @@
  * 4) carrega os aprimoramentos Discord-like depois que room.js termina;
  * 5) carrega o pacote de recursos v2 depois dos aprimoramentos;
  * 6) carrega o pacote v3 para interações/configurações;
- * 7) carrega a camada final v4 e a persistência visual do banner.
+ * 7) o runtime-v5 passa a ser a camada canônica de configurações/interações.
+ *
+ * A antiga camada features-v4-final.js foi removida do boot porque duplicava
+ * handlers e componentes já mantidos pelo runtime-v5.
  */
 (function () {
   'use strict';
@@ -79,7 +82,7 @@
   function loadEnhancements() {
     if (document.getElementById('catEmpireEnhancementsScript')) return;
     const script = document.createElement('script'); script.id='catEmpireEnhancementsScript'; script.src='/enhancements.js?v=20260822'; script.async=false;
-    script.onload=()=>{ setTimeout(applyPostEnhancementFixes,350); const v2=document.createElement('script');v2.id='catEmpireFeaturesV2Script';v2.src='/features-v2.js?v=20260822';v2.async=false;v2.onload=()=>{const v3=document.createElement('script');v3.id='catEmpireFeaturesV3Script';v3.src='/features-v3.js?v=20260822';v3.async=false;v3.onload=()=>{const v4=document.createElement('script');v4.id='catEmpireFeaturesV4FinalScript';v4.src='/features-v4-final.js?v=20260822';v4.async=false;v4.onload=()=>{const banner=document.createElement('script');banner.src='/banner-persist.js?v=20260822';banner.async=false;document.body.appendChild(banner)};document.body.appendChild(v4)};document.body.appendChild(v3)};document.body.appendChild(v2); };
+    script.onload=()=>{ setTimeout(applyPostEnhancementFixes,350); const v2=document.createElement('script');v2.id='catEmpireFeaturesV2Script';v2.src='/features-v2.js?v=20260822';v2.async=false;v2.onload=()=>{const v3=document.createElement('script');v3.id='catEmpireFeaturesV3Script';v3.src='/features-v3.js?v=20260822';v3.async=false;v3.onload=()=>{const banner=document.createElement('script');banner.src='/banner-persist.js?v=20260822';banner.async=false;document.body.appendChild(banner)};document.body.appendChild(v3)};document.body.appendChild(v2)};
     document.body.appendChild(script);
   }
   if(document.readyState==='complete')loadEnhancements();else window.addEventListener('load',loadEnhancements,{once:true});
