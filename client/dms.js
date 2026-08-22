@@ -70,6 +70,19 @@ socket.on('connect', () => {
 socket.on('error', d => { if (d?.message) toast(d.message, 'error'); });
 socket.on('dm-send-error', d => { if(d?.message) toast(d.message,'error'); });
 socket.on('block-changed', d => { if(d?.userId===currentOtherId) openConversation(currentOtherId); loadBlockedAccounts(); });
+socket.on('profile-updated', profile => {
+  if (!profile?.id) return;
+  const conv=conversations.find(item=>item.id===profile.id);
+  if(conv) Object.assign(conv,{username:profile.username,display_name:profile.display_name,avatar:profile.avatar});
+  if(currentOtherId===profile.id){currentOtherUser={...currentOtherUser,...profile};lastDmMessages=lastDmMessages.map(message=>message.sender_id===profile.id?{...message,sender_username:profile.username,sender_display_name:profile.display_name,sender_avatar:profile.avatar}:message);renderMessages(lastDmMessages);$('mobileTitle').textContent=profile.display_name||profile.username;}
+  renderConversationList();
+});
+socket.on('server-data-changed', () => { loadServersRail(); });
+let dmLiveRefreshTimer=null,lastDmLiveRefreshAt=0;
+function scheduleDmLiveRefresh(){clearTimeout(dmLiveRefreshTimer);dmLiveRefreshTimer=setTimeout(async()=>{if(document.hidden||Date.now()-lastDmLiveRefreshAt<800)return;lastDmLiveRefreshAt=Date.now();await Promise.all([loadConversations(),loadServersRail()]);if(currentOtherId)openConversation(currentOtherId);},100);}
+window.addEventListener('focus',scheduleDmLiveRefresh);
+window.addEventListener('online',scheduleDmLiveRefresh);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleDmLiveRefresh();});
 socket.on('servers-list', (list) => renderServerRail(list || []));
 
 function renderServerRail(list) {
@@ -198,10 +211,10 @@ function messageHtml(m) {
       <button class="msg-tool-btn" data-action="delete" title="Excluir">🗑️</button>
     </div>` : '';
   return `<div class="message" data-message-id="${esc(m.id)}" data-user-id="${esc(m.sender_id)}">
-    <div class="message-avatar"><img src="${m.sender_avatar || '/logo.svg'}" alt=""></div>
+    <div class="message-avatar" data-user-id="${esc(m.sender_id)}"><img src="${m.sender_avatar || '/logo.svg'}" alt=""></div>
     <div class="message-body">
       <div class="message-head">
-        <span class="message-author">${esc(m.sender_display_name || m.sender_username || 'Membro')}</span>
+        <span class="message-author" data-user-id="${esc(m.sender_id)}">${esc(m.sender_display_name || m.sender_username || 'Membro')}</span>
         <span class="message-time">${time}</span>${editedTag}
       </div>
       <div class="message-content" data-raw="${esc(m.content || '')}">${m.content ? renderMarkdown(esc(m.content)) : ''}</div>
@@ -241,8 +254,8 @@ $('messagesList').addEventListener('click', (e) => {
   if(e.target.closest('[data-reveal-blocked]')){revealBlockedMessages=true;openConversationMessagesOnly();return;}
   if(e.target.closest('[data-dm-block]')){toggleCurrentBlock();return;}
   if(e.target.closest('[data-dm-friend]')){sendFriendRequestForCurrent();return;}
-  const author=e.target.closest('.message-author,.message-avatar');
-  if(author&&currentOtherUser){requestOpenCurrentProfile();return;}
+  const author=e.target.closest('.message-author[data-user-id],.message-avatar[data-user-id]');
+  if(author&&author.dataset.userId){openDmUserProfileById(author.dataset.userId);return;}
   const img = e.target.closest('.message-image[data-file-url]');
   if (img) { window.open(img.dataset.fileUrl, '_blank'); return; }
   const toolBtn = e.target.closest('.msg-tool-btn');
@@ -374,10 +387,24 @@ async function sendFriendRequestForCurrent(){
   if(!currentOtherUser)return;
   try{const r=await fetch('/api/social/friends/request',{method:'POST',headers:headers(),body:JSON.stringify({username:currentOtherUser.username})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Erro ao enviar solicitação');toast(d.message||'Solicitação enviada.','success');}catch(e){toast(e.message,'error');}
 }
+async function openDmUserProfileById(targetUserId){
+  targetUserId=String(targetUserId||'').trim();if(!targetUserId)return;
+  try{
+    const r=await fetch('/api/users/'+encodeURIComponent(targetUserId)+'/profile',{headers:headers(),cache:'no-store'});
+    const profile=await r.json();if(!r.ok)throw new Error(profile.error||'Erro ao carregar perfil');
+    if(targetUserId===currentOtherId&&currentBlockState.blocked_by_me){pendingBlockedProfileUser=profile;$('blockedProfileWarningModal').classList.add('open');return;}
+    showDmUserProfile(profile);
+  }catch(e){toast(e.message,'error');}
+}
+document.addEventListener('click',event=>{
+  const target=event.target.closest?.('.message-author[data-user-id],.message-avatar[data-user-id]');
+  if(!target||!target.dataset.userId)return;
+  event.preventDefault();event.stopPropagation();openDmUserProfileById(target.dataset.userId);
+},true);
 function requestOpenCurrentProfile(){
   if(!currentOtherUser)return;
   if(currentBlockState.blocked_by_me){pendingBlockedProfileUser=currentOtherUser;$('blockedProfileWarningModal').classList.add('open');return;}
-  showDmUserProfile(currentOtherUser);
+  openDmUserProfileById(currentOtherId);
 }
 function showDmUserProfile(u){
   applyBannerStyle($('dmProfileBanner'),u.banner||u.banner_color||'#8b2bff');

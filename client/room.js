@@ -435,11 +435,12 @@ function messageHtml(m) {
       ${m.user_id === userId ? `<button class="msg-tool-btn" data-action="edit" title="Editar">✏️</button>` : ''}
       <button class="msg-tool-btn" data-action="delete" title="Excluir">🗑️</button>
     </div>` : '';
-  return `<div class="message" data-message-id="${esc(m.id)}" data-author-id="${esc(m.user_id || '')}">
-    <div class="message-avatar" data-user-id="${esc(m.user_id || '')}"><img src="${m.avatar || '/logo.svg'}" alt=""></div>
+  const messageUserId = m.user_id || m.sender_id || m.author_id || '';
+  return `<div class="message" data-message-id="${esc(m.id)}" data-author-id="${esc(messageUserId)}">
+    <div class="message-avatar" data-user-id="${esc(messageUserId)}"><img src="${m.avatar || '/logo.svg'}" alt=""></div>
     <div class="message-body">
       <div class="message-head">
-        <span class="message-author${isAdminAuthor ? ' author-admin' : ''}" data-user-id="${esc(m.user_id || '')}">${esc(m.display_name || m.username || 'Membro')}</span>
+        <span class="message-author${isAdminAuthor ? ' author-admin' : ''}" data-user-id="${esc(messageUserId)}">${esc(m.display_name || m.username || 'Membro')}</span>
         <span class="message-time">${time}</span>${editedTag}
       </div>
       <div class="message-content" data-raw="${esc(m.content || '')}">${m.content ? renderMarkdown(esc(m.content)) : ''}</div>
@@ -1477,7 +1478,7 @@ async function openProfile(targetUserId) {
     const p = await r.json();
     if (!r.ok) throw new Error(p.error || 'Erro ao carregar perfil');
     viewingProfileId = targetUserId;
-    applyBannerStyle($('viewProfileBanner'), p.banner_color || '#5865f2');
+    applyBannerStyle($('viewProfileBanner'), p.banner || p.banner_color || '#5865f2');
     $('viewProfileAvatar').src = p.avatar || '/logo.svg';
     $('viewProfileName').textContent = p.display_name || p.username;
     $('viewProfileUsername').textContent = '@' + p.username;
@@ -1485,6 +1486,14 @@ async function openProfile(targetUserId) {
     $('viewProfileModal').classList.add('open');
   } catch (e) { toast(e.message, 'error'); }
 }
+window.catOpenUserProfile = openProfile;
+document.addEventListener('click', event => {
+  const target = event.target.closest?.('.message-author[data-user-id],.message-avatar[data-user-id],.member-row[data-user-id]');
+  if (!target || !target.dataset.userId || target.closest('.message-toolbar')) return;
+  event.preventDefault();
+  event.stopPropagation();
+  openProfile(target.dataset.userId);
+}, true);
 $('closeViewProfileBtn').onclick = () => $('viewProfileModal').classList.remove('open');
 $('dmFromProfileBtn').onclick = () => {
   if (!viewingProfileId) return;
@@ -1604,6 +1613,58 @@ socket.on('member-profile-updated', (u) => {
   if (u.id === userId) { $('myName').textContent = u.display_name; if (u.avatar) $('myAvatarImg').src = u.avatar; }
   renderVoiceGrid();
 });
+
+let liveServerRefreshTimer = null;
+let lastLiveServerRefreshAt = 0;
+function scheduleLiveServerRefresh(delay = 120) {
+  clearTimeout(liveServerRefreshTimer);
+  liveServerRefreshTimer = setTimeout(refreshServerDataLive, delay);
+}
+async function refreshServerDataLive() {
+  if (document.hidden || Date.now() - lastLiveServerRefreshAt < 500) return;
+  lastLiveServerRefreshAt = Date.now();
+  try {
+    const response = await fetch('/api/servers/' + serverId, { headers: headers(), cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Erro ao sincronizar servidor');
+    currentServer = data;
+    channels = Array.isArray(data.channels) ? data.channels : [];
+    members = Array.isArray(data.members) ? data.members : [];
+    myRole = data.myRole || 'member';
+    $('serverName').textContent = data.name || 'Servidor';
+    $('serverName').title = data.name || 'Servidor';
+    $('mobileTitle').textContent = data.name || 'CAT EMPIRE';
+    if ($('serverProfileName')) $('serverProfileName').textContent = data.name || 'Servidor';
+    if ($('serverProfileIconImg')) $('serverProfileIconImg').src = data.icon && /^(data:|https?:)/.test(data.icon) ? data.icon : '/logo.svg';
+    applyBannerStyle($('serverHead'), data.banner || data.banner_color);
+    const canManage = ['admin','owner'].includes(myRole);
+    $('serverSettingsBtn').hidden = !canManage;
+    if ($('serverAdminProfileActions')) $('serverAdminProfileActions').hidden = !canManage;
+    renderChannelList();
+    renderMembers();
+    updateServerProfileCounts();
+    if (selectedTextChannelId && !channels.some(channel => channel.id === selectedTextChannelId)) {
+      const firstText = channels.find(channel => channel.type === 'text');
+      if (firstText) openTextChannel(firstText.id);
+    }
+    document.dispatchEvent(new CustomEvent('cat:server-live-data', { detail: data }));
+    const settingsPanel = document.querySelector('.cat-v5-settings');
+    if (settingsPanel && !settingsPanel.hidden) {
+      settingsPanel.hidden = true;
+      $('serverSettingsBtn')?.click();
+    }
+  } catch (error) { console.error('Sincronização do servidor:', error); }
+}
+socket.on('server-data-changed', payload => {
+  if (!payload || payload.serverId === serverId) scheduleLiveServerRefresh();
+});
+socket.on('profile-updated', profile => {
+  const index = members.findIndex(member => member.id === profile?.id);
+  if (index >= 0) { members[index] = { ...members[index], ...profile }; renderMembers(); }
+});
+window.addEventListener('focus', () => scheduleLiveServerRefresh(50));
+window.addEventListener('online', () => scheduleLiveServerRefresh(50));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleLiveServerRefresh(50); });
 
 socket.on('server-updated', (s) => {
   if (s.id !== serverId) return;

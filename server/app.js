@@ -45,6 +45,26 @@ app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Toda mutação de servidor aprovada publica um evento único. Assim clientes
+// conectados atualizam somente os dados afetados, sem reload/F5.
+app.use('/api', (req, res, next) => {
+  if (!['POST','PUT','PATCH','DELETE'].includes(req.method)) return next();
+  const match = String(req.originalUrl || '').match(/^\/api\/(?:(?:platform|features|v4)\/)?servers\/([^/?]+)/);
+  if (!match) return next();
+  const targetServerId = decodeURIComponent(match[1]);
+  res.once('finish', () => {
+    if (res.statusCode < 200 || res.statusCode >= 300) return;
+    const io = req.app.get('io');
+    if (io) io.to(`server-${targetServerId}`).emit('server-data-changed', {
+      serverId: targetServerId,
+      method: req.method,
+      path: String(req.originalUrl || '').split('?')[0],
+      changedAt: Date.now()
+    });
+  });
+  next();
+});
+
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 const clientDir = path.join(__dirname, '../client');
