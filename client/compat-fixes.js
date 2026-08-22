@@ -20,41 +20,32 @@
     function hasVideoRequest(constraints) {
       return !!constraints && !!constraints.video && typeof constraints.video === 'object';
     }
-
     function copyVideoConstraints(video) {
       if (!video || typeof video !== 'object') return {};
       return { ...video };
     }
-
     function rememberCameraStream(stream) {
       const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
       if (!track) return stream;
       activeCameraStream = stream;
-      try { activeCameraDeviceId = track.getSettings().deviceId || null; }
-      catch (_) { activeCameraDeviceId = null; }
-      track.addEventListener('ended', () => {
-        if (activeCameraStream === stream) activeCameraStream = null;
-      }, { once: true });
+      try { activeCameraDeviceId = track.getSettings().deviceId || null; } catch (_) { activeCameraDeviceId = null; }
+      track.addEventListener('ended', () => { if (activeCameraStream === stream) activeCameraStream = null; }, { once: true });
       return stream;
     }
-
     async function requestSpecificCamera(constraints, deviceId) {
       const video = copyVideoConstraints(constraints.video);
       delete video.facingMode;
       video.deviceId = { exact: deviceId };
       return originalGetUserMedia({ ...constraints, video });
     }
-
     mediaDevices.getUserMedia = async function (constraints) {
       if (!hasVideoRequest(constraints)) return originalGetUserMedia(constraints);
       const previousStream = activeCameraStream;
       const previousDeviceId = activeCameraDeviceId;
-
       if (previousStream) {
         previousStream.getVideoTracks().forEach(track => { try { track.stop(); } catch (_) {} });
         activeCameraStream = null;
       }
-
       try {
         return rememberCameraStream(await originalGetUserMedia(constraints));
       } catch (firstError) {
@@ -97,19 +88,10 @@
       <div class="modal-box invite-modal-box" style="width:min(620px,94vw)">
         <h2>🔗 Convidar para o servidor</h2>
         <p class="modal-hint">Compartilhe este link para outras pessoas entrarem neste servidor.</p>
-        <div class="kv-row" style="align-items:center;gap:8px">
-          <span class="kv-value" id="inviteLinkText" style="flex:1;word-break:break-all">Gerando link de convite…</span>
-          <button type="button" class="btn kv-copy" id="copyInviteBtn">Copiar</button>
-        </div>
+        <div class="kv-row" style="align-items:center;gap:8px"><span class="kv-value" id="inviteLinkText" style="flex:1;word-break:break-all">Gerando link de convite…</span><button type="button" class="btn kv-copy" id="copyInviteBtn">Copiar</button></div>
         <div class="invite-generation-box" style="margin-top:14px;padding:12px;border:1px solid #3b1b68;background:#0d0618">
-          <div class="kv-row" style="margin-bottom:10px">
-            <span class="kv-label">EXPIRAÇÃO</span>
-            <select id="inviteExpireSelect"><option value="1">1 hora</option><option value="24" selected>24 horas</option><option value="72">3 dias</option><option value="168">7 dias</option><option value="0">Nunca</option></select>
-          </div>
-          <div class="kv-row">
-            <span class="kv-label">LIMITE DE USOS</span>
-            <select id="inviteMaxUsesSelect"><option value="0" selected>Ilimitado</option><option value="1">1 uso</option><option value="5">5 usos</option><option value="10">10 usos</option><option value="50">50 usos</option></select>
-          </div>
+          <div class="kv-row" style="margin-bottom:10px"><span class="kv-label">EXPIRAÇÃO</span><select id="inviteExpireSelect"><option value="1">1 hora</option><option value="24" selected>24 horas</option><option value="72">3 dias</option><option value="168">7 dias</option><option value="0">Nunca</option></select></div>
+          <div class="kv-row"><span class="kv-label">LIMITE DE USOS</span><select id="inviteMaxUsesSelect"><option value="0" selected>Ilimitado</option><option value="1">1 uso</option><option value="5">5 usos</option><option value="10">10 usos</option><option value="50">50 usos</option></select></div>
           <div class="modal-actions" style="margin-top:12px"><button type="button" class="btn btn-primary" id="generateInviteBtn">Gerar novo convite</button></div>
         </div>
         <div id="adminInvitesListWrap" hidden style="margin-top:16px"><h3 style="font-size:10px;margin:0 0 8px">CONVITES ATIVOS</h3><div id="adminInvitesList"></div></div>
@@ -121,7 +103,30 @@
   ensureInviteModal();
 
   function applyPostEnhancementFixes() {
-    document.querySelector('#viewProfileModal .modal-box')?.classList.add('profile-horizontal');
+    const profileBox = document.querySelector('#viewProfileModal .modal-box');
+    profileBox?.classList.add('profile-horizontal');
+
+    // Convite no cabeçalho: ícone compacto igual ao padrão mostrado na referência.
+    const invite = document.getElementById('serverInviteBtn');
+    const row = document.querySelector('#serverHead .server-head-row');
+    if (invite && row && !invite.dataset.compactInvite) {
+      invite.dataset.compactInvite = '1';
+      const wrapper = invite.parentElement;
+      invite.textContent = '👥+';
+      invite.title = 'Convidar para o servidor';
+      invite.setAttribute('aria-label', 'Convidar para o servidor');
+      invite.style.width = '38px';
+      invite.style.height = '34px';
+      invite.style.padding = '0';
+      invite.style.fontSize = '13px';
+      invite.style.display = 'grid';
+      invite.style.placeItems = 'center';
+      invite.style.flex = 'none';
+      invite.style.border = '2px solid #5a2a95';
+      invite.style.background = '#15092a';
+      row.appendChild(invite);
+      wrapper?.remove();
+    }
 
     ['myAvatarBtn', 'myInfoBtn', 'userSettingsBtn'].forEach(id => {
       const el = document.getElementById(id);
