@@ -4,7 +4,7 @@ const Server = require('../database/models/Server');
 const Channel = require('../database/models/Channel');
 const User = require('../database/models/User');
 const Invite = require('../database/models/Invite');
-const { queryOne } = require('../database');
+const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
 
 // Endpoint público usado pela tela inicial.
@@ -140,8 +140,12 @@ router.get('/dms/:userId', authenticate, async (req, res) => {
     const otherUser = await User.getPublicProfile(req.params.userId);
     if (!otherUser) return res.status(404).json({ error: 'Usuário não encontrado' });
     const messages = await Dm.getMessages(req.user.id, req.params.userId);
+    const blockState = await queryOne(`
+      SELECT EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2) AS blocked_by_me,
+             EXISTS(SELECT 1 FROM user_blocks WHERE blocker_id=$2 AND blocked_id=$1) AS blocked_me`,
+      [req.user.id, req.params.userId]);
     await Dm.markRead(req.user.id, req.params.userId);
-    res.json({ user: otherUser, messages });
+    res.json({ user: otherUser, messages, blockState });
   } catch (error) {
     console.error('Erro ao carregar conversa:', error);
     res.status(500).json({ error: 'Erro ao carregar conversa' });
@@ -154,8 +158,9 @@ router.get('/dms/:userId', authenticate, async (req, res) => {
 router.post('/servers', authenticate, async (req, res) => {
   try {
     const { name, icon } = req.body;
+    const cleanName = String(name || 'Servidor do Cat').trim().slice(0, 50);
     const server = await Server.create({
-      name: name || 'Servidor do Cat',
+      name: cleanName || 'Servidor do Cat',
       icon: icon || '🐱',
       creatorId: req.user.id
     });
@@ -191,6 +196,21 @@ router.get('/servers/:serverId', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Erro ao buscar servidor:', error);
     res.status(500).json({ error: 'Erro ao buscar servidor' });
+  }
+});
+
+router.delete('/servers/:serverId/members/me', authenticate, async (req, res) => {
+  try {
+    const server = await Server.findById(req.params.serverId);
+    if (!server) return res.status(404).json({ error: 'Servidor não encontrado' });
+    if (server.creator_id === req.user.id) return res.status(400).json({ error: 'O dono não pode sair do servidor. Transfira ou exclua o servidor.' });
+    const role = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (!role) return res.status(404).json({ error: 'Você não participa deste servidor' });
+    await query('DELETE FROM server_members WHERE server_id=$1 AND user_id=$2', [req.params.serverId, req.user.id]);
+    res.json({ success:true });
+  } catch (error) {
+    console.error('Erro ao sair do servidor:', error);
+    res.status(500).json({ error: 'Erro ao sair do servidor' });
   }
 });
 

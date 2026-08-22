@@ -12,6 +12,9 @@ const socket = io();
 let conversations = [];
 let currentOtherId = null;
 let currentOtherUser = null;
+let currentBlockState = { blocked_by_me:false, blocked_me:false };
+let revealBlockedMessages = false;
+let pendingBlockedProfileUser = null;
 
 $('myName').textContent = userName;
 const cachedAvatar = localStorage.getItem('cat_avatar');
@@ -65,6 +68,8 @@ socket.on('connect', () => {
   loadServersRail();
 });
 socket.on('error', d => { if (d?.message) toast(d.message, 'error'); });
+socket.on('dm-send-error', d => { if(d?.message) toast(d.message,'error'); });
+socket.on('block-changed', d => { if(d?.userId===currentOtherId) openConversation(currentOtherId); loadBlockedAccounts(); });
 socket.on('servers-list', (list) => renderServerRail(list || []));
 
 function renderServerRail(list) {
@@ -108,10 +113,11 @@ function renderConversationList() {
     return;
   }
   $('dmList').innerHTML = conversations.map(c => {
-    const preview = c.last_from_me ? 'Você: ' : '';
-    const text = c.last_message ? (c.last_message.length > 34 ? c.last_message.slice(0, 34) + '…' : c.last_message) : (c.last_has_file ? '📄 Arquivo' : '');
+    const blocked = c.blocked_by_me || c.blocked_me;
+    const preview = blocked ? '' : (c.last_from_me ? 'Você: ' : '');
+    const text = blocked ? 'Conversa bloqueada' : (c.last_message ? (c.last_message.length > 34 ? c.last_message.slice(0, 34) + '…' : c.last_message) : (c.last_has_file ? '📄 Arquivo' : ''));
     const active = c.id === currentOtherId ? ' active' : '';
-    return `<div class="channel-item dm-item${active}" data-id="${esc(c.id)}">
+    return `<div class="channel-item dm-item${active}${blocked ? ' dm-item-blocked' : ''}" data-id="${esc(c.id)}">
       <div class="dm-avatar"><img src="${c.avatar || '/logo.svg'}" alt=""></div>
       <div class="dm-info">
         <div class="cname">${esc(c.display_name || c.username)}</div>
@@ -135,9 +141,11 @@ async function openConversation(otherId) {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Erro ao carregar conversa');
     currentOtherUser = d.user;
-    $('dmHeader').innerHTML = `<span>@${esc(d.user.username)} — ${esc(d.user.display_name || d.user.username)}</span>`;
+    currentBlockState = d.blockState || { blocked_by_me:false, blocked_me:false };
+    revealBlockedMessages = false;
+    $('dmHeader').innerHTML = `<button type="button" class="dm-header-user" data-open-dm-profile><img src="${d.user.avatar || '/logo.svg'}" alt=""><span><strong>${esc(d.user.display_name || d.user.username)}</strong><small>@${esc(d.user.username)}</small></span><span class="dm-header-chevron">›</span></button><div class="dm-header-actions"><button type="button" class="dm-head-icon" title="Buscar">⌕</button></div>`;
     $('mobileTitle').textContent = d.user.display_name || d.user.username;
-    $('messageInput').disabled = false;
+    updateDmComposerState();
     renderMessages(d.messages);
     let conv = conversations.find(c => c.id === otherId);
     if (conv) {
@@ -151,13 +159,28 @@ async function openConversation(otherId) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+function dmIntroHtml() {
+  const u=currentOtherUser;
+  if(!u) return '';
+  const blocked=currentBlockState.blocked_by_me;
+  return `<section class="dm-profile-intro"><img class="dm-intro-avatar" src="${u.avatar || '/logo.svg'}" alt=""><h1>${esc(u.display_name || u.username)}</h1><div class="dm-intro-username">@${esc(u.username)}</div><p>Este é o começo da sua conversa com ${esc(u.display_name || u.username)}.</p><div class="dm-intro-actions"><button type="button" class="btn btn-primary" data-dm-friend>Enviar pedido de amizade</button><button type="button" class="btn ${blocked ? 'btn-primary' : ''}" data-dm-block>${blocked ? 'Desbloquear' : 'Bloquear'}</button></div></section>`;
+}
 function renderMessages(msgs) {
-  if (!msgs || !msgs.length) {
-    $('messagesList').innerHTML = '<p class="empty-hint">Nenhuma mensagem ainda. Diga oi! 👋</p>';
-    return;
+  const intro=dmIntroHtml();
+  const body=(!msgs || !msgs.length) ? '<p class="empty-hint">Nenhuma mensagem ainda.</p>' : msgs.map(messageHtml).join('');
+  if(currentBlockState.blocked_by_me && !revealBlockedMessages){
+    $('messagesList').innerHTML=intro+`<button type="button" class="blocked-messages-gate" data-reveal-blocked><strong>Mensagens ocultas</strong><span>Você bloqueou este usuário. Toque para visualizar esta conversa.</span></button>`;
+  }else{
+    $('messagesList').innerHTML=intro+body;
   }
-  $('messagesList').innerHTML = msgs.map(messageHtml).join('');
   $('messagesList').scrollTop = $('messagesList').scrollHeight;
+}
+function updateDmComposerState(){
+  const blocked=currentBlockState.blocked_by_me||currentBlockState.blocked_me;
+  $('messageInput').disabled=blocked||!currentOtherId;
+  $('attachBtn').disabled=blocked;
+  $('sendBtn').disabled=blocked;
+  $('messageInput').placeholder=currentBlockState.blocked_by_me?'Desbloqueie para enviar mensagem':currentBlockState.blocked_me?'Você não pode enviar mensagens para este usuário':'Enviar mensagem…';
 }
 
 function messageHtml(m) {
@@ -174,7 +197,7 @@ function messageHtml(m) {
       <button class="msg-tool-btn" data-action="edit" title="Editar">✏️</button>
       <button class="msg-tool-btn" data-action="delete" title="Excluir">🗑️</button>
     </div>` : '';
-  return `<div class="message" data-message-id="${esc(m.id)}">
+  return `<div class="message" data-message-id="${esc(m.id)}" data-user-id="${esc(m.sender_id)}">
     <div class="message-avatar"><img src="${m.sender_avatar || '/logo.svg'}" alt=""></div>
     <div class="message-body">
       <div class="message-head">
@@ -191,6 +214,7 @@ function messageHtml(m) {
 socket.on('new-dm', (msg) => {
   const otherId = msg.sender_id === userId ? msg.recipient_id : msg.sender_id;
   if (otherId === currentOtherId) {
+    if (currentBlockState.blocked_by_me || currentBlockState.blocked_me) { openConversation(currentOtherId); loadConversations(); return; }
     const empty = $('messagesList').querySelector('.empty-hint');
     if (empty) empty.remove();
     $('messagesList').insertAdjacentHTML('beforeend', messageHtml(msg));
@@ -214,6 +238,11 @@ socket.on('dm-deleted', ({ id, sender_id, recipient_id }) => {
 });
 
 $('messagesList').addEventListener('click', (e) => {
+  if(e.target.closest('[data-reveal-blocked]')){revealBlockedMessages=true;openConversationMessagesOnly();return;}
+  if(e.target.closest('[data-dm-block]')){toggleCurrentBlock();return;}
+  if(e.target.closest('[data-dm-friend]')){sendFriendRequestForCurrent();return;}
+  const author=e.target.closest('.message-author,.message-avatar');
+  if(author&&currentOtherUser){requestOpenCurrentProfile();return;}
   const img = e.target.closest('.message-image[data-file-url]');
   if (img) { window.open(img.dataset.fileUrl, '_blank'); return; }
   const toolBtn = e.target.closest('.msg-tool-btn');
@@ -293,7 +322,7 @@ function sendMessage() {
 }
 $('sendBtn').onclick = sendMessage;
 $('messageInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
-$('messageForm').onsubmit = (e) => { e.preventDefault(); sendMessage(); };
+$('messageForm').onsubmit = (e) => { e.preventDefault(); if(currentBlockState.blocked_by_me||currentBlockState.blocked_me)return toast('Esta conversa está bloqueada.','error'); sendMessage(); };
 
 // ---- "Está digitando…" ----
 let typingTimeout = null;
@@ -324,6 +353,46 @@ socket.on('dm-user-typing', ({ userId: uid, userName: uname }) => {
   renderTypingIndicator();
 });
 socket.on('dm-user-stop-typing', ({ userId: uid }) => removeTypingUser(uid));
+
+// ========== BLOQUEIOS E PERFIL DA DM ==========
+let lastDmMessages=[];
+function openConversationMessagesOnly(){renderMessages(lastDmMessages);}
+const originalRenderMessages=renderMessages;
+renderMessages=function(msgs){lastDmMessages=Array.isArray(msgs)?msgs:[];return originalRenderMessages(msgs);};
+async function toggleCurrentBlock(){
+  if(!currentOtherId)return;
+  const blocking=currentBlockState.blocked_by_me;
+  const ok=await uiConfirm(blocking?'Desbloquear este usuário?':'Bloquear este usuário? A amizade será removida e a conversa ficará oculta.');
+  if(!ok)return;
+  try{
+    const r=await fetch('/api/social/blocks/'+encodeURIComponent(currentOtherId),{method:blocking?'DELETE':'POST',headers:headers()});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'Não foi possível alterar o bloqueio');
+    await openConversation(currentOtherId);loadBlockedAccounts();
+  }catch(e){toast(e.message,'error');}
+}
+async function sendFriendRequestForCurrent(){
+  if(!currentOtherUser)return;
+  try{const r=await fetch('/api/social/friends/request',{method:'POST',headers:headers(),body:JSON.stringify({username:currentOtherUser.username})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Erro ao enviar solicitação');toast(d.message||'Solicitação enviada.','success');}catch(e){toast(e.message,'error');}
+}
+function requestOpenCurrentProfile(){
+  if(!currentOtherUser)return;
+  if(currentBlockState.blocked_by_me){pendingBlockedProfileUser=currentOtherUser;$('blockedProfileWarningModal').classList.add('open');return;}
+  showDmUserProfile(currentOtherUser);
+}
+function showDmUserProfile(u){
+  applyBannerStyle($('dmProfileBanner'),u.banner||u.banner_color||'#8b2bff');
+  $('dmProfileAvatar').src=u.avatar||'/logo.svg';$('dmProfileName').textContent=u.display_name||u.username;$('dmProfileUsername').textContent='@'+u.username;$('dmProfileBio').textContent=u.bio||'Sem bio.';$('dmUserProfileModal').classList.add('open');
+}
+$('dmHeader')?.addEventListener('click',e=>{if(e.target.closest('[data-open-dm-profile]'))requestOpenCurrentProfile();});
+$('cancelBlockedProfileBtn')?.addEventListener('click',()=>$('blockedProfileWarningModal').classList.remove('open'));
+$('openBlockedProfileBtn')?.addEventListener('click',()=>{$('blockedProfileWarningModal').classList.remove('open');if(pendingBlockedProfileUser)showDmUserProfile(pendingBlockedProfileUser);});
+$('closeDmProfileBtn')?.addEventListener('click',()=>$('dmUserProfileModal').classList.remove('open'));
+async function loadBlockedAccounts(){
+ const list=$('blockedAccountsList');if(!list)return;
+ try{const r=await fetch('/api/social/blocks',{headers:headers()});const rows=await r.json();if(!r.ok)throw new Error(rows.error||'Erro ao carregar bloqueios');list.innerHTML=rows.length?rows.map(u=>`<div class="blocked-account-row"><img src="${u.avatar||'/logo.svg'}" alt=""><div><strong>${esc(u.display_name||u.username)}</strong><small>@${esc(u.username)}</small></div><button type="button" class="btn" data-unblock-id="${esc(u.id)}">Desbloquear</button></div>`).join(''):'<p class="empty-hint">Nenhuma conta bloqueada.</p>';}catch(e){list.innerHTML='<p class="empty-hint">'+esc(e.message)+'</p>';}
+}
+$('refreshBlockedBtn')?.addEventListener('click',loadBlockedAccounts);
+$('blockedAccountsList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-unblock-id]');if(!b)return;await fetch('/api/social/blocks/'+encodeURIComponent(b.dataset.unblockId),{method:'DELETE',headers:headers()});loadBlockedAccounts();if(currentOtherId===b.dataset.unblockId)openConversation(currentOtherId);});
 
 // ========== ADICIONAR AMIGO ==========
 function closeAddFriendModal() {
@@ -500,7 +569,7 @@ $('myAvatarBtn').onclick = openMyProfile;
 $('myInfoBtn').onclick = openMyProfile;
 $('userSettingsBtn')?.addEventListener('click', openMyProfile);
 $('userTabProfileBtn')?.addEventListener('click', () => switchUserTab('profile'));
-$('userTabAccountBtn')?.addEventListener('click', () => switchUserTab('account'));
+$('userTabAccountBtn')?.addEventListener('click', () => { switchUserTab('account'); loadBlockedAccounts(); });
 $('closeAccountTabBtn')?.addEventListener('click', () => $('editProfileModal').classList.remove('open'));
 $('cancelEditProfileBtn').onclick = () => $('editProfileModal').classList.remove('open');
 $('editBio').addEventListener('input', () => { $('editBioCount').textContent = $('editBio').value.length; });

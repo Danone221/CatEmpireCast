@@ -48,6 +48,8 @@ router.post('/friends/request', async (req, res) => {
     const target = await findUser(req.body.username);
     if (!target) return res.status(404).json({ error: 'Usuário não encontrado' });
     if (target.id === req.user.id) return res.status(400).json({ error: 'Você não pode adicionar a si mesmo' });
+    const block = await queryOne('SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1', [req.user.id,target.id]);
+    if (block) return res.status(403).json({ error: 'Não é possível enviar solicitação para este usuário' });
 
     const existing = await queryOne(`SELECT * FROM friends WHERE (user_id=$1 AND friend_id=$2) OR (user_id=$2 AND friend_id=$1) ORDER BY CASE WHEN friend_id=$1 THEN 0 ELSE 1 END LIMIT 1`, [req.user.id, target.id]);
     if (existing?.status === 'accepted') return res.status(409).json({ error: 'Vocês já são amigos' });
@@ -74,6 +76,8 @@ router.post('/friends/request', async (req, res) => {
 router.post('/friends/requests/:userId/accept', async (req, res) => {
   try {
     const requester = req.params.userId;
+    const block = await queryOne('SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1', [req.user.id,requester]);
+    if (block) return res.status(403).json({ error: 'Não é possível aceitar esta solicitação' });
     const pending = await queryOne('SELECT * FROM friends WHERE user_id=$1 AND friend_id=$2 AND status=\'pending\'', [requester, req.user.id]);
     if (!pending) return res.status(404).json({ error: 'Solicitação não encontrada' });
     await query('UPDATE friends SET status=\'accepted\', updated_at=extract(epoch FROM now())::bigint WHERE user_id=$1 AND friend_id=$2', [requester, req.user.id]);

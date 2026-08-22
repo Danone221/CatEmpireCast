@@ -9,7 +9,9 @@ class Dm {
     const rows = await query(
       `SELECT dm.*,
         su.username AS sender_username, su.display_name AS sender_display_name, su.avatar AS sender_avatar,
-        ru.username AS recipient_username, ru.display_name AS recipient_display_name, ru.avatar AS recipient_avatar
+        ru.username AS recipient_username, ru.display_name AS recipient_display_name, ru.avatar AS recipient_avatar,
+        EXISTS(SELECT 1 FROM user_blocks b WHERE b.blocker_id=$1 AND b.blocked_id=CASE WHEN dm.sender_id=$1 THEN dm.recipient_id ELSE dm.sender_id END) AS blocked_by_me,
+        EXISTS(SELECT 1 FROM user_blocks b WHERE b.blocked_id=$1 AND b.blocker_id=CASE WHEN dm.sender_id=$1 THEN dm.recipient_id ELSE dm.sender_id END) AS blocked_me
       FROM dm_messages dm
       JOIN users su ON su.id = dm.sender_id
       JOIN users ru ON ru.id = dm.recipient_id
@@ -33,10 +35,12 @@ class Dm {
           last_has_file: !!row.file_name,
           last_created_at: row.created_at,
           last_from_me: isSender,
-          unread_count: 0
+          unread_count: 0,
+          blocked_by_me: !!row.blocked_by_me,
+          blocked_me: !!row.blocked_me
         });
       }
-      if (!isSender && !row.read_at) {
+      if (!isSender && !row.read_at && !row.blocked_by_me && !row.blocked_me) {
         byOther.get(otherId).unread_count++;
       }
     }
@@ -103,7 +107,8 @@ class Dm {
 
   static async getUnreadTotal(userId) {
     const row = await queryOne(
-      `SELECT COUNT(*) AS count FROM dm_messages WHERE recipient_id = $1 AND read_at IS NULL`,
+      `SELECT COUNT(*) AS count FROM dm_messages dm WHERE recipient_id = $1 AND read_at IS NULL
+       AND NOT EXISTS (SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=dm.sender_id) OR (b.blocked_id=$1 AND b.blocker_id=dm.sender_id))`,
       [userId]
     );
     return row ? parseInt(row.count, 10) : 0;

@@ -308,6 +308,8 @@ function setupSocket(server) {
         if (!toUserId || toUserId === socket.userId) return;
         const target = await User.findById(toUserId);
         if (!target) return socket.emit('error', { message: 'Usuário não encontrado' });
+        const block = await require('./database').queryOne('SELECT blocker_id FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1', [socket.userId, toUserId]);
+        if (block) return socket.emit('dm-send-error', { toUserId, message: block.blocker_id === socket.userId ? 'Desbloqueie este usuário antes de enviar mensagens' : 'Você não pode enviar mensagens para este usuário' });
         const text = (message || '').trim();
         if (!text && !file) return;
         if (text.length > 2000) return socket.emit('error', { message: 'Mensagem muito longa' });

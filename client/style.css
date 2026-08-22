@@ -492,3 +492,73 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
   .modal-actions{flex-wrap:wrap}
   .modal-actions .btn{flex:1;min-width:130px}
 }
+
+
+/* ===== DM profile, blocking and server profile ===== */
+.server-profile-trigger{width:100%;display:flex;align-items:center;gap:8px;background:transparent;border:0;color:inherit;padding:0;cursor:pointer;text-align:left}
+.server-profile-trigger .server-name{display:block;min-width:0;max-width:50ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.server-profile-arrow{margin-left:auto;font:18px monospace;color:#9f8ab8;transition:transform .15s}
+.server-profile-trigger[aria-expanded="true"] .server-profile-arrow{transform:rotate(180deg)}
+.dm-header-user{display:flex;align-items:center;gap:10px;min-width:0;background:transparent;border:0;color:#eee8ff;cursor:pointer;text-align:left}
+.dm-header-user img{width:38px;height:38px;object-fit:cover;border:2px solid #5a2a95}
+.dm-header-user span:not(.dm-header-chevron){display:flex;flex-direction:column;min-width:0}
+.dm-header-user strong{font:10px var(--pixel);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-header-user small{font:10px monospace;color:#8f78aa;margin-top:4px}
+.dm-header-chevron{font:20px monospace;color:#8f78aa}
+.dm-header-actions{margin-left:auto}
+.dm-head-icon{width:38px;height:38px;border:2px solid #3d1c6d;background:#120820;color:#cbb6e8;font-size:20px}
+.dm-profile-intro{padding:36px 18px 22px;border-bottom:2px solid #29104b;margin-bottom:16px}
+.dm-intro-avatar{width:92px;height:92px;object-fit:cover;border:3px solid #5a2a95;box-shadow:5px 5px 0 #050007}
+.dm-profile-intro h1{font:17px var(--pixel);line-height:1.45;margin:18px 0 4px;color:#fff;word-break:break-word}
+.dm-intro-username{font:13px monospace;color:#b996db}
+.dm-profile-intro p{font:12px monospace;line-height:1.6;color:#bcaed0;margin:14px 0}
+.dm-intro-actions{display:flex;gap:10px;flex-wrap:wrap}
+.dm-intro-actions .btn{margin:0}
+.blocked-messages-gate{display:flex;flex-direction:column;gap:7px;width:calc(100% - 32px);margin:12px 16px 28px;padding:18px;border:2px solid #5a2a95;background:#150829;color:#e8ddff;text-align:left;cursor:pointer;box-shadow:4px 4px 0 #050007}
+.blocked-messages-gate strong{font:9px var(--pixel)}
+.blocked-messages-gate span{font:11px monospace;color:#a995c3;line-height:1.5}
+.blocked-warning-dialog{text-align:center;width:min(420px,calc(100vw - 30px));border:3px solid #a22b46!important;background:#120820!important}
+.blocked-warning-icon{font-size:34px;margin-bottom:14px}
+.blocked-warning-dialog h2{font:11px var(--pixel);color:#ff7891}
+.blocked-warning-dialog p{font:11px monospace;line-height:1.6;color:#c7b9da}
+.blocked-accounts-section{margin-top:20px;border:2px solid #29104b;background:#09020f;padding:14px}
+.blocked-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.blocked-section-head h3{font:8px var(--pixel);color:#b996db}
+.blocked-refresh-btn{margin:0;padding:8px;font-size:8px}
+.blocked-account-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #29104b}
+.blocked-account-row:last-child{border-bottom:0}
+.blocked-account-row img{width:38px;height:38px;object-fit:cover;border:2px solid #5a2a95}
+.blocked-account-row div{display:flex;flex-direction:column;min-width:0;flex:1}
+.blocked-account-row strong{font:10px monospace;overflow:hidden;text-overflow:ellipsis}
+.blocked-account-row small{font:9px monospace;color:#8f78aa;margin-top:3px}
+.blocked-account-row .btn{margin:0;padding:8px;font-size:8px}
+
+.server-profile-modal{align-items:flex-end!important;padding:0!important}
+.server-profile-sheet{position:relative;width:min(620px,100%);max-height:90dvh;overflow:auto;margin:0 auto;background:#120820;border:3px solid #5a2a95;border-bottom:0;padding:28px 20px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -10px 30px rgba(0,0,0,.55)}
+.server-sheet-close{position:absolute;right:16px;top:14px;width:36px;height:36px;border:2px solid #3d1c6d;background:#09020f;color:#cbb6e8;font-size:24px}
+.server-profile-icon{width:82px;height:82px;border:3px solid #5a2a95;box-shadow:5px 5px 0 #050007;overflow:hidden}
+.server-profile-icon img{width:100%;height:100%;object-fit:cover}
+.server-profile-sheet h2{max-width:50ch;margin:18px 0 10px;font:14px var(--pixel);line-height:1.55;color:#fff;word-break:break-word}
+.server-profile-counts{display:flex;gap:16px;flex-wrap:wrap;color:#bcaed0;font:11px monospace}
+.server-profile-counts span{display:flex;align-items:center;gap:6px}
+.server-profile-counts i{width:9px;height:9px;border-radius:50%;background:#7d718b}
+.server-profile-counts i.online-dot{background:#3ddc7a;box-shadow:0 0 8px rgba(61,220,122,.55)}
+.server-profile-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}
+.server-profile-actions button{display:flex;flex-direction:column;align-items:center;gap:8px;border:0;background:transparent;color:#c8badb;font:8px var(--pixel);cursor:pointer}
+.server-profile-actions button span{display:grid;place-items:center;width:54px;height:54px;background:#1b0c30;border:2px solid #4b247a;color:#eee8ff;font:20px sans-serif;box-shadow:3px 3px 0 #050007}
+.server-profile-actions button:hover span{border-color:var(--pink)}
+.server-profile-menu{margin-top:14px;border:2px solid #29104b;background:#0c0317}
+.server-profile-menu button{display:block;width:100%;padding:17px 15px;border:0;border-bottom:1px solid #29104b;background:transparent;color:#ddd2ed;text-align:left;font:11px monospace;cursor:pointer}
+.server-profile-menu button:last-child{border-bottom:0}
+.server-profile-menu button:hover{background:#1b0c30}
+.server-profile-menu .danger-text{color:#ff7891}
+
+@media(max-width:860px){
+  .dm-profile-intro{padding-top:44px;min-height:360px;display:flex;flex-direction:column;justify-content:flex-end}
+  .dm-intro-avatar{width:104px;height:104px}
+  .dm-profile-intro h1{font-size:16px}
+  .dm-intro-actions .btn{flex:1;min-width:135px}
+  .server-profile-sheet{max-height:88dvh;border-left:0;border-right:0}
+}
+
+.dm-item-blocked{opacity:.72}.dm-item-blocked .dm-preview{color:#ff7891}

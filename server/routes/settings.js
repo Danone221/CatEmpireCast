@@ -60,7 +60,7 @@ router.put('/servers/:serverId/settings', async (req, res) => {
     }
 
     const data = {};
-    if (typeof req.body?.name === 'string' && req.body.name.trim()) data.name = req.body.name.trim().slice(0, 40);
+    if (typeof req.body?.name === 'string' && req.body.name.trim()) data.name = req.body.name.trim().slice(0, 50);
     if (typeof req.body?.description === 'string') data.description = req.body.description.slice(0, 300);
     if (typeof req.body?.icon === 'string') data.icon = req.body.icon;
     if (typeof req.body?.bannerColor === 'string' || req.body?.bannerColor === null) data.banner_color = req.body.bannerColor || null;

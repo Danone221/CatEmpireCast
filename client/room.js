@@ -133,10 +133,12 @@ socket.on('member-joined', (member) => {
 socket.on('presence-list', (ids) => {
   onlineUserIds = new Set(ids || []);
   renderMembers();
+  updateServerProfileCounts();
 });
 socket.on('presence-update', ({ userId: uid, online }) => {
   if (online) onlineUserIds.add(uid); else onlineUserIds.delete(uid);
   renderMembers();
+  updateServerProfileCounts();
 });
 
 // ========== BARRA DE SERVIDORES (estilo Discord) ==========
@@ -194,6 +196,9 @@ async function load() {
     currentServer = d;
     localStorage.setItem('cat_last_server', serverId);
     $('serverName').textContent = d.name || 'Servidor';
+    $('serverName').title = d.name || 'Servidor';
+    $('serverProfileName').textContent = d.name || 'Servidor';
+    $('serverProfileIconImg').src = d.icon && /^(data:|https?:)/.test(d.icon) ? d.icon : '/logo.svg';
     $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
     if (d.banner_color) $('serverHead').style.background = d.banner_color;
     channels = d.channels || [];
@@ -202,8 +207,10 @@ async function load() {
     const canManageServer = ['admin', 'owner'].includes(myRole);
     $('myRole').textContent = myRole === 'owner' ? 'dono' : ['admin', 'owner'].includes(myRole) ? 'admin' : 'membro';
     $('serverSettingsBtn').hidden = !canManageServer;
+    $('serverAdminProfileActions').hidden = !canManageServer;
     renderChannelList();
     renderMembers();
+    updateServerProfileCounts();
     const firstText = channels.find(c => c.type === 'text');
     if (firstText) openTextChannel(firstText.id);
     const me = members.find(m => m.id === userId);
@@ -323,6 +330,33 @@ $('confirmChannelBtn').onclick = async () => {
     $('createChannelModal').classList.remove('open');
   } catch (e) { toast(e.message, 'error'); }
 };
+
+// ========== PERFIL DO SERVIDOR ==========
+function updateServerProfileCounts(){
+  if($('serverOnlineCount')) $('serverOnlineCount').textContent=members.filter(m=>onlineUserIds.has(m.id)).length;
+  if($('serverTotalCount')) $('serverTotalCount').textContent=members.length;
+}
+function closeServerProfile(){
+  $('serverProfileModal')?.classList.remove('open');
+  $('serverProfileBtn')?.setAttribute('aria-expanded','false');
+}
+$('serverProfileBtn')?.addEventListener('click',()=>{
+  updateServerProfileCounts();
+  $('serverProfileModal')?.classList.add('open');
+  $('serverProfileBtn').setAttribute('aria-expanded','true');
+});
+$('closeServerProfileBtn')?.addEventListener('click',closeServerProfile);
+$('serverProfileModal')?.addEventListener('click',e=>{if(e.target===$('serverProfileModal'))closeServerProfile();});
+$('serverNotificationsBtn')?.addEventListener('click',()=>toast('Notificações do servidor seguem as configurações da sua conta.','success'));
+$('markServerReadBtn')?.addEventListener('click',()=>{unreadChannels.clear();renderChannelList();toast('Servidor marcado como lido.','success');closeServerProfile();});
+$('serverChannelsRolesBtn')?.addEventListener('click',()=>{closeServerProfile();$('serverSettingsBtn')?.click();});
+$('profileCreateChannelBtn')?.addEventListener('click',()=>{closeServerProfile();openCreateChannelModal('text');});
+$('profileCreateCategoryBtn')?.addEventListener('click',()=>{closeServerProfile();$('serverSettingsBtn')?.click();toast('Abra Canais e Categorias para criar uma categoria.','success');});
+$('profileEditServerBtn')?.addEventListener('click',()=>{closeServerProfile();$('serverSettingsBtn')?.click();});
+$('leaveServerFromProfileBtn')?.addEventListener('click',async()=>{
+ const ok=await uiConfirm('Sair deste servidor?');if(!ok)return;
+ try{const r=await fetch('/api/servers/'+serverId+'/members/me',{method:'DELETE',headers:headers()});const d=await r.json();if(!r.ok)throw new Error(d.error||'Erro ao sair');localStorage.removeItem('cat_last_server');location.href='/dms.html';}catch(e){toast(e.message,'error');}
+});
 
 // ========== MOBILE SIDEBAR ==========
 $('hamburgerBtn').onclick = () => {

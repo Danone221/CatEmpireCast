@@ -127,6 +127,15 @@ async function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_channel_categories_server ON channel_categories(server_id, position);
     CREATE INDEX IF NOT EXISTS idx_dm_sender ON dm_messages(sender_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_dm_recipient ON dm_messages(recipient_id, created_at);
+    CREATE TABLE IF NOT EXISTS user_blocks (
+      blocker_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      blocked_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at BIGINT NOT NULL DEFAULT extract(epoch FROM now())::bigint,
+      PRIMARY KEY (blocker_id, blocked_id),
+      CHECK (blocker_id <> blocked_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id, blocker_id);
     CREATE INDEX IF NOT EXISTS idx_invites_server ON invites(server_id);
   `);
 

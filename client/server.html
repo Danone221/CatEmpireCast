@@ -23,7 +23,7 @@
       <div class="rail-sep"></div><div class="rail-servers" id="railServers"></div><div class="rail-icon rail-add" id="railAddBtn" title="Adicionar servidor">＋</div>
     </aside>
     <aside class="channels-sidebar" id="channelsSidebar">
-      <div class="server-head" id="serverHead"><div class="server-head-row"><div class="server-name" id="serverName">Servidor</div><button class="server-gear-btn" id="serverSettingsBtn" title="Configurações do servidor" hidden>⚙️</button></div><div class="server-invite-bar"><button type="button" class="btn-server-invite" id="serverInviteBtn">🔗 Convidar</button></div></div>
+      <div class="server-head" id="serverHead"><button type="button" class="server-profile-trigger" id="serverProfileBtn" aria-expanded="false"><span class="server-name" id="serverName" title="Servidor">Servidor</span><span class="server-profile-arrow">⌄</span></button></div>
       <div class="channel-list" id="channelList"></div>
       <div class="user-bar"><div class="user-avatar" id="myAvatarBtn" title="Configurações do usuário"><img id="myAvatarImg" src="/logo.svg" alt=""></div><div class="user-info" id="myInfoBtn" title="Configurações do usuário"><div class="user-name" id="myName">Membro</div><div class="user-role" id="myRole">membro</div></div><button class="user-settings-btn" id="userSettingsBtn" title="Configurações do usuário">⚙️</button></div>
     </aside>
@@ -35,6 +35,18 @@
   <aside class="members-sidebar" id="membersSidebar"><h4>MEMBROS — <span id="memberCount">0</span></h4><div id="membersList"></div></aside>
 </div>
 
+<div class="modal server-profile-modal" id="serverProfileModal">
+  <div class="server-profile-sheet" role="dialog" aria-modal="true" aria-labelledby="serverProfileName">
+    <button type="button" class="server-sheet-close" id="closeServerProfileBtn" aria-label="Fechar">×</button>
+    <div class="server-profile-icon"><img id="serverProfileIconImg" src="/logo.svg" alt=""></div>
+    <h2 id="serverProfileName">Servidor</h2>
+    <div class="server-profile-counts"><span><i class="online-dot"></i><b id="serverOnlineCount">0</b> online</span><span><i></i><b id="serverTotalCount">0</b> membros</span></div>
+    <div class="server-profile-actions"><button type="button" id="serverInviteBtn"><span>👥＋</span>Convite</button><button type="button" id="serverNotificationsBtn"><span>🔔</span>Notificações</button><button type="button" id="serverSettingsBtn" hidden><span>⚙️</span>Configurações</button></div>
+    <div class="server-profile-menu"><button type="button" id="markServerReadBtn">Marcar como lida</button><button type="button" id="serverChannelsRolesBtn">Canais &amp; Cargos</button></div>
+    <div class="server-profile-menu admin-only-profile" id="serverAdminProfileActions" hidden><button type="button" id="profileCreateChannelBtn">Criar canal</button><button type="button" id="profileCreateCategoryBtn">Criar categoria</button><button type="button" id="profileEditServerBtn">Editar perfil do servidor</button></div>
+    <div class="server-profile-menu"><button type="button" class="danger-text" id="leaveServerFromProfileBtn">Sair do servidor</button></div>
+  </div>
+</div>
 <div class="modal" id="videoSettingsModal"><div class="modal-box"><h2>Qualidade da transmissão</h2><p class="modal-hint">As opções são aplicadas à câmera e à transmissão nativa do celular.</p><label class="kv-label" for="videoQualitySelect" style="display:block;margin:14px 0 6px">QUALIDADE</label><select id="videoQualitySelect"><option value="480">SD — 480p (mais estável)</option><option value="720" selected>HD — 720p</option><option value="1080">Full HD — 1080p</option></select><label class="kv-label" for="videoFpsSelect" style="display:block;margin:14px 0 6px">FPS MÁXIMO</label><select id="videoFpsSelect"><option value="24">24 FPS</option><option value="30" selected>30 FPS</option><option value="60">60 FPS</option></select><div class="modal-actions"><button type="button" class="btn" id="cancelVideoSettingsBtn">Cancelar</button><button type="button" class="btn btn-primary" id="saveVideoSettingsBtn">Salvar</button></div></div></div>
 <div class="modal" id="createChannelModal"><div class="modal-box"><h2>Criar canal</h2><input id="newChannelName" placeholder="nome-do-canal" maxlength="30"><div class="type-toggle"><button type="button" class="type-opt active" data-type="text" id="typeTextBtn"># Texto</button><button type="button" class="type-opt" data-type="voice" id="typeVoiceBtn">🔊 Voz</button></div><div class="modal-actions"><button class="btn" id="cancelChannelBtn">Cancelar</button><button class="btn btn-primary" id="confirmChannelBtn">Criar</button></div></div></div>
 <div class="modal" id="mobileCastModal"><div class="modal-box"><h2>📱 Transmitir a tela do celular</h2><p class="modal-hint">Use um encoder RTMP. Cole a URL e a chave no encoder.</p><div class="kv-row"><span class="kv-label">URL RTMP</span><span class="kv-value" id="castRtmpUrl">—</span><button type="button" class="btn kv-copy" data-copy="castRtmpUrl">Copiar</button></div><div class="kv-row"><span class="kv-label">CHAVE</span><span class="kv-value" id="castStreamKey">—</span><button type="button" class="btn kv-copy" data-copy="castStreamKey">Copiar</button></div><p class="modal-hint warn" id="castWarning" hidden>⚠️ Servidor de mídia externo não configurado.</p><div class="modal-actions"><button class="btn btn-primary" id="closeCastModalBtn">Fechar</button></div></div></div>

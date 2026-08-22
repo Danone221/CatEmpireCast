@@ -54,12 +54,15 @@
       <h2 style="font-size:11px;margin-bottom:14px">Configurações da Conta</h2>
       <div class="kv-row"><span class="kv-label">USUÁRIO</span><span class="kv-value" id="accountUsername">—</span></div>
       <div class="kv-row"><span class="kv-label">ID DA CONTA</span><span class="kv-value" id="accountUserId">—</span><button type="button" class="btn kv-copy" id="copyUserIdBtn">Copiar</button></div>
+      <section class="blocked-accounts-section"><div class="blocked-section-head"><h3>CONTAS BLOQUEADAS</h3><button type="button" class="btn blocked-refresh-btn" id="refreshBlockedBtn">Atualizar</button></div><p class="modal-hint">Usuários bloqueados não podem enviar mensagens diretas para você.</p><div id="blockedAccountsList"><p class="empty-hint">Carregando…</p></div></section>
       <div class="danger-zone-box" style="margin-top:20px"><h4>DESCONECTAR</h4><p class="modal-hint">Sair da sua conta atual neste navegador.</p><button type="button" class="btn" id="accountLogoutBtn">🔴 Sair da Conta</button></div>
       <div class="modal-actions"><button class="btn" id="closeAccountTabBtn">Fechar</button></div>
     </div>
   </div>
 </div>
 
+<div class="modal" id="blockedProfileWarningModal"><div class="modal-box blocked-warning-dialog"><div class="blocked-warning-icon">⛔</div><h2>USUÁRIO BLOQUEADO</h2><p>Você bloqueou esta conta. O perfil só será exibido se você confirmar.</p><div class="modal-actions"><button type="button" class="btn" id="cancelBlockedProfileBtn">Cancelar</button><button type="button" class="btn btn-primary" id="openBlockedProfileBtn">Abrir perfil</button></div></div></div>
+<div class="modal" id="dmUserProfileModal"><div class="modal-box profile-modal-box"><div class="profile-banner" id="dmProfileBanner"></div><div class="profile-avatar-row"><div class="profile-avatar-big"><img id="dmProfileAvatar" src="/logo.svg" alt=""></div></div><h2 class="profile-display-name" id="dmProfileName">Usuário</h2><div class="profile-username" id="dmProfileUsername">@usuario</div><div class="profile-bio" id="dmProfileBio">Sem bio.</div><div class="modal-actions"><button type="button" class="btn" id="closeDmProfileBtn">Fechar</button></div></div></div>
 <div class="modal" id="addFriendModal">
   <div class="modal-box add-friend-dialog" role="dialog" aria-modal="true" aria-labelledby="addFriendTitle">
     <div class="invite-dialog-head"><div><div class="invite-kicker">AMIGOS</div><h2 id="addFriendTitle">Adicionar amigo</h2><p class="modal-hint">Digite o username exato da pessoa.</p></div><button type="button" class="invite-close" id="closeAddFriendBtn" aria-label="Fechar">×</button></div>
