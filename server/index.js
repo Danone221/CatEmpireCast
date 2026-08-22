@@ -6,6 +6,7 @@ const db = require('./database');
 const { initPlatformSchema } = require('./database/platform');
 const { initMessagingSchema } = require('./database/messaging');
 const { initStageSchema } = require('./database/stage');
+const { initExpansionSchema } = require('./database/expansion');
 const { startMediaServer } = require('./media');
 
 const server = http.createServer(app);
@@ -17,12 +18,11 @@ const PORT = config.port;
 async function start() {
   try {
     await db.initSchema();
-    // Expande o schema existente sem apagar ou resetar dados antigos.
+    // Todas as ampliações são aditivas e preservam os dados existentes.
     await initPlatformSchema();
-    // Expande mensagens/reações/anexos/menções de forma compatível com dados antigos.
     await initMessagingSchema();
-    // Stage é aditivo e preserva o sistema de voz existente.
     await initStageSchema();
+    await initExpansionSchema();
 
     // Compatibilidade estrutural: categorias continuam separadas dos canais,
     // e canais novos podem ser text/voice/stage/forum sem alterar dados antigos.
@@ -67,11 +67,12 @@ async function start() {
       console.log(`🐱 Cat Empire rodando em http://localhost:${PORT}`);
       console.log(`📡 Modo: ${config.nodeEnv}`);
       console.log('🗄️  Banco: Postgres');
-      console.log('🧩 Plataforma: schema expandido sem reset destrutivo');
-      console.log('🗂️  Estrutura: categorias e canais com suporte a text/voice/stage/forum');
+      console.log('🧩 Plataforma: expansão completa sem reset destrutivo');
+      console.log('🗂️  Estrutura: categorias, text/voice/stage/forum, threads e permissões');
       console.log('🎙️  Stage: moderadores, palestrantes e audiência persistidos');
       console.log('👑 Hierarquia: OWNER > ADMIN > MODERATOR > STAFF > MEMBER > @EVERYONE');
       console.log('💬 Mensagens: reações, anexos, menções, respostas e pins habilitados');
+      console.log('🌐 V4 API: perfis, segurança, comunidade, convites, emojis, stickers, moderação, onboarding, automod e pesquisa');
     });
 
     startMediaServer(io);
