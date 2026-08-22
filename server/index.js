@@ -4,6 +4,7 @@ const { setupSocket } = require('./socket');
 const config = require('./config');
 const db = require('./database');
 const { initPlatformSchema } = require('./database/platform');
+const { initMessagingSchema } = require('./database/messaging');
 const { startMediaServer } = require('./media');
 
 const server = http.createServer(app);
@@ -17,12 +18,15 @@ async function start() {
     await db.initSchema();
     // Expande o schema existente sem apagar ou resetar dados antigos.
     await initPlatformSchema();
+    // Expande mensagens/reações/anexos/menções de forma compatível com dados antigos.
+    await initMessagingSchema();
 
     server.listen(PORT, () => {
       console.log(`🐱 Cat Empire rodando em http://localhost:${PORT}`);
       console.log(`📡 Modo: ${config.nodeEnv}`);
       console.log('🗄️  Banco: Postgres');
       console.log('🧩 Plataforma: schema expandido sem reset destrutivo');
+      console.log('💬 Mensagens: reações, anexos, menções, respostas e pins habilitados');
     });
 
     startMediaServer(io);
