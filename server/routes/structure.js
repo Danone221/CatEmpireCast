@@ -38,7 +38,11 @@ router.post('/servers/:serverId/categories', async (req, res) => {
     const name = String(req.body.name || 'Nova categoria').trim().slice(0, 80);
     if (!name) return res.status(400).json({ error: 'Nome da categoria inválido' });
     const pos = await queryOne('SELECT COALESCE(MAX(position),-1)+1 AS position FROM channel_categories WHERE server_id=$1', [req.params.serverId]);
-    const category = await queryOne(`INSERT INTO channel_categories(id,server_id,name,position) VALUES($1,$2,$3,$4) RETURNING *`, [uuidv4(), req.params.serverId, name, Number(pos.position)]);
+    const category = await queryOne(
+      `INSERT INTO channel_categories(id,server_id,name,position,collapsed,permissions)
+       VALUES($1,$2,$3,$4,$5,$6::jsonb) RETURNING *`,
+      [uuidv4(), req.params.serverId, name, Number(pos.position), !!req.body.collapsed, JSON.stringify(req.body.permissions || {})]
+    );
     res.status(201).json(category);
   } catch (e) { fail(res, e, 'Erro ao criar categoria'); }
 });
@@ -51,6 +55,8 @@ router.patch('/servers/:serverId/categories/:categoryId', async (req, res) => {
     const add = (sql, value) => { values.push(value); fields.push(sql.replace('?', `$${values.length}`)); };
     if (typeof req.body.name === 'string') add('name=?', req.body.name.trim().slice(0, 80));
     if (req.body.position !== undefined) add('position=?', Math.max(0, Number(req.body.position) || 0));
+    if (req.body.collapsed !== undefined) add('collapsed=?', !!req.body.collapsed);
+    if (req.body.permissions && typeof req.body.permissions === 'object') add('permissions=?', JSON.stringify(req.body.permissions));
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
     values.push(req.params.serverId, req.params.categoryId);
     const category = await queryOne(`UPDATE channel_categories SET ${fields.join(', ')} WHERE server_id=$${values.length-1} AND id=$${values.length} RETURNING *`, values);
@@ -62,10 +68,11 @@ router.patch('/servers/:serverId/categories/:categoryId', async (req, res) => {
 router.delete('/servers/:serverId/categories/:categoryId', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
-    const category = await queryOne('DELETE FROM channel_categories WHERE server_id=$1 AND id=$2 RETURNING id', [req.params.serverId, req.params.categoryId]);
+    const category = await queryOne('SELECT id FROM channel_categories WHERE server_id=$1 AND id=$2', [req.params.serverId, req.params.categoryId]);
     if (!category) return res.status(404).json({ error: 'Categoria não encontrada' });
     // Canais não são apagados ao remover a categoria: tornam-se canais sem categoria.
     await query('UPDATE channels SET category_id=NULL, category=NULL WHERE server_id=$1 AND category_id=$2', [req.params.serverId, req.params.categoryId]);
+    await query('DELETE FROM channel_categories WHERE server_id=$1 AND id=$2', [req.params.serverId, req.params.categoryId]);
     res.json({ success: true, id: category.id });
   } catch (e) { fail(res, e, 'Erro ao excluir categoria'); }
 });
@@ -77,13 +84,18 @@ router.post('/servers/:serverId/channels', async (req, res) => {
     const name = String(req.body.name || 'novo-canal').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64) || 'novo-canal';
     const type = ['text', 'voice', 'forum', 'stage'].includes(req.body.type) ? req.body.type : 'text';
     const categoryId = req.body.categoryId || null;
+    let categoryName = null;
     if (categoryId) {
-      const category = await queryOne('SELECT id FROM channel_categories WHERE id=$1 AND server_id=$2', [categoryId, req.params.serverId]);
+      const category = await queryOne('SELECT id, name FROM channel_categories WHERE id=$1 AND server_id=$2', [categoryId, req.params.serverId]);
       if (!category) return res.status(400).json({ error: 'Categoria inválida' });
+      categoryName = category.name;
     }
     const pos = await queryOne('SELECT COALESCE(MAX(position),-1)+1 AS position FROM channels WHERE server_id=$1', [req.params.serverId]);
-    const channel = await queryOne(`INSERT INTO channels(id,server_id,name,type,category,category_id,position,topic,slowmode,user_limit,bitrate,permissions)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`, [uuidv4(), req.params.serverId, name, type, categoryId, categoryId, Number(pos.position), req.body.topic || null, Math.max(0, Number(req.body.slowmode) || 0), Math.max(0, Number(req.body.userLimit) || 0), Math.max(0, Number(req.body.bitrate) || 64000), JSON.stringify(req.body.permissions || {})]);
+    const channel = await queryOne(
+      `INSERT INTO channels(id,server_id,name,type,category,category_id,position,topic,slowmode,user_limit,bitrate,permissions)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb) RETURNING *`,
+      [uuidv4(), req.params.serverId, name, type, categoryName, categoryId, Number(pos.position), req.body.topic || null, Math.max(0, Number(req.body.slowmode) || 0), Math.max(0, Number(req.body.userLimit) || 0), Math.max(8000, Number(req.body.bitrate) || 64000), JSON.stringify(req.body.permissions || {})]
+    );
     res.status(201).json(channel);
   } catch (e) { fail(res, e, 'Erro ao criar canal'); }
 });
@@ -100,12 +112,14 @@ router.patch('/servers/:serverId/channels/:channelId', async (req, res) => {
     if (['text', 'voice', 'forum', 'stage'].includes(req.body.type)) add('type=?', req.body.type);
     if (req.body.categoryId !== undefined) {
       const categoryId = req.body.categoryId || null;
+      let categoryName = null;
       if (categoryId) {
-        const category = await queryOne('SELECT id FROM channel_categories WHERE id=$1 AND server_id=$2', [categoryId, req.params.serverId]);
+        const category = await queryOne('SELECT id, name FROM channel_categories WHERE id=$1 AND server_id=$2', [categoryId, req.params.serverId]);
         if (!category) return res.status(400).json({ error: 'Categoria inválida' });
+        categoryName = category.name;
       }
       add('category_id=?', categoryId);
-      add('category=?', categoryId);
+      add('category=?', categoryName);
     }
     if (typeof req.body.topic === 'string' || req.body.topic === null) add('topic=?', req.body.topic || null);
     if (req.body.slowmode !== undefined) add('slowmode=?', Math.max(0, Number(req.body.slowmode) || 0));
