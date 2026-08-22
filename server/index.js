@@ -21,11 +21,22 @@ async function start() {
     // Expande mensagens/reações/anexos/menções de forma compatível com dados antigos.
     await initMessagingSchema();
 
+    // Compatibilidade estrutural: categorias continuam separadas dos canais,
+    // e canais novos podem ser text/voice/stage/forum sem alterar dados antigos.
+    await db.query(`
+      ALTER TABLE channels ADD COLUMN IF NOT EXISTS category_id TEXT REFERENCES channel_categories(id) ON DELETE SET NULL;
+      ALTER TABLE channels ADD COLUMN IF NOT EXISTS user_limit INTEGER DEFAULT 0;
+      ALTER TABLE channels ADD COLUMN IF NOT EXISTS bitrate INTEGER DEFAULT 64000;
+      ALTER TABLE channels DROP CONSTRAINT IF EXISTS channels_type_check;
+      ALTER TABLE channels ADD CONSTRAINT channels_type_check CHECK(type IN ('text','voice','stage','forum'));
+    `);
+
     server.listen(PORT, () => {
       console.log(`🐱 Cat Empire rodando em http://localhost:${PORT}`);
       console.log(`📡 Modo: ${config.nodeEnv}`);
       console.log('🗄️  Banco: Postgres');
       console.log('🧩 Plataforma: schema expandido sem reset destrutivo');
+      console.log('🗂️  Estrutura: categorias e canais com suporte a text/voice/stage/forum');
       console.log('💬 Mensagens: reações, anexos, menções, respostas e pins habilitados');
     });
 
