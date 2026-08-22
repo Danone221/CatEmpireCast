@@ -1,0 +1,58 @@
+name: Local-like Test and Full ZIP
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check all JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find . -type f -name '*.js' -not -path './node_modules/*' -not -path './.git/*' -print0)
+
+      - name: Load server application
+        run: node -e "require('./server/app'); console.log('server/app.js loaded successfully')"
+
+      - name: Verify modified interaction files
+        run: |
+          test -f client/interaction-fixes-v6.js
+          grep -q 'interaction-fixes-v6.js' client/server.html
+          grep -q 'interaction-fixes-v6.js' client/dms.html
+
+      - name: Package complete source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf _package
+          mkdir -p _package
+          rsync -a --exclude='.git' --exclude='node_modules' --exclude='_package' ./ _package/
+          cd _package
+          zip -qr ../cat-empire-complete-tested.zip .
+
+      - name: Upload complete ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: cat-empire-complete-tested
+          path: cat-empire-complete-tested.zip
+          if-no-files-found: error
