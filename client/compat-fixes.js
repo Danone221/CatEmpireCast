@@ -5,14 +5,12 @@
  * 1) libera a câmera atual antes de trocar de câmera em celulares;
  * 2) usa deviceId como fallback quando facingMode falhar;
  * 3) cria o modal de convite ANTES de room.js registrar os eventos;
- * 4) carrega os aprimoramentos Discord-like depois que room.js termina.
+ * 4) carrega os aprimoramentos Discord-like depois que room.js termina;
+ * 5) aplica pequenos ajustes depois do carregamento assíncrono do servidor.
  */
 (function () {
   'use strict';
 
-  // ================================================================
-  // CÂMERA MOBILE — fallback robusto para troca frontal/traseira
-  // ================================================================
   const mediaDevices = navigator.mediaDevices;
   if (mediaDevices && typeof mediaDevices.getUserMedia === 'function') {
     const originalGetUserMedia = mediaDevices.getUserMedia.bind(mediaDevices);
@@ -32,11 +30,8 @@
       const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
       if (!track) return stream;
       activeCameraStream = stream;
-      try {
-        activeCameraDeviceId = track.getSettings().deviceId || null;
-      } catch (_) {
-        activeCameraDeviceId = null;
-      }
+      try { activeCameraDeviceId = track.getSettings().deviceId || null; }
+      catch (_) { activeCameraDeviceId = null; }
       track.addEventListener('ended', () => {
         if (activeCameraStream === stream) activeCameraStream = null;
       }, { once: true });
@@ -51,17 +46,12 @@
     }
 
     mediaDevices.getUserMedia = async function (constraints) {
-      if (!hasVideoRequest(constraints)) {
-        return originalGetUserMedia(constraints);
-      }
-
+      if (!hasVideoRequest(constraints)) return originalGetUserMedia(constraints);
       const previousStream = activeCameraStream;
       const previousDeviceId = activeCameraDeviceId;
 
       if (previousStream) {
-        previousStream.getVideoTracks().forEach(track => {
-          try { track.stop(); } catch (_) {}
-        });
+        previousStream.getVideoTracks().forEach(track => { try { track.stop(); } catch (_) {} });
         activeCameraStream = null;
       }
 
@@ -69,10 +59,7 @@
         return rememberCameraStream(await originalGetUserMedia(constraints));
       } catch (firstError) {
         const facing = constraints.video.facingMode;
-        const desiredFacing = typeof facing === 'string'
-          ? facing
-          : (facing && (facing.exact || facing.ideal));
-
+        const desiredFacing = typeof facing === 'string' ? facing : (facing && (facing.exact || facing.ideal));
         try {
           const devices = await mediaDevices.enumerateDevices();
           const cameras = devices.filter(d => d.kind === 'videoinput');
@@ -83,12 +70,9 @@
             : normalizedLabels.find(x => /front|user|frontal|selfie|c[aâ]mera\s*1/.test(x.label));
           const target = (preferred && preferred.device) || candidates[0];
           if (target) {
-            try {
-              return rememberCameraStream(await requestSpecificCamera(constraints, target.deviceId));
-            } catch (_) {}
+            try { return rememberCameraStream(await requestSpecificCamera(constraints, target.deviceId)); } catch (_) {}
           }
         } catch (_) {}
-
         if (desiredFacing === 'user' || desiredFacing === 'environment') {
           try {
             const video = copyVideoConstraints(constraints.video);
@@ -96,13 +80,9 @@
             return rememberCameraStream(await originalGetUserMedia({ ...constraints, video }));
           } catch (_) {}
         }
-
         if (previousDeviceId) {
-          try {
-            return rememberCameraStream(await requestSpecificCamera(constraints, previousDeviceId));
-          } catch (_) {}
+          try { return rememberCameraStream(await requestSpecificCamera(constraints, previousDeviceId)); } catch (_) {}
         }
-
         throw firstError;
       }
     };
@@ -113,7 +93,6 @@
   // ================================================================
   function ensureInviteModal() {
     if (document.getElementById('inviteModal')) return;
-
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.id = 'inviteModal';
@@ -161,25 +140,53 @@
     document.body.appendChild(modal);
   }
 
-  // server.html já chegou ao fim antes deste script, então o modal pode ser
-  // criado imediatamente. Isso garante que room.js encontre todos os IDs.
   ensureInviteModal();
 
   // ================================================================
   // APRIMORAMENTOS — carregar somente depois de room.js
   // ================================================================
+  function applyPostEnhancementFixes() {
+    // Perfil de terceiros: modal horizontal. O editor próprio continua vertical.
+    document.querySelector('#viewProfileModal .modal-box')?.classList.add('profile-horizontal');
+
+    // O próprio perfil deve abrir como cartão pequeno; o editor só aparece
+    // depois de clicar explicitamente em "Editar perfil".
+    ['myAvatarBtn', 'myInfoBtn', 'userSettingsBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.onclick = null;
+    });
+
+    // O timer acompanha todas as formas de saída da call.
+    const leave = document.getElementById('hangupBtn');
+    if (leave) leave.onclick = () => window.leaveVoiceChannel?.(true);
+    const leaveBar = document.getElementById('voiceBarLeave');
+    if (leaveBar) leaveBar.onclick = () => window.leaveVoiceChannel?.(false);
+
+    // room.js carrega o servidor por fetch assíncrono. Reaplica a camada visual
+    // quando os dados finalmente chegam, sem depender da ordem do window.load.
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      if (typeof currentServer !== 'undefined' && currentServer && typeof members !== 'undefined' && members.length) {
+        window.renderMembers?.();
+        window.renderChannelList?.();
+        document.querySelector('#viewProfileModal .modal-box')?.classList.add('profile-horizontal');
+        clearInterval(timer);
+      }
+      if (attempts >= 20) clearInterval(timer);
+    }, 500);
+  }
+
   function loadEnhancements() {
     if (document.getElementById('catEmpireEnhancementsScript')) return;
     const script = document.createElement('script');
     script.id = 'catEmpireEnhancementsScript';
     script.src = '/enhancements.js?v=20260821';
     script.async = false;
+    script.onload = () => setTimeout(applyPostEnhancementFixes, 350);
     document.body.appendChild(script);
   }
 
-  if (document.readyState === 'complete') {
-    loadEnhancements();
-  } else {
-    window.addEventListener('load', loadEnhancements, { once: true });
-  }
+  if (document.readyState === 'complete') loadEnhancements();
+  else window.addEventListener('load', loadEnhancements, { once: true });
 })();
