@@ -23,6 +23,8 @@ const expansionRoutes = require('./routes/expansion');
 
 const app = express();
 
+if (config.nodeEnv === 'production') app.set('trust proxy', 1);
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: {
@@ -41,6 +43,8 @@ app.use(cors({ origin: config.corsOrigin }));
 app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 const clientDir = path.join(__dirname, '../client');
 const htmlFiles = new Set(['/', '/index.html', '/server.html', '/dms.html', '/invite.html']);

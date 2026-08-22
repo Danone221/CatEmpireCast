@@ -21,7 +21,10 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Run automated tests
+        run: npm test
 
       - name: Syntax check all JavaScript
         shell: bash
@@ -40,20 +43,3 @@ jobs:
           test -f client/interaction-fixes-v6.js
           grep -q 'interaction-fixes-v6.js' client/server.html
           grep -q 'interaction-fixes-v6.js' client/dms.html
-
-      - name: Package complete source tree
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf _package
-          mkdir -p _package
-          rsync -a --exclude='.git' --exclude='node_modules' --exclude='_package' ./ _package/
-          cd _package
-          zip -qr ../cat-empire-complete-tested.zip .
-
-      - name: Upload complete ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: cat-empire-complete-tested
-          path: cat-empire-complete-tested.zip
-          if-no-files-found: error

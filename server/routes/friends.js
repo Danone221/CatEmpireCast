@@ -49,7 +49,7 @@ router.post('/friends/request', async (req, res) => {
     if (!target) return res.status(404).json({ error: 'Usuário não encontrado' });
     if (target.id === req.user.id) return res.status(400).json({ error: 'Você não pode adicionar a si mesmo' });
 
-    const existing = await queryOne('SELECT * FROM friends WHERE (user_id=$1 AND friend_id=$2) OR (user_id=$2 AND friend_id=$1)', [req.user.id, target.id]);
+    const existing = await queryOne(`SELECT * FROM friends WHERE (user_id=$1 AND friend_id=$2) OR (user_id=$2 AND friend_id=$1) ORDER BY CASE WHEN friend_id=$1 THEN 0 ELSE 1 END LIMIT 1`, [req.user.id, target.id]);
     if (existing?.status === 'accepted') return res.status(409).json({ error: 'Vocês já são amigos' });
     if (existing?.status === 'pending') {
       if (existing.user_id === target.id && existing.friend_id === req.user.id) {
@@ -64,7 +64,11 @@ router.post('/friends/request', async (req, res) => {
     await query('INSERT INTO friends(user_id,friend_id,status) VALUES($1,$2,\'pending\')', [req.user.id, target.id]);
     await query(`INSERT INTO notifications(id,user_id,type,title,description,target) VALUES($1,$2,'friend_request',$3,$4,$5::jsonb)`, [uuidv4(), target.id, 'Nova solicitação de amizade', 'Um usuário enviou uma solicitação de amizade.', JSON.stringify({ userId:req.user.id })]);
     res.status(201).json({ success: true, message: 'Solicitação enviada.' });
-  } catch (e) { res.status(400).json({ error: e.message || 'Erro ao enviar solicitação' }); }
+  } catch (e) {
+    if (e?.code === '23505') return res.status(409).json({ error: 'Solicitação já enviada' });
+    console.error('Erro ao enviar solicitação de amizade:', e);
+    res.status(500).json({ error: 'Erro ao enviar solicitação' });
+  }
 });
 
 router.post('/friends/requests/:userId/accept', async (req, res) => {

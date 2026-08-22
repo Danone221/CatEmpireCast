@@ -167,6 +167,10 @@ async function initSchema() {
     ON CONFLICT (server_id, name) DO NOTHING
   `);
 
+  const usernameCollision = await pool.query('SELECT lower(username) AS normalized FROM users GROUP BY lower(username) HAVING COUNT(*) > 1 LIMIT 1');
+  if (usernameCollision.rowCount > 0) throw new Error('Existem usuários que diferem apenas por maiúsculas/minúsculas. Resolva a colisão antes de iniciar.');
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username))');
+
   console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
 }
 

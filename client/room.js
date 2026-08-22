@@ -199,8 +199,9 @@ async function load() {
     channels = d.channels || [];
     members = d.members || [];
     myRole = d.myRole || 'member';
-    $('myRole').textContent = myRole === 'admin' ? 'admin' : 'membro';
-    $('serverSettingsBtn').hidden = myRole !== 'admin';
+    const canManageServer = ['admin', 'owner'].includes(myRole);
+    $('myRole').textContent = myRole === 'owner' ? 'dono' : myRole === 'admin' ? 'admin' : 'membro';
+    $('serverSettingsBtn').hidden = !canManageServer;
     renderChannelList();
     renderMembers();
     const firstText = channels.find(c => c.type === 'text');
@@ -1792,8 +1793,9 @@ socket.on('member-role-updated', ({ userId: uid, role }) => {
   }
   if (uid === userId) {
     myRole = role;
-    $('myRole').textContent = myRole === 'admin' ? 'admin' : 'membro';
-    $('serverSettingsBtn').hidden = (myRole !== 'admin');
+    const canManageServer = ['admin', 'owner'].includes(myRole);
+    $('myRole').textContent = myRole === 'owner' ? 'dono' : myRole === 'admin' ? 'admin' : 'membro';
+    $('serverSettingsBtn').hidden = !canManageServer;
     toast('Seu cargo foi atualizado para: ' + (role === 'admin' ? 'Administrador' : 'Membro'), 'success');
   }
 });
