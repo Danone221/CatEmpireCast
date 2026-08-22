@@ -1,10 +1,10 @@
 {
   "name": "cat-empire",
-  "version": "2.0.1",
-  "description": "Cat Empire - Servidor de Call + Go Live + Chat (Estilo Discord)",
+  "version": "3.0.0",
+  "description": "Cat Empire - plataforma social de comunidade, chat, voz e servidores",
   "main": "server/index.js",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node server/index.js",
