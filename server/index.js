@@ -5,6 +5,7 @@ const config = require('./config');
 const db = require('./database');
 const { initPlatformSchema } = require('./database/platform');
 const { initMessagingSchema } = require('./database/messaging');
+const { initStageSchema } = require('./database/stage');
 const { startMediaServer } = require('./media');
 
 const server = http.createServer(app);
@@ -20,6 +21,8 @@ async function start() {
     await initPlatformSchema();
     // Expande mensagens/reações/anexos/menções de forma compatível com dados antigos.
     await initMessagingSchema();
+    // Stage é aditivo e preserva o sistema de voz existente.
+    await initStageSchema();
 
     // Compatibilidade estrutural: categorias continuam separadas dos canais,
     // e canais novos podem ser text/voice/stage/forum sem alterar dados antigos.
@@ -64,6 +67,7 @@ async function start() {
       console.log('🗄️  Banco: Postgres');
       console.log('🧩 Plataforma: schema expandido sem reset destrutivo');
       console.log('🗂️  Estrutura: categorias e canais com suporte a text/voice/stage/forum');
+      console.log('🎙️  Stage: moderadores, palestrantes e audiência persistidos');
       console.log('👑 Hierarquia: OWNER > ADMIN > MODERATOR > STAFF > MEMBER > @EVERYONE');
       console.log('💬 Mensagens: reações, anexos, menções, respostas e pins habilitados');
     });
