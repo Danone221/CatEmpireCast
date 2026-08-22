@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const path = require('path');
+const fs = require('fs');
 const config = require('./config');
 const apiRoutes = require('./routes/api');
 const extraRoutes = require('./routes/extra');
@@ -33,8 +34,25 @@ app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Injeta somente a camada funcional V4 nas páginas HTML existentes.
+// O CSS/HTML-base continua intacto: nenhuma troca de tema ou layout é feita aqui.
+const clientDir = path.join(__dirname, '../client');
+const htmlFiles = new Set(['/', '/index.html', '/server.html', '/dms.html', '/invite.html']);
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || !htmlFiles.has(req.path) || !String(req.headers.accept || '').includes('text/html')) return next();
+  const file = req.path === '/' ? 'index.html' : req.path.slice(1);
+  const fullPath = path.join(clientDir, file);
+  fs.readFile(fullPath, 'utf8', (err, html) => {
+    if (err) return next();
+    if (!html.includes('data-cat-empire-v4')) {
+      html = html.replace('</body>', '<script src="/vnext-loader.js" data-cat-empire-loader></script></body>');
+    }
+    res.type('html').send(html);
+  });
+});
+
 // Arquivos estáticos
-app.use(express.static(path.join(__dirname, '../client')));
+app.use(express.static(clientDir));
 
 // Rotas
 app.use('/api', apiRoutes);
