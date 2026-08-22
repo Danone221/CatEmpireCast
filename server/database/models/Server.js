@@ -11,10 +11,7 @@ class Server {
       [id, name, icon || '🐱', code, creatorId]
     );
 
-    // Adicionar criador como ADMIN de fato
     await this.addMember(id, creatorId, 'admin');
-
-    // Criar canais padrão
     await Channel.create({ serverId: id, name: 'geral', type: 'text', category: 'CANAIS' });
     await Channel.create({ serverId: id, name: 'Geral', type: 'voice', category: 'CANAIS DE VOZ' });
 
@@ -79,10 +76,8 @@ class Server {
     return row ? row.role : null;
   }
 
-  // Edita nome, ícone (emoji ou imagem em base64/URL), cor de banner e
-  // descrição do servidor. Só quem chama a rota confere se é ADMIN antes.
   static async update(id, data) {
-    const allowed = ['name', 'icon', 'banner_color', 'description'];
+    const allowed = ['name', 'icon', 'banner', 'banner_color', 'description'];
     const fields = [];
     const values = [];
     let i = 1;
