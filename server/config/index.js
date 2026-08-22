@@ -1,9 +1,16 @@
 require('dotenv').config();
 
+const nodeEnv = process.env.NODE_ENV || 'development';
+const jwtSecret = process.env.JWT_SECRET || '';
+
+if (nodeEnv === 'production' && jwtSecret.length < 32) {
+  throw new Error('JWT_SECRET deve ser definido com pelo menos 32 caracteres em produção.');
+}
+
 module.exports = {
   port: process.env.PORT || 3000,
-  nodeEnv: process.env.NODE_ENV || 'development',
-  jwtSecret: process.env.JWT_SECRET || 'cat_empire_secret',
+  nodeEnv,
+  jwtSecret: jwtSecret || 'cat_empire_local_development_only',
   databaseUrl: process.env.DATABASE_URL || '',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   discordClientId: process.env.DISCORD_CLIENT_ID || '',

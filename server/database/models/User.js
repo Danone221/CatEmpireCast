@@ -28,7 +28,7 @@ class User {
   }
 
   static async findByUsername(username) {
-    return queryOne('SELECT * FROM users WHERE username = $1', [username]);
+    return queryOne('SELECT * FROM users WHERE lower(username) = lower($1)', [username]);
   }
 
   static async findByDiscordId(discordId) {

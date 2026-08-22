@@ -3,14 +3,23 @@ const router = express.Router();
 const User = require('../database/models/User');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const rateLimit = require('express-rate-limit');
+const { validateRegistration, validateLogin } = require('../auth-input');
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas. Tente novamente em alguns minutos.' }
+});
 
 // Registrar
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   try {
-    const { username, password, displayName } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
-    }
+    const parsed = validateRegistration(req.body);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    const { username, password, displayName } = parsed.value;
     const existing = await User.findByUsername(username);
     if (existing) {
       return res.status(400).json({ error: 'Usuário já existe' });
@@ -25,12 +34,11 @@ router.post('/register', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
-    }
+    const parsed = validateLogin(req.body);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    const { username, password } = parsed.value;
     const user = await User.authenticate(username, password);
     if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
