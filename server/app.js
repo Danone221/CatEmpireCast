@@ -50,7 +50,9 @@ app.use((req, res, next) => {
   fs.readFile(fullPath, 'utf8', (err, html) => {
     if (err) return next();
     if (!html.includes('data-cat-empire-v4')) {
-      html = html.replace('</body>', '<script src="/vnext-loader.js" data-cat-empire-loader></script></body>');
+      html = html.replace('</body>', '<script src="/vnext-loader.js" data-cat-empire-loader></script><script src="/profile-v5.js?v=20260822"></script></body>');
+    } else if (!html.includes('/profile-v5.js')) {
+      html = html.replace('</body>', '<script src="/profile-v5.js?v=20260822"></script></body>');
     }
     res.type('html').send(html);
   });
