@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const featureRoutes = require('./routes/features');
 const settingsRoutes = require('./routes/settings');
 const socialRoutes = require('./routes/social');
+const friendsRoutes = require('./routes/friends');
 const platformRoutes = require('./routes/platform');
 const structureRoutes = require('./routes/structure');
 const roleRoutes = require('./routes/roles');
@@ -40,7 +41,6 @@ app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// A camada V4/VNext é funcional: o HTML/CSS-base existente continua sendo a identidade visual.
 const clientDir = path.join(__dirname, '../client');
 const htmlFiles = new Set(['/', '/index.html', '/server.html', '/dms.html', '/invite.html']);
 app.use((req, res, next) => {
@@ -61,6 +61,7 @@ app.use(express.static(clientDir));
 app.use('/api', apiRoutes);
 app.use('/api', extraRoutes);
 app.use('/api', socialRoutes);
+app.use('/api/social', friendsRoutes);
 app.use('/api/platform', platformRoutes);
 app.use('/api/platform', structureRoutes);
 app.use('/api/platform', roleRoutes);
