@@ -8,13 +8,8 @@
 <script src="/ui.js"></script>
 </head>
 <body class="room-page discord-page">
-
-<div class="mobile-topbar">
-  <button class="hamburger" id="hamburgerBtn">☰</button>
-  <div class="mobile-title" id="mobileTitle">Mensagens</div>
-</div>
+<div class="mobile-topbar"><button class="hamburger" id="hamburgerBtn">☰</button><div class="mobile-title" id="mobileTitle">Mensagens</div></div>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
 <div class="app-shell">
   <div class="mobile-drawer" id="mobileDrawer">
     <aside class="server-rail" id="serverRail">
@@ -31,19 +26,13 @@
       </div>
     </aside>
   </div>
-
   <main class="main-panel">
     <div class="text-view" id="textView">
       <div class="panel-header" id="dmHeader"><span id="dmHeaderEmpty">Selecione uma conversa</span></div>
       <div class="messages-list" id="messagesList"></div>
       <div class="typing-indicator" id="dmTypingIndicator" hidden></div>
       <div class="attach-preview" id="attachPreview" hidden><img id="attachPreviewImg" alt=""><span id="attachPreviewName"></span><button type="button" id="attachRemoveBtn">✕</button></div>
-      <form class="message-form" id="messageForm">
-        <button type="button" class="attach-btn" id="attachBtn" title="Enviar imagem">📎</button>
-        <input type="file" id="fileInput" accept="image/*" hidden>
-        <input type="text" id="messageInput" placeholder="Enviar mensagem…" maxlength="2000" autocomplete="off" enterkeyhint="send" disabled>
-        <button type="button" id="sendBtn" class="send-btn" title="Enviar">➤</button>
-      </form>
+      <form class="message-form" id="messageForm"><button type="button" class="attach-btn" id="attachBtn" title="Enviar imagem">📎</button><input type="file" id="fileInput" accept="image/*" hidden><input type="text" id="messageInput" placeholder="Enviar mensagem…" maxlength="2000" autocomplete="off" enterkeyhint="send" disabled><button type="button" id="sendBtn" class="send-btn" title="Enviar">➤</button></form>
     </div>
   </main>
 </div>
@@ -57,21 +46,22 @@
       <h2 style="font-size:11px">Personalizar Perfil</h2>
       <label class="kv-label" style="display:block;margin-bottom:6px">NOME DE EXIBIÇÃO</label><input id="editDisplayName" placeholder="Nome de exibição" maxlength="32">
       <label class="kv-label" style="display:block;margin-bottom:6px">SOBRE MIM (BIO)</label><textarea id="editBio" class="bio-input" placeholder="Fale um pouco sobre você…" maxlength="190"></textarea><div class="char-counter"><span id="editBioCount">0</span>/190</div>
-      <label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER</label><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><div class="color-swatches" id="editColorSwatches" style="margin-bottom:0;flex:1"></div><input type="color" id="editCustomColorInput" class="custom-color-input" title="Cor personalizada"></div>
+      <label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER</label><div class="color-picker-layout" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px"><div class="color-swatches" id="editColorSwatches" style="margin-bottom:0;flex:1 1 100%;width:100%"></div><input type="color" id="editCustomColorInput" class="custom-color-input" title="Cor personalizada"></div>
       <input type="file" id="avatarFileInput" accept="image/*" hidden><input type="file" id="profileBannerFileInput" accept="image/*" hidden>
       <div class="modal-actions"><button class="btn" id="cancelEditProfileBtn">Cancelar</button><button class="btn btn-primary" id="saveEditProfileBtn">Salvar Alterações</button></div>
     </div>
     <div id="userPaneAccount" hidden>
       <h2 style="font-size:11px;margin-bottom:14px">Configurações da Conta</h2>
       <div class="kv-row"><span class="kv-label">USUÁRIO</span><span class="kv-value" id="accountUsername">—</span></div>
-      <div class="kv-row"><span class="kv-label">ID DA CONTA</span><span class="kv-value" id="accountUserId">—</span><button type="button" class="btn kv-copy" id="copyUserIdBtn" style="padding:4px 8px;font-size:8px">Copiar</button></div>
-      <div class="danger-zone-box" style="margin-top:20px"><h4 style="font-size:9px;color:#ff5369;margin-bottom:8px">DESCONECTAR</h4><p class="modal-hint" style="font-size:12px;margin-bottom:12px">Sair da sua conta atual neste navegador e voltar à tela inicial.</p><button type="button" class="btn" id="accountLogoutBtn" style="background:#a11c35;color:#fff;border-color:#ff3b55;font-size:10px">🔴 Sair da Conta</button></div>
-      <div class="modal-actions" style="margin-top:20px"><button class="btn" id="closeAccountTabBtn">Fechar</button></div>
+      <div class="kv-row"><span class="kv-label">ID DA CONTA</span><span class="kv-value" id="accountUserId">—</span><button type="button" class="btn kv-copy" id="copyUserIdBtn">Copiar</button></div>
+      <div class="danger-zone-box" style="margin-top:20px"><h4>DESCONECTAR</h4><p class="modal-hint">Sair da sua conta atual neste navegador.</p><button type="button" class="btn" id="accountLogoutBtn">🔴 Sair da Conta</button></div>
+      <div class="modal-actions"><button class="btn" id="closeAccountTabBtn">Fechar</button></div>
     </div>
   </div>
 </div>
 
 <script src="/dms.js"></script>
 <script src="/features-v3.js?v=20260821"></script>
+<script src="/runtime-v5.js?v=20260822"></script>
 </body>
 </html>
