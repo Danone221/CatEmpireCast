@@ -27,6 +27,8 @@ async function start() {
     // Compatibilidade estrutural: categorias continuam separadas dos canais,
     // e canais novos podem ser text/voice/stage/forum sem alterar dados antigos.
     await db.query(`
+      ALTER TABLE channel_categories ADD COLUMN IF NOT EXISTS collapsed BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE channel_categories ADD COLUMN IF NOT EXISTS permissions JSONB NOT NULL DEFAULT '{}'::jsonb;
       ALTER TABLE channels ADD COLUMN IF NOT EXISTS category_id TEXT REFERENCES channel_categories(id) ON DELETE SET NULL;
       ALTER TABLE channels ADD COLUMN IF NOT EXISTS user_limit INTEGER DEFAULT 0;
       ALTER TABLE channels ADD COLUMN IF NOT EXISTS bitrate INTEGER DEFAULT 64000;
@@ -34,19 +36,19 @@ async function start() {
       ALTER TABLE channels ADD CONSTRAINT channels_type_check CHECK(type IN ('text','voice','stage','forum'));
 
       INSERT INTO server_roles (id,server_id,name,color,position,permissions)
-      SELECT md5(s.id || ':admin'),s.id,'ADMIN',90,NULL::text,'{"administrator":true}'::jsonb
+      SELECT md5(s.id || ':admin'),s.id,'ADMIN','#e74c3c',90,'{"administrator":true}'::jsonb
       FROM servers s
       WHERE NOT EXISTS (SELECT 1 FROM server_roles r WHERE r.server_id=s.id AND r.name='ADMIN');
       INSERT INTO server_roles (id,server_id,name,color,position,permissions)
-      SELECT md5(s.id || ':moderator'),s.id,'MODERATOR',70,NULL::text,'{"manage_messages":true,"mute_members":true,"timeout_members":true}'::jsonb
+      SELECT md5(s.id || ':moderator'),s.id,'MODERATOR','#f1c40f',70,'{"manage_messages":true,"mute_members":true,"timeout_members":true}'::jsonb
       FROM servers s
       WHERE NOT EXISTS (SELECT 1 FROM server_roles r WHERE r.server_id=s.id AND r.name='MODERATOR');
       INSERT INTO server_roles (id,server_id,name,color,position,permissions)
-      SELECT md5(s.id || ':staff'),s.id,'STAFF',50,NULL::text,'{"manage_channels":true,"manage_messages":true}'::jsonb
+      SELECT md5(s.id || ':staff'),s.id,'STAFF','#3498db',50,'{"manage_channels":true,"manage_messages":true}'::jsonb
       FROM servers s
       WHERE NOT EXISTS (SELECT 1 FROM server_roles r WHERE r.server_id=s.id AND r.name='STAFF');
       INSERT INTO server_roles (id,server_id,name,color,position,permissions)
-      SELECT md5(s.id || ':member'),s.id,'MEMBER',10,NULL::text,'{"view_channel":true,"send_messages":true,"connect":true}'::jsonb
+      SELECT md5(s.id || ':member'),s.id,'MEMBER','#95a5a6',10,'{"view_channel":true,"send_messages":true,"connect":true}'::jsonb
       FROM servers s
       WHERE NOT EXISTS (SELECT 1 FROM server_roles r WHERE r.server_id=s.id AND r.name='MEMBER');
 
