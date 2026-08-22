@@ -17,20 +17,17 @@ pool.on('error', (err) => {
   console.error('❌ Erro inesperado no pool do Postgres:', err);
 });
 
-// Helper simples: executa uma query parametrizada e devolve as linhas.
 async function query(text, params = []) {
   const result = await pool.query(text, params);
   return result.rows;
 }
 
-// Executa uma query e devolve só a primeira linha (ou null).
 async function queryOne(text, params = []) {
   const rows = await query(text, params);
   return rows[0] || null;
 }
 
 // ========== SCHEMA ==========
-// Criação de tabelas e migrações. Chamado uma vez, na inicialização do servidor.
 async function initSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -99,7 +96,6 @@ async function initSchema() {
       PRIMARY KEY (user_id, channel_id)
     );
 
-    -- Mensagens privadas (DM) — 1 pra 1, sem canal/servidor envolvido.
     CREATE TABLE IF NOT EXISTS dm_messages (
       id TEXT PRIMARY KEY,
       sender_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -114,7 +110,6 @@ async function initSchema() {
       read_at BIGINT
     );
 
-    -- Links de convite para servidores
     CREATE TABLE IF NOT EXISTS invites (
       code TEXT PRIMARY KEY,
       server_id TEXT NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
@@ -135,7 +130,6 @@ async function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_invites_server ON invites(server_id);
   `);
 
-  // ===== Migração: coluna discord_id em bancos já existentes =====
   const col = await pool.query(`
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'users' AND column_name = 'discord_id'
@@ -159,11 +153,11 @@ async function initSchema() {
   await addColumnIfMissing('invites', 'max_uses', 'INTEGER');
   await addColumnIfMissing('invites', 'expires_at', 'BIGINT');
 
-  // Migração dos canais existentes: cada nome de categoria passa a existir
-  // também como uma categoria persistente, inclusive categorias vazias criadas depois.
+  // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
+  // depender de extensões como pgcrypto só para gerar IDs de categorias.
   await pool.query(`
     INSERT INTO channel_categories (id, server_id, name, position)
-    SELECT gen_random_uuid()::text, x.server_id, x.category,
+    SELECT md5(x.server_id || ':' || x.category), x.server_id, x.category,
            ROW_NUMBER() OVER (PARTITION BY x.server_id ORDER BY x.category) - 1
     FROM (
       SELECT DISTINCT server_id, trim(category) AS category
@@ -176,7 +170,6 @@ async function initSchema() {
   console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
 }
 
-// Helper de migração idempotente: adiciona a coluna só se ainda não existir.
 async function addColumnIfMissing(table, column, type) {
   const col = await pool.query(
     `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
