@@ -8,6 +8,8 @@ const apiRoutes = require('./routes/api');
 const extraRoutes = require('./routes/extra');
 const authRoutes = require('./routes/auth');
 const featureRoutes = require('./routes/features');
+const settingsRoutes = require('./routes/settings');
+const socialRoutes = require('./routes/social');
 
 const app = express();
 
@@ -37,7 +39,9 @@ app.use(express.static(path.join(__dirname, '../client')));
 // Rotas
 app.use('/api', apiRoutes);
 app.use('/api', extraRoutes);
+app.use('/api', socialRoutes);
 app.use('/api/features', featureRoutes);
+app.use('/api/features', settingsRoutes);
 app.use('/auth', authRoutes);
 
 // Rotas de convite
