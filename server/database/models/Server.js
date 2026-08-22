@@ -10,11 +10,9 @@ class Server {
       `INSERT INTO servers (id, name, icon, code, creator_id) VALUES ($1, $2, $3, $4, $5)`,
       [id, name, icon || '🐱', code, creatorId]
     );
-
     await this.addMember(id, creatorId, 'admin');
     await Channel.create({ serverId: id, name: 'geral', type: 'text', category: 'CANAIS' });
     await Channel.create({ serverId: id, name: 'Geral', type: 'voice', category: 'CANAIS DE VOZ' });
-
     return this.findById(id);
   }
 
@@ -33,12 +31,15 @@ class Server {
   }
 
   static async findByUser(userId) {
+    // Compatibilidade com servidores antigos: o criador continua vendo o
+    // servidor mesmo se uma migração anterior não tiver a linha em members.
     return query(
       `SELECT s.*,
-        (SELECT COUNT(*) FROM server_members WHERE server_id = s.id) as member_count
+        (SELECT COUNT(*) FROM server_members WHERE server_id = s.id) as member_count,
+        COALESCE(sm.role, CASE WHEN s.creator_id = $1 THEN 'admin' ELSE NULL END) AS role
       FROM servers s
-      JOIN server_members sm ON s.id = sm.server_id
-      WHERE sm.user_id = $1
+      LEFT JOIN server_members sm ON s.id = sm.server_id AND sm.user_id = $1
+      WHERE sm.user_id = $1 OR s.creator_id = $1
       ORDER BY s.created_at`,
       [userId]
     );
