@@ -6,9 +6,9 @@
       s.src = src;
       s.async = false;
       s.setAttribute(dataAttr, '1');
+      document.body.appendChild(s);
       s.onload = resolve;
       s.onerror = reject;
-      document.body.appendChild(s);
     });
   }
 
@@ -16,12 +16,13 @@
     if (window.__catEmpireVNextLoaded || window.__catEmpireVNextLoading) return;
     window.__catEmpireVNextLoading = true;
 
-    // A camada de API é carregada antes da camada funcional para que novas
-    // telas/componentes possam reutilizar o mesmo contrato sem duplicar fetch/listeners.
     loadScript('/platform-api.js?v=20260822-v5', 'data-cat-empire-platform')
       .then(function () {
         if (window.__catEmpireV4Loaded || document.querySelector('script[data-cat-empire-v4]')) return;
         return loadScript('/features-v4-final.js?v=20260822-v5', 'data-cat-empire-v4');
+      })
+      .then(function () {
+        return loadScript('/runtime-v6.js?v=20260822-v6', 'data-cat-empire-v6');
       })
       .then(function () {
         window.__catEmpireVNextLoaded = true;
