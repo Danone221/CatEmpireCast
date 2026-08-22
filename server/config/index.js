@@ -1,9 +1,10 @@
 require('dotenv').config();
 
 const nodeEnv = process.env.NODE_ENV || 'development';
-const jwtSecret = process.env.JWT_SECRET || '';
+const jwtSecret = String(process.env.JWT_SECRET || '').trim();
+const weakJwtSecrets = new Set(['cat_empire_secret', 'cat_empire_local_development_only', 'troque_por_um_valor_aleatorio_e_secreto']);
 
-if (nodeEnv === 'production' && jwtSecret.length < 32) {
+if (nodeEnv === 'production' && (jwtSecret.length < 32 || weakJwtSecrets.has(jwtSecret))) {
   throw new Error('JWT_SECRET deve ser definido com pelo menos 32 caracteres em produção.');
 }
 

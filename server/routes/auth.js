@@ -28,6 +28,7 @@ router.post('/register', authLimiter, async (req, res) => {
     const token = jwt.sign({ id: user.id, username: user.username }, config.jwtSecret, { expiresIn: '7d' });
     res.json({ user, token });
   } catch (error) {
+    if (error?.code === '23505') return res.status(409).json({ error: 'Usuário já existe' });
     console.error('Erro ao registrar:', error);
     res.status(500).json({ error: 'Erro ao registrar' });
   }

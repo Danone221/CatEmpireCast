@@ -12,6 +12,11 @@ test('produção recusa um segredo JWT ausente ou curto', () => {
   assert.match(result.stderr, /JWT_SECRET/);
 });
 
+test('produção rejeita segredo composto apenas por espaços', () => {
+  const result = spawnSync(process.execPath, ['-e', "require('./server/config')"], { cwd: process.cwd(), env: { ...process.env, NODE_ENV: 'production', JWT_SECRET: ' '.repeat(40) }, encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+});
+
 test('produção aceita um segredo JWT forte', () => {
   const result = spawnSync(process.execPath, ['-e', "require('./server/config')"], {
     cwd: process.cwd(),

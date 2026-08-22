@@ -69,7 +69,8 @@
   function installVisualGuardrails() {
     const style = document.createElement('style');
     style.textContent = `
-      .cat-v6-banner-large,.profile-modal-box .profile-banner,#viewProfileBanner,.banner-edit-wrap{min-height:240px!important;height:240px!important;background-size:cover!important;background-position:center!important}
+      .cat-v6-banner-large{min-height:88px!important;height:88px!important;background-size:cover!important;background-position:center!important}
+      .profile-modal-box .profile-banner,#viewProfileBanner,.banner-edit-wrap{min-height:120px!important;height:120px!important;background-size:cover!important;background-position:center!important}
       .profile-modal-box.profile-horizontal{width:min(860px,94vw)!important;max-width:860px!important}
       .gif-row,.gif-hint,.feature-gif-btn,.feature-emoji-btn,#featureGifUrl,#featureGifInsert,.feature-picker,#gifBtn,.gif-btn,[data-action="gif"]{display:none!important}
       .cat-v6-settings-section{border:2px solid #3b1b68;background:#0d0618;padding:14px;margin:12px 0}
@@ -167,10 +168,9 @@
   removeGifControls();
   new MutationObserver(removeGifControls).observe(document.body, {childList:true, subtree:true});
   loadRail();
-  setTimeout(loadRail, 1500);
+  loadRail();
   if (isServer) {
     syncServerBanner();
     addServerSettingsEnhancements();
-    setTimeout(syncServerBanner, 1200);
   }
 })();
