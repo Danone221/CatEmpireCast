@@ -15,6 +15,7 @@ const platformRoutes = require('./routes/platform');
 const structureRoutes = require('./routes/structure');
 const dmRoutes = require('./routes/dm');
 const messagingRoutes = require('./routes/messaging');
+const stageRoutes = require('./routes/stage');
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use('/api/platform', platformRoutes);
 app.use('/api/platform', structureRoutes);
 app.use('/api/platform', dmRoutes);
 app.use('/api/platform', messagingRoutes);
+app.use('/api/platform', stageRoutes);
 app.use('/api/features', featureRoutes);
 app.use('/api/features', settingsRoutes);
 app.use('/auth', authRoutes);
