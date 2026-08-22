@@ -168,7 +168,6 @@
   removeGifControls();
   new MutationObserver(removeGifControls).observe(document.body, {childList:true, subtree:true});
   loadRail();
-  loadRail();
   if (isServer) {
     syncServerBanner();
     addServerSettingsEnhancements();
