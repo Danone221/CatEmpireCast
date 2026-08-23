@@ -1247,30 +1247,60 @@ function createPeer(remoteId) {
   const polite = userId > remoteId;
   const peer = { pc, polite, makingOffer: false, ignoreOffer: false, remoteStream: new MediaStream(), pendingCandidates: [] };
   peers[remoteId] = peer;
+  const isNativeScreen = remoteId.startsWith('screen:');
+
+  const reportScreenStage = (stage, detail = '') => {
+    if (!isNativeScreen) return;
+    socket.emit('native-screen-viewer-debug', { peerId: remoteId, stage, detail: String(detail || '').slice(0, 160) });
+  };
+
+  const createAndSendOffer = async () => {
+    if (peer.makingOffer || pc.signalingState !== 'stable') return;
+    try {
+      peer.makingOffer = true;
+      // createOffer/setLocalDescription explícitos funcionam também em
+      // WebViews que ainda não implementam o setLocalDescription() implícito.
+      const offer = await pc.createOffer(isNativeScreen
+        ? { offerToReceiveVideo: true, offerToReceiveAudio: false }
+        : undefined);
+      if (pc.signalingState !== 'stable') return;
+      await pc.setLocalDescription(offer);
+      socket.emit('voice-signal', { to: remoteId, data: { sdp: pc.localDescription } });
+      reportScreenStage('offer-sent');
+    } catch (error) {
+      console.error(error);
+      reportScreenStage('offer-error', error && error.message);
+    } finally {
+      peer.makingOffer = false;
+    }
+  };
 
   // A conexão da tela nativa é somente recepção. Não devolvemos microfone e
   // câmera do WebView ao serviço Android e evitamos colisão de offers.
-  if (!remoteId.startsWith('screen:') && localStream) {
+  if (!isNativeScreen && localStream) {
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
   }
 
-  pc.onnegotiationneeded = async () => {
-    try {
-      if (pc.signalingState !== 'stable') return;
-      peer.makingOffer = true;
-      await pc.setLocalDescription();
-      socket.emit('voice-signal', { to: remoteId, data: { sdp: pc.localDescription } });
-    } catch (e) { console.error(e); }
-    finally { peer.makingOffer = false; }
-  };
+  pc.onnegotiationneeded = createAndSendOffer;
 
   pc.onicecandidate = ({ candidate }) => {
     if (candidate) socket.emit('voice-signal', { to: remoteId, data: { candidate } });
   };
 
   pc.ontrack = (e) => {
-    peer.remoteStream = e.streams[0] || peer.remoteStream;
+    if (e.streams && e.streams[0]) {
+      peer.remoteStream = e.streams[0];
+    } else if (e.track && !peer.remoteStream.getTracks().some(track => track.id === e.track.id)) {
+      // Alguns WebViews entregam o track nativo sem preencher event.streams.
+      // Sem este fallback o vídeo estava conectado, mas o tile permanecia vazio.
+      peer.remoteStream.addTrack(e.track);
+    }
+    reportScreenStage('track-received', e.track && e.track.kind);
     renderVoiceGrid();
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    reportScreenStage('ice-' + pc.iceConnectionState);
   };
 
   pc.onconnectionstatechange = () => {
@@ -1294,8 +1324,15 @@ function createPeer(remoteId) {
 
   // A tela nativa responde à oferta criada pelo visualizador. Essa direção
   // é mais confiável no WebView do que aguardar o Android iniciar a oferta.
-  if (remoteId.startsWith('screen:') && typeof pc.addTransceiver === 'function') {
+  if (isNativeScreen && typeof pc.addTransceiver === 'function') {
     pc.addTransceiver('video', { direction: 'recvonly' });
+  }
+
+  if (isNativeScreen) {
+    reportScreenStage('peer-created', typeof pc.addTransceiver === 'function' ? 'transceiver' : 'legacy-offer');
+    // Não depende apenas de negotiationneeded: há WebViews em que esse
+    // evento não dispara para um transceiver recvonly.
+    setTimeout(createAndSendOffer, 0);
   }
 
   return peer;
@@ -1321,6 +1358,9 @@ socket.on('voice-signal', async ({ from, data }) => {
       peer.ignoreOffer = !peer.polite && offerCollision;
       if (peer.ignoreOffer) return;
       await peer.pc.setRemoteDescription(data.sdp);
+      if (from.startsWith('screen:')) {
+        socket.emit('native-screen-viewer-debug', { peerId: from, stage: 'answer-applied', detail: data.sdp.type });
+      }
       if (peer.pendingCandidates.length) {
         for (const c of peer.pendingCandidates) {
           try { await peer.pc.addIceCandidate(c); } catch (e) { console.error(e); }
@@ -1328,7 +1368,8 @@ socket.on('voice-signal', async ({ from, data }) => {
         peer.pendingCandidates.length = 0;
       }
       if (data.sdp.type === 'offer') {
-        await peer.pc.setLocalDescription();
+        const answer = await peer.pc.createAnswer();
+        await peer.pc.setLocalDescription(answer);
         socket.emit('voice-signal', { to: from, data: { sdp: peer.pc.localDescription } });
       }
     } else if (data.candidate) {

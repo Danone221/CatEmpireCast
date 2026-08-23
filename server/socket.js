@@ -249,6 +249,9 @@ function setupSocket(server) {
         }
         const targetSocketId = userSockets.get(to) || screenSocketId;
         if (targetSocketId) {
+          if (screenSocketId && data?.sdp) {
+            console.log(`📡 Oferta ${data.sdp.type} do visualizador ${socket.id} encaminhada para ${to}`);
+          }
           io.to(targetSocketId).emit('voice-signal', {
             // Para a tela nativa, identifica esta conexão exata. Isso evita
             // mandar a resposta para outra aba/WebView do mesmo usuário.
@@ -308,6 +311,7 @@ function setupSocket(server) {
         const targetSocketId = viewerSocketId(to);
         const targetSocket = targetSocketId && io.sockets.sockets.get(targetSocketId);
         if (!targetSocket?.userId || userChannels.get(targetSocket.userId) !== socket.screenChannelId) return;
+        if (data?.sdp) console.log(`📡 Resposta ${data.sdp.type} de ${socket.screenPeerId} encaminhada para ${targetSocketId}`);
         io.to(targetSocketId).emit('voice-signal', { from: socket.screenPeerId, data });
       } catch (error) {
         console.error('❌ Erro na sinalização da tela nativa:', error);
@@ -323,6 +327,26 @@ function setupSocket(server) {
       } catch (error) {
         console.error('❌ Erro ao preparar visualizador da tela nativa:', error);
       }
+    });
+
+    socket.on('native-screen-viewer-debug', ({ peerId, stage, detail }) => {
+      try {
+        const nativeSocketId = screenShareSockets.get(peerId);
+        const nativeSocket = nativeSocketId && io.sockets.sockets.get(nativeSocketId);
+        if (!socket.userId || !nativeSocket || userChannels.get(socket.userId) !== nativeSocket.screenChannelId) return;
+        const safeStage = String(stage || '').replace(/[^a-z0-9-]/gi, '').slice(0, 40);
+        const safeDetail = String(detail || '').replace(/[\r\n]/g, ' ').slice(0, 160);
+        console.log(`🔎 Tela ${peerId} · viewer ${socket.id} · ${safeStage}${safeDetail ? ` · ${safeDetail}` : ''}`);
+      } catch (error) {
+        console.error('❌ Erro no diagnóstico do visualizador nativo:', error);
+      }
+    });
+
+    socket.on('native-screen-debug', ({ stage, detail }) => {
+      if (!socket.screenPeerId) return;
+      const safeStage = String(stage || '').replace(/[^a-z0-9-]/gi, '').slice(0, 40);
+      const safeDetail = String(detail || '').replace(/[\r\n]/g, ' ').slice(0, 160);
+      console.log(`🔎 Tela ${socket.screenPeerId} · APK · ${safeStage}${safeDetail ? ` · ${safeDetail}` : ''}`);
     });
 
     // ========== ENTRAR NO CANAL DE TEXTO (necessário pro broadcast de mensagens) ==========
