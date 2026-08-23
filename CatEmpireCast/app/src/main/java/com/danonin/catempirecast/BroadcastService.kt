@@ -33,6 +33,7 @@ class BroadcastService : Service() {
     private var capturer: VideoCapturer? = null
     private var textureHelper: SurfaceTextureHelper? = null
     private val peers = ConcurrentHashMap<String, PeerConnection>()
+    private val pendingCandidates = ConcurrentHashMap<String, MutableList<IceCandidate>>()
     private var profileLabel = ""
     private var broadcastBitrateBps = 2_500_000
     private var broadcastFps = 30
@@ -137,19 +138,23 @@ class BroadcastService : Service() {
             rtcExecutor.execute {
                 peers.values.forEach { it.close() }
                 peers.clear()
+                pendingCandidates.clear()
                 for (index in 0 until viewers.length()) {
-                    viewers.optString(index).takeIf { it.isNotBlank() }?.let(::createOfferFor)
+                    viewers.optString(index).takeIf { it.isNotBlank() }?.let(::ensurePeerFor)
                 }
                 listener?.onState("started", profileLabel)
             }
         }
         client.on("native-screen-viewer-joined") { args ->
             val id = (args.firstOrNull() as? JSONObject)?.optString("userId").orEmpty()
-            if (id.isNotBlank()) rtcExecutor.execute { createOfferFor(id) }
+            if (id.isNotBlank()) rtcExecutor.execute { ensurePeerFor(id) }
         }
         client.on("native-screen-viewer-left") { args ->
             val id = (args.firstOrNull() as? JSONObject)?.optString("userId").orEmpty()
-            if (id.isNotBlank()) rtcExecutor.execute { peers.remove(id)?.close() }
+            if (id.isNotBlank()) rtcExecutor.execute {
+                peers.remove(id)?.close()
+                pendingCandidates.remove(id)
+            }
         }
         client.on("voice-signal") { args ->
             val payload = args.firstOrNull() as? JSONObject ?: return@on
@@ -168,47 +173,57 @@ class BroadcastService : Service() {
         client.connect()
     }
 
-    private fun createOfferFor(viewerId: String) {
-        if (peers.containsKey(viewerId)) return
+    private fun ensurePeerFor(viewerId: String): PeerConnection? {
+        peers[viewerId]?.let { return it }
         val rtcConfig = PeerConnection.RTCConfiguration(listOf(
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
         )).apply { sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN }
-        val pc = factory?.createPeerConnection(rtcConfig, peerObserver(viewerId)) ?: return
+        val pc = factory?.createPeerConnection(rtcConfig, peerObserver(viewerId)) ?: return null
         peers[viewerId] = pc
-        val sender = pc.addTrack(track ?: return, listOf("cat-native-screen"))
+        val sender = pc.addTrack(track ?: return null, listOf("cat-native-screen"))
         val parameters = sender.parameters
         parameters.encodings.forEach { encoding ->
             encoding.maxBitrateBps = broadcastBitrateBps
             encoding.maxFramerate = broadcastFps
         }
         sender.parameters = parameters
-        pc.createOffer(object : BasicSdpObserver() {
-            override fun onCreateSuccess(description: SessionDescription?) {
-                if (description == null) return
-                pc.setLocalDescription(object : BasicSdpObserver() {
-                    override fun onSetSuccess() {
-                        emitSignal(viewerId, JSONObject().put("sdp", JSONObject()
-                            .put("type", description.type.canonicalForm())
-                            .put("sdp", description.description)))
-                    }
-                }, description)
-            }
-        }, MediaConstraints())
+        return pc
     }
 
     private fun handleSignal(from: String, data: JSONObject) {
-        val pc = peers[from] ?: return
+        val pc = peers[from] ?: ensurePeerFor(from) ?: return
         data.optJSONObject("sdp")?.let { sdp ->
-            val type = if (sdp.optString("type") == "answer") SessionDescription.Type.ANSWER else SessionDescription.Type.OFFER
-            pc.setRemoteDescription(BasicSdpObserver(), SessionDescription(type, sdp.optString("sdp")))
+            val isOffer = sdp.optString("type") == "offer"
+            val type = if (isOffer) SessionDescription.Type.OFFER else SessionDescription.Type.ANSWER
+            pc.setRemoteDescription(object : BasicSdpObserver() {
+                override fun onSetSuccess() {
+                    pendingCandidates.remove(from)?.forEach { pc.addIceCandidate(it) }
+                    if (!isOffer) return
+                    pc.createAnswer(object : BasicSdpObserver() {
+                        override fun onCreateSuccess(description: SessionDescription?) {
+                            if (description == null) return
+                            pc.setLocalDescription(object : BasicSdpObserver() {
+                                override fun onSetSuccess() {
+                                    emitSignal(from, JSONObject().put("sdp", JSONObject()
+                                        .put("type", description.type.canonicalForm())
+                                        .put("sdp", description.description)))
+                                }
+                            }, description)
+                        }
+                    }, MediaConstraints())
+                }
+            }, SessionDescription(type, sdp.optString("sdp")))
             return
         }
         data.optJSONObject("candidate")?.let { candidate ->
-            pc.addIceCandidate(IceCandidate(
+            val ice = IceCandidate(
                 candidate.optString("sdpMid").ifBlank { null },
                 candidate.optInt("sdpMLineIndex", 0),
                 candidate.optString("candidate")
-            ))
+            )
+            if (pc.remoteDescription == null) {
+                pendingCandidates.computeIfAbsent(from) { mutableListOf() }.add(ice)
+            } else pc.addIceCandidate(ice)
         }
     }
 
@@ -216,7 +231,10 @@ class BroadcastService : Service() {
         override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
         override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
             if (state == PeerConnection.IceConnectionState.FAILED || state == PeerConnection.IceConnectionState.CLOSED) {
-                rtcExecutor.execute { peers.remove(viewerId)?.close() }
+                rtcExecutor.execute {
+                    pendingCandidates.remove(viewerId)
+                    peers.remove(viewerId)?.close()
+                }
             }
         }
         override fun onIceConnectionReceivingChange(value: Boolean) {}
@@ -248,6 +266,7 @@ class BroadcastService : Service() {
     private fun releaseBroadcast() {
         peers.values.forEach { it.close() }
         peers.clear()
+        pendingCandidates.clear()
         socket?.disconnect()
         socket = null
         try { capturer?.stopCapture() } catch (_: Exception) {}

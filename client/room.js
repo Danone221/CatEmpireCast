@@ -1202,6 +1202,11 @@ socket.on('native-screen-started', ({ peerId, userId: ownerId, userName: ownerNa
   if (!voiceChannelId || !peerId) return;
   nativeScreenOwners[peerId] = { userId: ownerId, userName: ownerName || 'Membro' };
   remoteMediaState[peerId] = { camera: false, screen: true };
+  if (!peers[peerId]) createPeer(peerId);
+  // Confirma esta conexão específica como visualizadora. Um usuário pode
+  // ter WebView, navegador e reconexões simultâneas; usar só o userId fazia
+  // a oferta WebRTC cair numa conexão antiga e a tela nunca aparecia.
+  socket.emit('native-screen-viewer-ready', { peerId });
   renderVoiceGrid();
 });
 
@@ -1286,6 +1291,12 @@ function createPeer(remoteId) {
       clearTimeout(peer.disconnectTimer);
     }
   };
+
+  // A tela nativa responde à oferta criada pelo visualizador. Essa direção
+  // é mais confiável no WebView do que aguardar o Android iniciar a oferta.
+  if (remoteId.startsWith('screen:') && typeof pc.addTransceiver === 'function') {
+    pc.addTransceiver('video', { direction: 'recvonly' });
+  }
 
   return peer;
 }

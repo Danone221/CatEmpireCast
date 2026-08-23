@@ -32,6 +32,19 @@ function setupSocket(server) {
   const onlineUsers = new Set(); // userId presente com pelo menos 1 socket ativo
   const screenShareSockets = new Map(); // screen:<userId> -> socketId
 
+  const viewerPeerId = socketId => `viewer:${socketId}`;
+  const viewerSocketId = peerId => String(peerId || '').startsWith('viewer:')
+    ? String(peerId).slice('viewer:'.length)
+    : null;
+
+  function activeScreenViewers(channelId) {
+    const room = io.sockets.adapter.rooms.get(`channel-${channelId}`) || new Set();
+    return [...room]
+      .map(socketId => io.sockets.sockets.get(socketId))
+      .filter(viewer => viewer?.userId && userChannels.get(viewer.userId) === channelId)
+      .map(viewer => viewerPeerId(viewer.id));
+  }
+
   function notifyScreenSharesToViewer(socket, channelId) {
     for (const [peerId, nativeSocketId] of screenShareSockets.entries()) {
       const nativeSocket = io.sockets.sockets.get(nativeSocketId);
@@ -41,18 +54,18 @@ function setupSocket(server) {
         userId: nativeSocket.screenOwnerId,
         userName: nativeSocket.screenOwnerName
       });
-      if (socket.userId) {
-        nativeSocket.emit('native-screen-viewer-joined', { userId: socket.userId });
+      if (socket.userId && userChannels.get(socket.userId) === channelId) {
+        nativeSocket.emit('native-screen-viewer-joined', { userId: viewerPeerId(socket.id) });
       }
     }
   }
 
-  function notifyScreenSharesViewerLeft(userId, channelId) {
-    if (!userId || !channelId) return;
+  function notifyScreenSharesViewerLeft(socket, channelId) {
+    if (!socket?.id || !channelId) return;
     for (const nativeSocketId of screenShareSockets.values()) {
       const nativeSocket = io.sockets.sockets.get(nativeSocketId);
-      if (nativeSocket?.screenChannelId === channelId && nativeSocket.screenOwnerId !== userId) {
-        nativeSocket.emit('native-screen-viewer-left', { userId });
+      if (nativeSocket?.screenChannelId === channelId) {
+        nativeSocket.emit('native-screen-viewer-left', { userId: viewerPeerId(socket.id) });
       }
     }
   }
@@ -183,7 +196,7 @@ function setupSocket(server) {
           userId: socket.userId,
           userName: socket.userName
         });
-        notifyScreenSharesViewerLeft(socket.userId, channelId);
+        notifyScreenSharesViewerLeft(socket, channelId);
 
         console.log(`🎤 ${socket.userName} saiu do canal`);
 
@@ -237,7 +250,9 @@ function setupSocket(server) {
         const targetSocketId = userSockets.get(to) || screenSocketId;
         if (targetSocketId) {
           io.to(targetSocketId).emit('voice-signal', {
-            from: socket.userId,
+            // Para a tela nativa, identifica esta conexão exata. Isso evita
+            // mandar a resposta para outra aba/WebView do mesmo usuário.
+            from: screenSocketId ? viewerPeerId(socket.id) : socket.userId,
             data
           });
         }
@@ -268,8 +283,7 @@ function setupSocket(server) {
         screenShareSockets.set(peerId, socket.id);
         socket.join(`channel-${channelId}`);
 
-        const members = await Channel.getVoiceMembers(channelId);
-        const viewers = [...new Set(members.map(member => member.user_id).filter(Boolean))];
+        const viewers = activeScreenViewers(channelId);
         socket.emit('native-screen-registered', {
           peerId,
           // Inclui o próprio transmissor para que o APK mostre uma prévia
@@ -291,12 +305,23 @@ function setupSocket(server) {
     socket.on('native-screen-signal', ({ to, data }) => {
       try {
         if (!socket.screenPeerId || !socket.screenChannelId) return;
-        if (userChannels.get(to) !== socket.screenChannelId) return;
-        const targetSocketId = userSockets.get(to);
-        if (!targetSocketId) return;
+        const targetSocketId = viewerSocketId(to);
+        const targetSocket = targetSocketId && io.sockets.sockets.get(targetSocketId);
+        if (!targetSocket?.userId || userChannels.get(targetSocket.userId) !== socket.screenChannelId) return;
         io.to(targetSocketId).emit('voice-signal', { from: socket.screenPeerId, data });
       } catch (error) {
         console.error('❌ Erro na sinalização da tela nativa:', error);
+      }
+    });
+
+    socket.on('native-screen-viewer-ready', ({ peerId }) => {
+      try {
+        const nativeSocketId = screenShareSockets.get(peerId);
+        const nativeSocket = nativeSocketId && io.sockets.sockets.get(nativeSocketId);
+        if (!socket.userId || !nativeSocket || userChannels.get(socket.userId) !== nativeSocket.screenChannelId) return;
+        nativeSocket.emit('native-screen-viewer-joined', { userId: viewerPeerId(socket.id) });
+      } catch (error) {
+        console.error('❌ Erro ao preparar visualizador da tela nativa:', error);
       }
     });
 
@@ -514,7 +539,7 @@ function setupSocket(server) {
               userId,
               userName: socket.userName || 'Usuário'
             });
-            notifyScreenSharesViewerLeft(userId, channelId);
+            notifyScreenSharesViewerLeft(socket, channelId);
           } catch (e) {
             console.error('❌ Erro ao remover do canal:', e);
           }
