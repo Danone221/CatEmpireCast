@@ -41,7 +41,19 @@ function setupSocket(server) {
         userId: nativeSocket.screenOwnerId,
         userName: nativeSocket.screenOwnerName
       });
-      nativeSocket.emit('native-screen-viewer-joined', { userId: socket.userId });
+      if (socket.userId && socket.userId !== nativeSocket.screenOwnerId) {
+        nativeSocket.emit('native-screen-viewer-joined', { userId: socket.userId });
+      }
+    }
+  }
+
+  function notifyScreenSharesViewerLeft(userId, channelId) {
+    if (!userId || !channelId) return;
+    for (const nativeSocketId of screenShareSockets.values()) {
+      const nativeSocket = io.sockets.sockets.get(nativeSocketId);
+      if (nativeSocket?.screenChannelId === channelId && nativeSocket.screenOwnerId !== userId) {
+        nativeSocket.emit('native-screen-viewer-left', { userId });
+      }
     }
   }
 
@@ -171,6 +183,7 @@ function setupSocket(server) {
           userId: socket.userId,
           userName: socket.userName
         });
+        notifyScreenSharesViewerLeft(socket.userId, channelId);
 
         console.log(`🎤 ${socket.userName} saiu do canal`);
 
@@ -216,7 +229,12 @@ function setupSocket(server) {
     // Repassa SDP offers/answers e ICE candidates diretamente para o usuário-alvo.
     socket.on('voice-signal', ({ to, data }) => {
       try {
-        const targetSocketId = userSockets.get(to) || screenShareSockets.get(to);
+        const screenSocketId = screenShareSockets.get(to);
+        if (screenSocketId) {
+          const nativeSocket = io.sockets.sockets.get(screenSocketId);
+          if (!socket.userId || userChannels.get(socket.userId) !== nativeSocket?.screenChannelId) return;
+        }
+        const targetSocketId = userSockets.get(to) || screenSocketId;
         if (targetSocketId) {
           io.to(targetSocketId).emit('voice-signal', {
             from: socket.userId,
@@ -269,6 +287,7 @@ function setupSocket(server) {
     socket.on('native-screen-signal', ({ to, data }) => {
       try {
         if (!socket.screenPeerId || !socket.screenChannelId) return;
+        if (userChannels.get(to) !== socket.screenChannelId) return;
         const targetSocketId = userSockets.get(to);
         if (!targetSocketId) return;
         io.to(targetSocketId).emit('voice-signal', { from: socket.screenPeerId, data });
@@ -491,6 +510,7 @@ function setupSocket(server) {
               userId,
               userName: socket.userName || 'Usuário'
             });
+            notifyScreenSharesViewerLeft(userId, channelId);
           } catch (e) {
             console.error('❌ Erro ao remover do canal:', e);
           }

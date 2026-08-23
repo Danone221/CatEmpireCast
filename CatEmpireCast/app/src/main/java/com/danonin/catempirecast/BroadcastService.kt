@@ -30,6 +30,8 @@ class BroadcastService : Service() {
     private var textureHelper: SurfaceTextureHelper? = null
     private val peers = ConcurrentHashMap<String, PeerConnection>()
     private var profileLabel = ""
+    private var broadcastBitrateBps = 2_500_000
+    private var broadcastFps = 30
     private var stopping = false
 
     inner class LocalBinder : Binder() {
@@ -75,6 +77,12 @@ class BroadcastService : Service() {
             val width = if (portrait) base.second else base.first
             val height = if (portrait) base.first else base.second
             val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
+            broadcastFps = safeFps
+            broadcastBitrateBps = when (quality) {
+                480 -> 1_200_000
+                1080 -> 5_000_000
+                else -> 2_500_000
+            }
             profileLabel = "${base.third} · $safeFps FPS"
 
             PeerConnectionFactory.initialize(
@@ -121,6 +129,8 @@ class BroadcastService : Service() {
         client.on("native-screen-registered") { args ->
             val payload = args.firstOrNull() as? JSONObject ?: return@on
             val viewers = payload.optJSONArray("viewers") ?: return@on
+            peers.values.forEach { it.close() }
+            peers.clear()
             for (index in 0 until viewers.length()) {
                 viewers.optString(index).takeIf { it.isNotBlank() }?.let(::createOfferFor)
             }
@@ -129,6 +139,10 @@ class BroadcastService : Service() {
         client.on("native-screen-viewer-joined") { args ->
             val id = (args.firstOrNull() as? JSONObject)?.optString("userId").orEmpty()
             if (id.isNotBlank()) createOfferFor(id)
+        }
+        client.on("native-screen-viewer-left") { args ->
+            val id = (args.firstOrNull() as? JSONObject)?.optString("userId").orEmpty()
+            if (id.isNotBlank()) peers.remove(id)?.close()
         }
         client.on("voice-signal") { args ->
             val payload = args.firstOrNull() as? JSONObject ?: return@on
@@ -154,7 +168,13 @@ class BroadcastService : Service() {
         )).apply { sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN }
         val pc = factory?.createPeerConnection(rtcConfig, peerObserver(viewerId)) ?: return
         peers[viewerId] = pc
-        pc.addTrack(track ?: return, listOf("cat-native-screen"))
+        val sender = pc.addTrack(track ?: return, listOf("cat-native-screen"))
+        val parameters = sender.parameters
+        parameters.encodings.forEach { encoding ->
+            encoding.maxBitrateBps = broadcastBitrateBps
+            encoding.maxFramerate = broadcastFps
+        }
+        sender.parameters = parameters
         pc.createOffer(object : BasicSdpObserver() {
             override fun onCreateSuccess(description: SessionDescription?) {
                 if (description == null) return
