@@ -65,6 +65,8 @@ class MainActivity : AppCompatActivity() {
     private var pendingCastKey: String? = null
     private var pendingCastQuality = 720
     private var pendingCastFps = 30
+    private var pendingProjectionResultCode: Int? = null
+    private var pendingProjectionData: Intent? = null
 
     private val broadcastConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -76,6 +78,7 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread { notifyWebBroadcastState(state, message) }
                 }
             })
+            startPendingBroadcastIfReady()
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
@@ -87,25 +90,50 @@ class MainActivity : AppCompatActivity() {
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val url = pendingCastUrl
-        val key = pendingCastKey
-        val quality = pendingCastQuality
-        val fps = pendingCastFps
-        pendingCastUrl = null
-        pendingCastKey = null
-        if (result.resultCode != RESULT_OK || result.data == null || url == null || key == null) {
+        val projectionData = result.data
+        if (result.resultCode != RESULT_OK || projectionData == null) {
+            clearPendingBroadcast()
             notifyWebBroadcastState("error", "Permissão de captura de tela negada.")
             return@registerForActivityResult
         }
-        val intent = BroadcastService.intent(this)
-        bindService(intent, broadcastConnection, Context.BIND_AUTO_CREATE)
-        binding.webView.postDelayed({
-            broadcastService?.startBroadcast(result.resultCode, result.data!!, url, key, quality, fps)
-        }, 150)
+        pendingProjectionResultCode = result.resultCode
+        pendingProjectionData = projectionData
+        if (broadcastBound && broadcastService != null) {
+            startPendingBroadcastIfReady()
+        } else {
+            val didBind = bindService(
+                BroadcastService.intent(this),
+                broadcastConnection,
+                Context.BIND_AUTO_CREATE
+            )
+            if (!didBind) {
+                clearPendingBroadcast()
+                notifyWebBroadcastState("error", "Não foi possível iniciar o serviço de transmissão.")
+            }
+        }
     }
 
-    private fun validateRtmpEndpoint(rtmpUrl: String, streamKey: String): String? {
-        val raw = rtmpUrl.trim()
+    private fun startPendingBroadcastIfReady() {
+        val service = broadcastService ?: return
+        val resultCode = pendingProjectionResultCode ?: return
+        val projectionData = pendingProjectionData ?: return
+        val url = pendingCastUrl ?: return
+        val key = pendingCastKey ?: return
+        val quality = pendingCastQuality
+        val fps = pendingCastFps
+        clearPendingBroadcast()
+        service.startBroadcast(resultCode, projectionData, url, key, quality, fps)
+    }
+
+    private fun clearPendingBroadcast() {
+        pendingCastUrl = null
+        pendingCastKey = null
+        pendingProjectionResultCode = null
+        pendingProjectionData = null
+    }
+
+    private fun validateRtmpEndpoint(rtmpUrl: String?, streamKey: String?): String? {
+        val raw = rtmpUrl?.trim().orEmpty()
         if (raw.isBlank()) return "Servidor RTMP não configurado."
         if (raw.contains("SEU_HOST_DE_MIDIA", ignoreCase = true)) {
             return "Servidor RTMP não configurado. Defina o host público de mídia no backend."
@@ -115,21 +143,21 @@ class MainActivity : AppCompatActivity() {
         val host = uri?.host
         if (scheme != "rtmp" && scheme != "rtmps") return "Endpoint RTMP inválido."
         if (host.isNullOrBlank()) return "Endpoint RTMP sem endereço de servidor."
-        if (streamKey.isBlank()) return "Chave de transmissão inválida."
+        if (streamKey.isNullOrBlank()) return "Chave de transmissão inválida."
         return null
     }
 
     private inner class WebAppInterface {
         @JavascriptInterface
-        fun startBroadcast(rtmpUrl: String, streamKey: String, quality: Int, fps: Int) {
+        fun startBroadcast(rtmpUrl: String?, streamKey: String?, quality: Int, fps: Int) {
             runOnUiThread {
                 val validationError = validateRtmpEndpoint(rtmpUrl, streamKey)
                 if (validationError != null) {
                     notifyWebBroadcastState("error", validationError)
                     return@runOnUiThread
                 }
-                pendingCastUrl = rtmpUrl
-                pendingCastKey = streamKey
+                pendingCastUrl = rtmpUrl?.trim()
+                pendingCastKey = streamKey?.trim()
                 pendingCastQuality = if (quality in setOf(480, 720, 1080)) quality else 720
                 pendingCastFps = if (fps in setOf(24, 30, 60)) fps else 30
                 val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -144,6 +172,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun stopBroadcast() {
             runOnUiThread {
+                clearPendingBroadcast()
                 broadcastService?.stopBroadcast()
                 if (broadcastBound) {
                     unbindService(broadcastConnection)

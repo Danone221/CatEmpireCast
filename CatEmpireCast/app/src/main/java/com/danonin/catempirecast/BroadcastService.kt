@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -34,6 +35,8 @@ class BroadcastService : Service(), ConnectChecker {
     private val binder = LocalBinder()
     private var rtmpDisplay: RtmpDisplay? = null
     private var listener: BroadcastStateListener? = null
+    private var activeVideoProfile: VideoProfile? = null
+    private var activeFps = 30
 
     inner class LocalBinder : Binder() {
         fun getService(): BroadcastService = this@BroadcastService
@@ -97,12 +100,19 @@ class BroadcastService : Service(), ConnectChecker {
             val display = RtmpDisplay(this, true, this)
             rtmpDisplay = display
 
-            val profile = when (quality) {
-                480 -> VideoProfile(480, 854, 1_500_000)
-                1080 -> VideoProfile(1080, 1920, 5_000_000)
-                else -> VideoProfile(720, 1280, 3_000_000)
+            val baseProfile = when (quality) {
+                480 -> VideoProfile(480, 854, 1_500_000, "480p")
+                1080 -> VideoProfile(1080, 1920, 5_000_000, "1080p")
+                else -> VideoProfile(720, 1280, 3_000_000, "720p")
+            }
+            val profile = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                baseProfile.copy(width = baseProfile.height, height = baseProfile.width)
+            } else {
+                baseProfile
             }
             val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
+            activeVideoProfile = profile
+            activeFps = safeFps
 
             // O Android exige um densityDpi estritamente positivo ao criar a
             // VirtualDisplay. O valor 0 usado anteriormente causava:
@@ -144,6 +154,7 @@ class BroadcastService : Service(), ConnectChecker {
             // já parado / estado inconsistente — ignora, só finaliza o serviço
         }
         rtmpDisplay = null
+        activeVideoProfile = null
         listener?.onState("stopped", null)
         stopSelfCleanly()
     }
@@ -161,6 +172,7 @@ class BroadcastService : Service(), ConnectChecker {
     override fun onDestroy() {
         try { rtmpDisplay?.let { if (it.isStreaming) it.stopStream() } } catch (e: Exception) {}
         rtmpDisplay = null
+        activeVideoProfile = null
         super.onDestroy()
     }
 
@@ -168,7 +180,9 @@ class BroadcastService : Service(), ConnectChecker {
     override fun onConnectionStarted(url: String) {}
 
     override fun onConnectionSuccess() {
-        listener?.onState("started", null)
+        val profile = activeVideoProfile
+        val applied = if (profile == null) null else "${profile.label} · ${activeFps} FPS"
+        listener?.onState("started", applied)
     }
 
     override fun onConnectionFailed(reason: String) {
@@ -196,5 +210,10 @@ class BroadcastService : Service(), ConnectChecker {
         fun intent(context: Context): Intent = Intent(context, BroadcastService::class.java)
     }
 
-    private data class VideoProfile(val width: Int, val height: Int, val bitrate: Int)
+    private data class VideoProfile(
+        val width: Int,
+        val height: Int,
+        val bitrate: Int,
+        val label: String
+    )
 }

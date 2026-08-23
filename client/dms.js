@@ -406,14 +406,34 @@ function requestOpenCurrentProfile(){
   if(currentBlockState.blocked_by_me){pendingBlockedProfileUser=currentOtherUser;$('blockedProfileWarningModal').classList.add('open');return;}
   openDmUserProfileById(currentOtherId);
 }
+let viewingDmProfileId = null;
+function formatDmProfileDate(value){
+  const timestamp=Number(value||0);
+  if(!timestamp)return '—';
+  return new Date(timestamp*1000).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+}
 function showDmUserProfile(u){
+  viewingDmProfileId=String(u.id||currentOtherId||'');
+  const modal=$('dmUserProfileModal');
+  modal.dataset.profileId=viewingDmProfileId;
   applyBannerStyle($('dmProfileBanner'),u.banner||u.banner_color||'#8b2bff');
-  $('dmProfileAvatar').src=u.avatar||'/logo.svg';$('dmProfileName').textContent=u.display_name||u.username;$('dmProfileUsername').textContent='@'+u.username;$('dmProfileBio').textContent=u.bio||'Sem bio.';$('dmUserProfileModal').classList.add('open');
+  $('dmProfileAvatar').src=u.avatar||'/logo.svg';
+  $('dmProfileName').textContent=u.display_name||u.username;
+  $('dmProfileUsername').textContent='@'+u.username;
+  $('dmProfileBio').textContent=u.bio||'Sem bio.';
+  if($('dmProfileCreatedAt'))$('dmProfileCreatedAt').textContent=formatDmProfileDate(u.created_at);
+  if($('dmProfileContext'))$('dmProfileContext').textContent=viewingDmProfileId===userId?'Este é o seu perfil':'Conversa direta';
+  modal.querySelector('.profile-sheet-menu')?.setAttribute('hidden','');
+  modal.classList.add('open');
 }
 $('dmHeader')?.addEventListener('click',e=>{if(e.target.closest('[data-open-dm-profile]'))requestOpenCurrentProfile();});
 $('cancelBlockedProfileBtn')?.addEventListener('click',()=>$('blockedProfileWarningModal').classList.remove('open'));
 $('openBlockedProfileBtn')?.addEventListener('click',()=>{$('blockedProfileWarningModal').classList.remove('open');if(pendingBlockedProfileUser)showDmUserProfile(pendingBlockedProfileUser);});
 $('closeDmProfileBtn')?.addEventListener('click',()=>$('dmUserProfileModal').classList.remove('open'));
+$('dmProfileMessageBtn')?.addEventListener('click',()=>{
+  $('dmUserProfileModal').classList.remove('open');
+  if(viewingDmProfileId&&viewingDmProfileId!==currentOtherId)openConversation(viewingDmProfileId);
+});
 async function loadBlockedAccounts(){
  const list=$('blockedAccountsList');if(!list)return;
  try{const r=await fetch('/api/social/blocks',{headers:headers()});const rows=await r.json();if(!r.ok)throw new Error(rows.error||'Erro ao carregar bloqueios');list.innerHTML=rows.length?rows.map(u=>`<div class="blocked-account-row"><img src="${u.avatar||'/logo.svg'}" alt=""><div><strong>${esc(u.display_name||u.username)}</strong><small>@${esc(u.username)}</small></div><button type="button" class="btn" data-unblock-id="${esc(u.id)}">Desbloquear</button></div>`).join(''):'<p class="empty-hint">Nenhuma conta bloqueada.</p>';}catch(e){list.innerHTML='<p class="empty-hint">'+esc(e.message)+'</p>';}

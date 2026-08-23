@@ -859,12 +859,28 @@ $('videoSettingsBtn').onclick = () => {
   $('videoSettingsModal').classList.add('open');
 };
 $('cancelVideoSettingsBtn').onclick = () => $('videoSettingsModal').classList.remove('open');
-$('saveVideoSettingsBtn').onclick = () => {
-  videoSettings.quality = Number($('videoQualitySelect').value);
-  videoSettings.fps = Number($('videoFpsSelect').value);
-  localStorage.setItem(VIDEO_SETTINGS_KEY, JSON.stringify(videoSettings));
-  $('videoSettingsModal').classList.remove('open');
-  toast('Qualidade salva. Ela será usada na próxima ativação da câmera ou transmissão.', 'success');
+$('saveVideoSettingsBtn').onclick = async () => {
+  const previous = { ...videoSettings };
+  const quality = Number($('videoQualitySelect').value);
+  const fps = Number($('videoFpsSelect').value);
+  videoSettings.quality = [480, 720, 1080].includes(quality) ? quality : 720;
+  videoSettings.fps = [24, 30, 60].includes(fps) ? fps : 30;
+  try {
+    if (camOn) {
+      const stream = await navigator.mediaDevices.getUserMedia(cameraConstraints());
+      const track = stream.getVideoTracks()[0];
+      if (!track) throw new Error('Câmera não encontrada.');
+      await replaceCameraTrack(track);
+      renderVoiceGrid();
+    }
+    localStorage.setItem(VIDEO_SETTINGS_KEY, JSON.stringify(videoSettings));
+    $('videoSettingsModal').classList.remove('open');
+    const suffix = nativeBroadcasting ? ' Reinicie a transmissão de tela para aplicar.' : '';
+    toast(`${videoSettings.quality}p · ${videoSettings.fps} FPS aplicados.${suffix}`, 'success');
+  } catch (error) {
+    videoSettings = previous;
+    toast('O dispositivo não aceitou essa combinação de qualidade e FPS.', 'error');
+  }
 };
 
 // ========== CAST EXTERNO ==========
@@ -1468,22 +1484,39 @@ $('saveEditProfileBtn').onclick = async () => {
 
 // ---- Ver perfil de outra pessoa ----
 let viewingProfileId = null;
+function formatProfileDate(value) {
+  const timestamp = Number(value || 0);
+  if (!timestamp) return '—';
+  return new Date(timestamp * 1000).toLocaleDateString('pt-BR', {
+    day: '2-digit', month: 'short', year: 'numeric'
+  });
+}
 async function openProfile(targetUserId) {
   targetUserId = String(targetUserId || '').trim();
   if (!targetUserId) return;
   closeMobileSidebar();
   if (targetUserId === userId) { openMyProfile(); return; }
   try {
-    const r = await fetch('/api/users/' + targetUserId + '/profile', { headers: headers() });
+    const r = await fetch('/api/users/' + encodeURIComponent(targetUserId) + '/server-profile?serverId=' + encodeURIComponent(serverId), { headers: headers(), cache: 'no-store' });
     const p = await r.json();
     if (!r.ok) throw new Error(p.error || 'Erro ao carregar perfil');
     viewingProfileId = targetUserId;
+    const modal = $('viewProfileModal');
+    modal.dataset.profileId = targetUserId;
     applyBannerStyle($('viewProfileBanner'), p.banner || p.banner_color || '#5865f2');
     $('viewProfileAvatar').src = p.avatar || '/logo.svg';
     $('viewProfileName').textContent = p.display_name || p.username;
     $('viewProfileUsername').textContent = '@' + p.username;
     $('viewProfileBio').textContent = p.bio || 'Sem bio.';
-    $('viewProfileModal').classList.add('open');
+    if ($('viewProfileMemberContext')) $('viewProfileMemberContext').textContent = p.is_server_owner ? 'Criador deste servidor' : 'Membro deste servidor';
+    if ($('viewProfileDates')) $('viewProfileDates').textContent = formatProfileDate(p.created_at) + '  •  ' + formatProfileDate(p.server_joined_at);
+    if ($('viewProfileRoles')) {
+      $('viewProfileRoles').innerHTML = (p.roles || []).map(role =>
+        '<span class="profile-sheet-role" style="--role-color:' + esc(role.color || '#9a86bd') + '">' + esc(role.name || 'MEMBRO') + '</span>'
+      ).join('');
+    }
+    modal.querySelector('.profile-sheet-menu')?.setAttribute('hidden', '');
+    modal.classList.add('open');
   } catch (e) { toast(e.message, 'error'); }
 }
 window.catOpenUserProfile = openProfile;
@@ -1746,13 +1779,16 @@ if (hasNativeBroadcast()) {
 window.onNativeBroadcastState = function (state, message) {
   if (state === 'started') {
     nativeBroadcasting = true;
+    window.__catNativeBroadcasting = true;
     $('mobileCastBtn').classList.add('active');
-    toast('Transmitindo a tela ao vivo!', 'success');
+    toast(message ? 'Transmitindo em ' + message + '.' : 'Transmitindo a tela ao vivo!', 'success');
   } else if (state === 'stopped') {
     nativeBroadcasting = false;
+    window.__catNativeBroadcasting = false;
     $('mobileCastBtn').classList.remove('active');
   } else if (state === 'error') {
     nativeBroadcasting = false;
+    window.__catNativeBroadcasting = false;
     $('mobileCastBtn').classList.remove('active');
     toast(message || 'Erro ao transmitir a tela.', 'error');
   }
@@ -1770,9 +1806,15 @@ $('mobileCastBtn').onclick = async () => {
       const r = await fetch('/api/channels/' + voiceChannelId + '/cast-credentials', { headers: headers() });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
+      if (!d.configured || typeof d.rtmpUrl !== 'string' || !d.rtmpUrl.trim() ||
+          typeof d.streamKey !== 'string' || !d.streamKey.trim()) {
+        throw new Error('Transmissão do APK indisponível: o servidor RTMP ainda não está configurado.');
+      }
+      const quality = [480, 720, 1080].includes(Number(videoSettings.quality)) ? Number(videoSettings.quality) : 720;
+      const fps = [24, 30, 60].includes(Number(videoSettings.fps)) ? Number(videoSettings.fps) : 30;
       // O app cuida de pedir a permissão de captura de tela (MediaProjection)
       // e sobe o RTMP num serviço em primeiro plano — ver BroadcastService.kt.
-      window.CatEmpireNative.startBroadcast(d.rtmpUrl, d.streamKey, videoSettings.quality, videoSettings.fps);
+      window.CatEmpireNative.startBroadcast(d.rtmpUrl.trim(), d.streamKey.trim(), quality, fps);
     } catch (e) { toast(e.message, 'error'); }
     return;
   }

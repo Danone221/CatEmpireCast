@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>CAT EMPIRE — Mensagens</title>
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/profile-sheet-v10.css?v=20260823">
 <script src="/socket.io/socket.io.js"></script>
 <script src="/ui.js"></script>
 </head>
@@ -62,7 +63,7 @@
 </div>
 
 <div class="modal" id="blockedProfileWarningModal"><div class="modal-box blocked-warning-dialog"><div class="blocked-warning-icon">⛔</div><h2>USUÁRIO BLOQUEADO</h2><p>Você bloqueou esta conta. O perfil só será exibido se você confirmar.</p><div class="modal-actions"><button type="button" class="btn" id="cancelBlockedProfileBtn">Cancelar</button><button type="button" class="btn btn-primary" id="openBlockedProfileBtn">Abrir perfil</button></div></div></div>
-<div class="modal" id="dmUserProfileModal"><div class="modal-box profile-modal-box"><div class="profile-banner" id="dmProfileBanner"></div><div class="profile-avatar-row"><div class="profile-avatar-big"><img id="dmProfileAvatar" src="/logo.svg" alt=""></div></div><h2 class="profile-display-name" id="dmProfileName">Usuário</h2><div class="profile-username" id="dmProfileUsername">@usuario</div><div class="profile-bio" id="dmProfileBio">Sem bio.</div><div class="modal-actions"><button type="button" class="btn" id="closeDmProfileBtn">Fechar</button></div></div></div>
+<div class="modal profile-sheet-modal" id="dmUserProfileModal"><div class="modal-box profile-modal-box profile-sheet"><div class="profile-sheet-handle" aria-hidden="true"></div><button type="button" class="profile-sheet-more" data-profile-menu-trigger aria-label="Mais opções" aria-expanded="false">•••</button><div class="profile-sheet-menu" hidden><button type="button" data-profile-sheet-action="copy-username">Copiar nome de usuário</button><button type="button" data-profile-sheet-action="copy-id">Copiar ID do usuário</button><button type="button" data-profile-sheet-action="close">Fechar perfil</button></div><div class="profile-banner" id="dmProfileBanner"></div><div class="profile-avatar-row"><div class="profile-avatar-big"><img id="dmProfileAvatar" src="/logo.svg" alt=""></div></div><div class="profile-sheet-content"><h2 class="profile-display-name" id="dmProfileName">Usuário</h2><div class="profile-username" id="dmProfileUsername">@usuario</div><div class="profile-sheet-mutual" id="dmProfileContext"></div><div class="modal-actions profile-sheet-actions"><button type="button" class="btn btn-primary" id="dmProfileMessageBtn">✉️ Abrir conversa</button><button type="button" class="btn profile-close-action" id="closeDmProfileBtn" aria-label="Fechar">×</button></div><section class="profile-sheet-section"><div class="profile-sheet-label">Bio</div><div class="profile-bio" id="dmProfileBio">Sem bio.</div></section><section class="profile-sheet-section"><div class="profile-sheet-label">Membro desde</div><div class="profile-sheet-value" id="dmProfileCreatedAt">—</div></section></div></div></div>
 <div class="modal" id="addFriendModal">
   <div class="modal-box add-friend-dialog" role="dialog" aria-modal="true" aria-labelledby="addFriendTitle">
     <div class="invite-dialog-head"><div><div class="invite-kicker">AMIGOS</div><h2 id="addFriendTitle">Adicionar amigo</h2><p class="modal-hint">Digite o username exato da pessoa.</p></div><button type="button" class="invite-close" id="closeAddFriendBtn" aria-label="Fechar">×</button></div>
@@ -76,5 +77,6 @@
 <script src="/runtime-v5.js?v=20260822"></script><script src="/message-interactions-v9.js?v=20260822"></script>
 <script src="/interaction-fixes-v6.js?v=20260822"></script>
 <script src="/save-guards-v7.js?v=20260822"></script>
+<script src="/profile-sheet-v10.js?v=20260823"></script>
 </body>
 </html>

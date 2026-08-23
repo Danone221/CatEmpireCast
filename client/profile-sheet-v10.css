@@ -1,0 +1,29 @@
+/* Mobile-first profile sheet inspired by the supplied references. */
+.profile-sheet-modal{align-items:flex-end!important;padding:0!important;background:rgba(0,0,0,.76)!important}
+.profile-sheet-modal .profile-sheet{position:relative;width:min(720px,100vw)!important;max-width:720px!important;max-height:94dvh!important;margin:0 auto!important;padding:0 0 max(24px,env(safe-area-inset-bottom))!important;overflow:auto!important;border:0!important;border-radius:28px 28px 0 0!important;background:#0f0f12!important;box-shadow:0 -16px 50px rgba(0,0,0,.48)!important;color:#f5f3f8!important}
+.profile-sheet-handle{position:absolute;z-index:4;left:50%;top:13px;width:68px;height:6px;transform:translateX(-50%);border-radius:99px;background:rgba(255,255,255,.78)}
+.profile-sheet-more{position:absolute;z-index:5;right:18px;top:22px;width:52px;height:52px;border:0;border-radius:16px;background:rgba(10,10,13,.88);color:#fff;font-size:25px;line-height:1;cursor:pointer}
+.profile-sheet-menu{position:absolute;z-index:8;right:18px;top:82px;width:min(360px,calc(100% - 36px));overflow:hidden;border:1px solid #444149;border-radius:20px;background:#2b292f;box-shadow:0 18px 48px rgba(0,0,0,.58)}
+.profile-sheet-menu[hidden]{display:none!important}
+.profile-sheet-menu button{display:block;width:100%;min-height:58px;padding:0 20px;border:0;border-bottom:1px solid #45424a;background:transparent;color:#fff;text-align:left;font:600 15px/1.3 system-ui,sans-serif;cursor:pointer}
+.profile-sheet-menu button:last-child{border-bottom:0}.profile-sheet-menu button:hover{background:#39363f}
+.profile-sheet .profile-banner{height:230px!important;min-height:230px!important;margin:0!important;border:0!important;border-radius:0!important;background-position:center!important;background-size:cover!important}
+.profile-sheet .profile-avatar-row{position:relative;height:76px;margin:0!important}
+.profile-sheet .profile-avatar-big{position:absolute;left:24px;bottom:0;width:144px!important;height:144px!important;padding:7px;border:0!important;border-radius:50%!important;background:#0f0f12!important;box-sizing:border-box}
+.profile-sheet .profile-avatar-big img{width:100%;height:100%;border-radius:50%!important;object-fit:cover}
+.profile-sheet-content{padding:0 24px}
+.profile-sheet .profile-display-name{margin:16px 0 2px!important;color:#fff!important;font:800 clamp(25px,5vw,34px)/1.08 system-ui,sans-serif!important;text-align:left!important;letter-spacing:0!important;text-transform:none!important}
+.profile-sheet .profile-username{margin:0!important;color:#d8d5dc!important;font:400 18px/1.4 system-ui,sans-serif!important;text-align:left!important}
+.profile-sheet-mutual{min-height:24px;margin-top:14px;color:#d0cbd5;font:500 15px/1.45 system-ui,sans-serif}
+.profile-sheet-actions{display:grid!important;grid-template-columns:minmax(0,1fr) 54px;gap:12px;margin:22px 0 26px!important}
+.profile-sheet-actions .btn{height:54px!important;margin:0!important;border:0!important;border-radius:13px!important;font:700 15px system-ui,sans-serif!important;box-shadow:none!important}
+.profile-sheet-actions .btn-primary{background:#625cf4!important;color:#fff!important}
+.profile-sheet-actions .profile-close-action{width:54px;padding:0!important;background:#252429!important;color:#fff!important}
+.profile-sheet-section{padding:18px 0;border-top:1px solid #29282d}
+.profile-sheet-label{margin-bottom:10px;color:#fff;font:700 17px/1.2 system-ui,sans-serif}
+.profile-sheet .profile-bio,.profile-sheet-value{margin:0!important;color:#e4e0e7!important;font:400 16px/1.55 system-ui,sans-serif!important;text-align:left!important;white-space:pre-wrap}
+.profile-sheet-roles{display:flex;flex-wrap:wrap;gap:8px}
+.profile-sheet-role{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:10px;background:#242329;color:#ece8f0;font:600 13px system-ui,sans-serif}
+.profile-sheet-role::before{content:'';width:10px;height:10px;border-radius:50%;background:var(--role-color,#9a86bd)}
+@media(min-width:721px){.profile-sheet-modal{align-items:center!important;padding:22px!important}.profile-sheet-modal .profile-sheet{border-radius:28px!important;max-height:90vh!important}.profile-sheet .profile-banner{height:260px!important;min-height:260px!important}}
+@media(max-width:520px){.profile-sheet .profile-banner{height:190px!important;min-height:190px!important}.profile-sheet .profile-avatar-big{left:18px;width:116px!important;height:116px!important}.profile-sheet .profile-avatar-row{height:60px}.profile-sheet-content{padding:0 18px}.profile-sheet-more{right:14px;top:18px;width:46px;height:46px}.profile-sheet-actions{margin-top:18px!important}}
