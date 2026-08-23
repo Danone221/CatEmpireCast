@@ -77,7 +77,10 @@ class MainActivity : AppCompatActivity() {
             broadcastBound = true
             broadcastService?.setListener(object : BroadcastService.BroadcastStateListener {
                 override fun onState(state: String, message: String?) {
-                    runOnUiThread { notifyWebBroadcastState(state, message) }
+                    runOnUiThread {
+                        notifyWebBroadcastState(state, message)
+                        if (state == "stopped") detachBroadcastService()
+                    }
                 }
             })
             startPendingBroadcastIfReady()
@@ -146,6 +149,15 @@ class MainActivity : AppCompatActivity() {
         pendingProjectionData = null
     }
 
+    private fun detachBroadcastService() {
+        broadcastService?.setListener(null)
+        if (broadcastBound) {
+            try { unbindService(broadcastConnection) } catch (_: IllegalArgumentException) {}
+        }
+        broadcastBound = false
+        broadcastService = null
+    }
+
     private inner class WebAppInterface {
         @JavascriptInterface
         fun prepareBroadcast(quality: Int, fps: Int) {
@@ -211,10 +223,6 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 clearPendingBroadcast()
                 broadcastService?.stopBroadcast()
-                if (broadcastBound) {
-                    unbindService(broadcastConnection)
-                    broadcastBound = false
-                }
             }
         }
     }
@@ -277,9 +285,9 @@ class MainActivity : AppCompatActivity() {
         s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         val cachePrefs = getSharedPreferences("cat_empire_web_cache", MODE_PRIVATE)
         val cachedVersion = cachePrefs.getInt("app_version", 0)
-        if (cachedVersion < 3) {
+        if (cachedVersion < 4) {
             binding.webView.clearCache(true)
-            cachePrefs.edit().putInt("app_version", 3).apply()
+            cachePrefs.edit().putInt("app_version", 4).apply()
         }
         s.cacheMode = WebSettings.LOAD_DEFAULT
         s.setSupportZoom(false)
@@ -392,9 +400,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         if (broadcastBound) {
+            broadcastService?.setListener(null)
             broadcastService?.stopBroadcast()
-            unbindService(broadcastConnection)
-            broadcastBound = false
+            detachBroadcastService()
         }
         binding.webView.destroy()
         super.onDestroy()

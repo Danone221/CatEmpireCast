@@ -8,7 +8,9 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -16,6 +18,8 @@ import org.json.JSONObject
 import org.webrtc.*
 import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Captura MediaProjection e publica a tela no mesh WebRTC do canal. */
 class BroadcastService : Service() {
@@ -32,7 +36,8 @@ class BroadcastService : Service() {
     private var profileLabel = ""
     private var broadcastBitrateBps = 2_500_000
     private var broadcastFps = 30
-    private var stopping = false
+    private val rtcExecutor = Executors.newSingleThreadExecutor()
+    private val stopping = AtomicBoolean(false)
 
     inner class LocalBinder : Binder() {
         fun getService(): BroadcastService = this@BroadcastService
@@ -64,10 +69,10 @@ class BroadcastService : Service() {
         quality: Int,
         fps: Int
     ) {
-        if (socket != null) return
-        stopping = false
+        if (socket != null || stopping.get()) return
+        stopping.set(false)
         startProjectionForeground()
-        try {
+        rtcExecutor.execute { try {
             val base = when (quality) {
                 480 -> Triple(854, 480, "480p")
                 1080 -> Triple(1920, 1080, "1080p")
@@ -110,7 +115,7 @@ class BroadcastService : Service() {
         } catch (error: Exception) {
             listener?.onState("error", "Erro ao preparar WebRTC: ${error.message}")
             stopBroadcast()
-        }
+        } }
     }
 
     private fun connectSignaling(baseUrl: String, token: String, userId: String, channelId: String) {
@@ -129,26 +134,28 @@ class BroadcastService : Service() {
         client.on("native-screen-registered") { args ->
             val payload = args.firstOrNull() as? JSONObject ?: return@on
             val viewers = payload.optJSONArray("viewers") ?: return@on
-            peers.values.forEach { it.close() }
-            peers.clear()
-            for (index in 0 until viewers.length()) {
-                viewers.optString(index).takeIf { it.isNotBlank() }?.let(::createOfferFor)
+            rtcExecutor.execute {
+                peers.values.forEach { it.close() }
+                peers.clear()
+                for (index in 0 until viewers.length()) {
+                    viewers.optString(index).takeIf { it.isNotBlank() }?.let(::createOfferFor)
+                }
+                listener?.onState("started", profileLabel)
             }
-            listener?.onState("started", profileLabel)
         }
         client.on("native-screen-viewer-joined") { args ->
             val id = (args.firstOrNull() as? JSONObject)?.optString("userId").orEmpty()
-            if (id.isNotBlank()) createOfferFor(id)
+            if (id.isNotBlank()) rtcExecutor.execute { createOfferFor(id) }
         }
         client.on("native-screen-viewer-left") { args ->
             val id = (args.firstOrNull() as? JSONObject)?.optString("userId").orEmpty()
-            if (id.isNotBlank()) peers.remove(id)?.close()
+            if (id.isNotBlank()) rtcExecutor.execute { peers.remove(id)?.close() }
         }
         client.on("voice-signal") { args ->
             val payload = args.firstOrNull() as? JSONObject ?: return@on
             val from = payload.optString("from")
             val data = payload.optJSONObject("data")
-            if (from.isNotBlank() && data != null) handleSignal(from, data)
+            if (from.isNotBlank() && data != null) rtcExecutor.execute { handleSignal(from, data) }
         }
         client.on("native-screen-error") { args ->
             val message = (args.firstOrNull() as? JSONObject)?.optString("message")
@@ -209,7 +216,7 @@ class BroadcastService : Service() {
         override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
         override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
             if (state == PeerConnection.IceConnectionState.FAILED || state == PeerConnection.IceConnectionState.CLOSED) {
-                peers.remove(viewerId)?.close()
+                rtcExecutor.execute { peers.remove(viewerId)?.close() }
             }
         }
         override fun onIceConnectionReceivingChange(value: Boolean) {}
@@ -234,12 +241,14 @@ class BroadcastService : Service() {
     }
 
     fun stopBroadcast() {
-        if (stopping) return
-        stopping = true
+        if (!stopping.compareAndSet(false, true)) return
+        rtcExecutor.execute { releaseBroadcast() }
+    }
+
+    private fun releaseBroadcast() {
         peers.values.forEach { it.close() }
         peers.clear()
         socket?.disconnect()
-        socket?.close()
         socket = null
         try { capturer?.stopCapture() } catch (_: Exception) {}
         capturer?.dispose(); capturer = null
@@ -248,8 +257,10 @@ class BroadcastService : Service() {
         textureHelper?.dispose(); textureHelper = null
         factory?.dispose(); factory = null
         eglBase?.release(); eglBase = null
-        listener?.onState("stopped", null)
-        stopSelfCleanly()
+        Handler(Looper.getMainLooper()).post {
+            listener?.onState("stopped", null)
+            stopSelfCleanly()
+        }
     }
 
     private fun startProjectionForeground() {
@@ -276,7 +287,8 @@ class BroadcastService : Service() {
     }
 
     override fun onDestroy() {
-        if (!stopping) stopBroadcast()
+        if (!stopping.get()) stopBroadcast()
+        rtcExecutor.shutdown()
         super.onDestroy()
     }
 
