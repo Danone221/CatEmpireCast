@@ -264,6 +264,11 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String?) {
                 binding.loadingOverlay.visibility = View.GONE
                 binding.swipeRefresh.isRefreshing = false
+                view.evaluateJavascript(
+                    "document.documentElement.classList.add('cat-native-app');" +
+                        "if(document.body)document.body.classList.add('cat-native-app');",
+                    null
+                )
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {

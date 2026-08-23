@@ -572,3 +572,44 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 .cat-v5-image-preview img{width:100%;height:100%;object-fit:cover}
 .cat-v5-field small{display:block;color:#8d7ba9;font:8px monospace;line-height:1.5;margin-top:7px}
 @media(max-width:700px){.cat-v5-upload-grid{grid-template-columns:1fr}.cat-v5-image-preview.square{width:112px;height:112px}.cat-v5-image-preview.banner{height:120px}}
+
+
+/* Fullscreen interno: funciona no navegador e no Android WebView sem depender
+   da implementação incompleta da Fullscreen API do vídeo. */
+body.voice-expanded-active{overflow:hidden!important}
+.voice-tile.voice-tile-expanded{
+  position:fixed!important;
+  inset:0!important;
+  z-index:1200!important;
+  width:100vw!important;
+  height:100dvh!important;
+  aspect-ratio:auto!important;
+  margin:0!important;
+  border:0!important;
+  background:#030006!important;
+  box-shadow:none!important
+}
+.voice-tile.voice-tile-expanded video{object-fit:contain!important;background:#000}
+.voice-tile.voice-tile-expanded .tile-avatar.tile-sharing{
+  width:min(82vw,720px)!important;
+  height:min(56vh,440px)!important;
+  justify-content:center
+}
+.voice-tile.voice-tile-expanded .fs-btn{
+  position:fixed!important;
+  top:max(14px,env(safe-area-inset-top))!important;
+  right:max(14px,env(safe-area-inset-right))!important;
+  z-index:1202!important;
+  width:46px!important;
+  height:46px!important;
+  opacity:1!important;
+  border-color:var(--pink)!important;
+  background:rgba(9,2,15,.94)!important;
+  font:30px/1 monospace!important
+}
+.voice-tile.voice-tile-expanded .tile-name{
+  left:max(14px,env(safe-area-inset-left))!important;
+  bottom:max(14px,env(safe-area-inset-bottom))!important;
+  z-index:1201!important;
+  font-size:11px!important
+}

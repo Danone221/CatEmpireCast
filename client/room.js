@@ -931,7 +931,7 @@ function upsertExternalCastTile(playbackUrl) {
   fsBtn.className = 'fs-btn';
   fsBtn.title = 'Tela cheia';
   fsBtn.textContent = '⛶';
-  fsBtn.addEventListener('click', (e) => { e.stopPropagation(); requestTileFullscreen(video); });
+  fsBtn.addEventListener('click', (e) => { e.stopPropagation(); requestTileFullscreen(tile); });
   const label = document.createElement('div');
   label.className = 'tile-name';
   label.innerHTML = '<span class="mic-icon">📱</span>Celular (ao vivo)';
@@ -955,7 +955,9 @@ function removeExternalCastTile() {
     try { externalCastPlayer.destroy(); } catch (e) {}
     externalCastPlayer = null;
   }
-  document.getElementById('tile-external-cast')?.remove();
+  const tile = document.getElementById('tile-external-cast');
+  if (tile && expandedVoiceTile === tile) closeTileFullscreen();
+  tile?.remove();
 }
 
 function tileId(uid) { return 'tile-' + uid; }
@@ -1061,8 +1063,11 @@ function renderVoiceGrid() {
   const wantIds = new Set([userId, ...Object.keys(peers)]);
 
   existingIds.forEach(id => {
+    if (id === 'tile-external-cast') return;
     if (![...wantIds].some(u => tileId(u) === id)) {
-      grid.querySelector('#' + id)?.remove();
+      const staleTile = grid.querySelector('#' + id);
+      if (staleTile && expandedVoiceTile === staleTile) closeTileFullscreen();
+      staleTile?.remove();
       const uid = id.replace(/^tile-/, '');
       teardownSpeakingDetection(uid);
     }
@@ -1126,25 +1131,58 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
   ensureSpeakingDetection(uid, stream);
 }
 
-function requestTileFullscreen(video) {
-  if (!video) return;
-  if (video.requestFullscreen) video.requestFullscreen();
-  else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
-  else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+let expandedVoiceTile = null;
+
+function closeTileFullscreen() {
+  if (!expandedVoiceTile) return;
+  expandedVoiceTile.classList.remove('voice-tile-expanded');
+  const btn = expandedVoiceTile.querySelector('.fs-btn');
+  if (btn) {
+    btn.textContent = '⛶';
+    btn.title = 'Ampliar';
+    btn.setAttribute('aria-label', 'Ampliar transmissão');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  expandedVoiceTile = null;
+  document.body.classList.remove('voice-expanded-active');
+}
+
+function requestTileFullscreen(tile) {
+  if (!tile || !tile.classList.contains('voice-tile')) return;
+  if (expandedVoiceTile === tile) {
+    closeTileFullscreen();
+    return;
+  }
+  closeTileFullscreen();
+  expandedVoiceTile = tile;
+  tile.classList.add('voice-tile-expanded');
+  document.body.classList.add('voice-expanded-active');
+  const btn = tile.querySelector('.fs-btn');
+  if (btn) {
+    btn.textContent = '×';
+    btn.title = 'Fechar tela ampliada';
+    btn.setAttribute('aria-label', 'Fechar tela ampliada');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  tile.querySelector('video')?.play().catch(() => {});
 }
 
 $('voiceGrid').addEventListener('click', (e) => {
   const btn = e.target.closest('.fs-btn');
   if (!btn) return;
   e.stopPropagation();
-  const tile = document.getElementById(btn.dataset.tile);
-  requestTileFullscreen(tile && tile.querySelector('video'));
+  requestTileFullscreen(btn.closest('.voice-tile'));
 });
 
 $('voiceGrid').addEventListener('dblclick', (e) => {
+  if (e.target.closest('.fs-btn')) return;
   const tile = e.target.closest('.voice-tile');
-  if (!tile) return;
-  requestTileFullscreen(tile.querySelector('video'));
+  if (!tile || (!tile.querySelector('video') && tile.dataset.kind !== 'sharing')) return;
+  requestTileFullscreen(tile);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeTileFullscreen();
 });
 
 socket.on('channel-members', (list) => {
@@ -1770,6 +1808,8 @@ function hasNativeBroadcast() {
 
 let nativeBroadcasting = false;
 if (hasNativeBroadcast()) {
+  document.documentElement.classList.add('cat-native-app');
+  document.body.classList.add('cat-native-app');
   $('mobileCastBtn').title = 'Transmitir a tela (nativo)';
   $('mobileCastBtn').classList.add('native-broadcast-btn');
 }
@@ -1808,7 +1848,11 @@ $('mobileCastBtn').onclick = async () => {
       if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
       if (!d.configured || typeof d.rtmpUrl !== 'string' || !d.rtmpUrl.trim() ||
           typeof d.streamKey !== 'string' || !d.streamKey.trim()) {
-        throw new Error('Transmissão do APK indisponível: o servidor RTMP ainda não está configurado.');
+        $('castRtmpUrl').textContent = '—';
+        $('castStreamKey').textContent = '—';
+        $('castWarning').hidden = false;
+        $('mobileCastModal').classList.add('open');
+        return;
       }
       const quality = [480, 720, 1080].includes(Number(videoSettings.quality)) ? Number(videoSettings.quality) : 720;
       const fps = [24, 30, 60].includes(Number(videoSettings.fps)) ? Number(videoSettings.fps) : 30;

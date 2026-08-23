@@ -215,3 +215,43 @@
   .profile-sheet-menu{right:12px;top:58px;width:calc(100% - 24px)}
   .profile-sheet-section{padding:12px}
 }
+
+
+/* O WebView do APK já desconta as barras do sistema. O perfil precisa caber
+   nessa área sem esconder ações nem ocupar a tela inteira. */
+html.cat-native-app .profile-sheet-modal{
+  padding:10px 10px max(10px,env(safe-area-inset-bottom))!important
+}
+html.cat-native-app .profile-sheet-modal .profile-sheet{
+  width:100%!important;
+  max-height:86dvh!important;
+  border-bottom:3px solid #51228c!important;
+  padding-bottom:14px!important
+}
+html.cat-native-app .profile-sheet .profile-banner{
+  height:104px!important;
+  min-height:104px!important
+}
+html.cat-native-app .profile-sheet .profile-avatar-row{height:38px!important}
+html.cat-native-app .profile-sheet .profile-avatar-big{
+  left:14px!important;
+  width:76px!important;
+  height:76px!important;
+  padding:4px!important
+}
+html.cat-native-app .profile-sheet-content{padding:0 14px!important}
+html.cat-native-app .profile-sheet .profile-display-name{
+  margin:9px 0 4px!important;
+  font-size:8px!important
+}
+html.cat-native-app .profile-sheet-mutual{margin-top:6px!important}
+html.cat-native-app .profile-sheet-actions{
+  margin:10px 0!important;
+  gap:7px!important
+}
+html.cat-native-app .profile-sheet-actions .btn{height:40px!important}
+html.cat-native-app .profile-sheet-section{
+  margin-top:7px!important;
+  padding:9px!important
+}
+html.cat-native-app .profile-sheet-label{margin-bottom:6px!important}

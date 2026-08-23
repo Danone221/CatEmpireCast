@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const config = require('./config');
 const Channel = require('./database/models/Channel');
 
@@ -28,13 +29,38 @@ function buildPlaybackUrl(channelId) {
   return `${base.replace(/\/$/, '')}/live/${channelId}.flv`;
 }
 
+function signCastKey(channelId, expiresAt) {
+  return crypto.createHmac('sha256', config.jwtSecret)
+    .update(`${channelId}.${expiresAt}`)
+    .digest('hex');
+}
+
+function createCastKey(channelId) {
+  const expiresAt = Math.floor(Date.now() / 1000) + 10 * 60;
+  return `${channelId}.${expiresAt}.${signCastKey(channelId, expiresAt)}`;
+}
+
+function parseCastKey(streamKey) {
+  const parts = String(streamKey || '').split('.');
+  if (parts.length !== 3) return null;
+  const [channelId, rawExpiry, signature] = parts;
+  const expiresAt = Number(rawExpiry);
+  if (!channelId || !Number.isInteger(expiresAt) || expiresAt < Math.floor(Date.now() / 1000)) return null;
+  const expected = signCastKey(channelId, expiresAt);
+  const supplied = Buffer.from(signature, 'hex');
+  const wanted = Buffer.from(expected, 'hex');
+  if (supplied.length !== wanted.length || !crypto.timingSafeEqual(supplied, wanted)) return null;
+  return channelId;
+}
+
 function getCastCredentials(channelId) {
   const configured = isConfigured();
   return {
     rtmpUrl: configured ? buildRtmpUrl() : null,
-    streamKey: configured ? channelId : null,
+    streamKey: configured ? createCastKey(channelId) : null,
     playbackUrl: configured ? buildPlaybackUrl(channelId) : null,
     configured,
+    expiresIn: configured ? 600 : null,
     error: configured ? null : 'Servidor RTMP não configurado. Defina MEDIA_PUBLIC_RTMP_HOST e MEDIA_PUBLIC_HTTP_BASE.'
   };
 }
@@ -60,8 +86,13 @@ function startMediaServer(io) {
   });
 
   nms.on('prePublish', async (id, StreamPath) => {
-    const channelId = StreamPath.split('/').pop();
+    const streamKey = StreamPath.split('/').pop();
+    const channelId = parseCastKey(streamKey);
     try {
+      if (!channelId) {
+        nms.getSession(id).reject();
+        return;
+      }
       const channel = await Channel.findById(channelId);
       if (!channel || channel.type !== 'voice') {
         const session = nms.getSession(id);
@@ -78,7 +109,8 @@ function startMediaServer(io) {
   });
 
   nms.on('donePublish', (id, StreamPath) => {
-    const channelId = StreamPath.split('/').pop();
+    const channelId = parseCastKey(StreamPath.split('/').pop());
+    if (!channelId) return;
     activeCasts.delete(channelId);
     io.to(`channel-${channelId}`).emit('external-cast-ended', { channelId });
   });

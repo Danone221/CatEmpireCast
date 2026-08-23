@@ -591,6 +591,8 @@ router.get('/channels/:channelId/cast-credentials', authenticate, async (req, re
     if (!channel || channel.type !== 'voice') {
       return res.status(404).json({ error: 'Canal de voz não encontrado' });
     }
+    const role = await Server.getMemberRole(channel.server_id, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Você não participa deste servidor' });
     const { getCastCredentials } = require('../media');
     res.json(getCastCredentials(channel.id));
   } catch (error) {

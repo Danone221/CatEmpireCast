@@ -3,6 +3,11 @@
   if (window.__catProfileSheetV10) return;
   window.__catProfileSheetV10 = true;
 
+  if (window.CatEmpireNative) {
+    document.documentElement.classList.add('cat-native-app');
+    document.body?.classList.add('cat-native-app');
+  }
+
   const toastMessage = (message, type = 'success') => {
     if (typeof window.toast === 'function') window.toast(message, type);
   };
