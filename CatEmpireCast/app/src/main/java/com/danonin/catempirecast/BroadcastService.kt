@@ -32,6 +32,7 @@ class BroadcastService : Service() {
     private var track: VideoTrack? = null
     private var capturer: VideoCapturer? = null
     private var textureHelper: SurfaceTextureHelper? = null
+    private var diagnosticSink: VideoSink? = null
     private val peers = ConcurrentHashMap<String, PeerConnection>()
     private val pendingCandidates = ConcurrentHashMap<String, MutableList<IceCandidate>>()
     private var profileLabel = ""
@@ -39,6 +40,8 @@ class BroadcastService : Service() {
     private var broadcastFps = 30
     private val rtcExecutor = Executors.newSingleThreadExecutor()
     private val stopping = AtomicBoolean(false)
+    private val firstFrameReported = AtomicBoolean(false)
+    @Volatile private var firstFrameDetail: String? = null
 
     inner class LocalBinder : Binder() {
         fun getService(): BroadcastService = this@BroadcastService
@@ -72,6 +75,8 @@ class BroadcastService : Service() {
     ) {
         if (socket != null || stopping.get()) return
         stopping.set(false)
+        firstFrameReported.set(false)
+        firstFrameDetail = null
         startProjectionForeground()
         rtcExecutor.execute { try {
             val base = when (quality) {
@@ -112,6 +117,12 @@ class BroadcastService : Service() {
             capturer!!.initialize(textureHelper, applicationContext, source!!.capturerObserver)
             capturer!!.startCapture(width, height, safeFps)
             track = factory!!.createVideoTrack("cat-native-screen", source)
+            diagnosticSink = VideoSink { frame ->
+                if (firstFrameReported.compareAndSet(false, true)) {
+                    firstFrameDetail = "${frame.rotatedWidth}x${frame.rotatedHeight}"
+                    reportStage("first-frame", firstFrameDetail)
+                }
+            }.also { track!!.addSink(it) }
             connectSignaling(baseUrl, token, userId, channelId)
         } catch (error: Exception) {
             listener?.onState("error", "Erro ao preparar WebRTC: ${error.message}")
@@ -136,6 +147,8 @@ class BroadcastService : Service() {
             val payload = args.firstOrNull() as? JSONObject ?: return@on
             val viewers = payload.optJSONArray("viewers") ?: return@on
             rtcExecutor.execute {
+                reportStage("registered", "${viewers.length()} viewer(s)")
+                firstFrameDetail?.let { reportStage("first-frame", it) }
                 peers.values.forEach { it.close() }
                 peers.clear()
                 pendingCandidates.clear()
@@ -194,24 +207,31 @@ class BroadcastService : Service() {
         val pc = peers[from] ?: ensurePeerFor(from) ?: return
         data.optJSONObject("sdp")?.let { sdp ->
             val isOffer = sdp.optString("type") == "offer"
+            reportStage(if (isOffer) "offer-received" else "answer-received", from)
             val type = if (isOffer) SessionDescription.Type.OFFER else SessionDescription.Type.ANSWER
             pc.setRemoteDescription(object : BasicSdpObserver() {
                 override fun onSetSuccess() {
+                    reportStage("remote-sdp-set", from)
                     pendingCandidates.remove(from)?.forEach { pc.addIceCandidate(it) }
                     if (!isOffer) return
                     pc.createAnswer(object : BasicSdpObserver() {
                         override fun onCreateSuccess(description: SessionDescription?) {
                             if (description == null) return
+                            reportStage("answer-created", from)
                             pc.setLocalDescription(object : BasicSdpObserver() {
                                 override fun onSetSuccess() {
                                     emitSignal(from, JSONObject().put("sdp", JSONObject()
                                         .put("type", description.type.canonicalForm())
                                         .put("sdp", description.description)))
+                                    reportStage("answer-sent", from)
                                 }
+                                override fun onSetFailure(message: String?) = reportStage("local-sdp-error", message)
                             }, description)
                         }
+                        override fun onCreateFailure(message: String?) = reportStage("answer-error", message)
                     }, MediaConstraints())
                 }
+                override fun onSetFailure(message: String?) = reportStage("remote-sdp-error", message)
             }, SessionDescription(type, sdp.optString("sdp")))
             return
         }
@@ -230,6 +250,7 @@ class BroadcastService : Service() {
     private fun peerObserver(viewerId: String) = object : PeerConnection.Observer {
         override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
         override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
+            reportStage("ice-${state?.name?.lowercase() ?: "unknown"}", viewerId)
             if (state == PeerConnection.IceConnectionState.FAILED || state == PeerConnection.IceConnectionState.CLOSED) {
                 rtcExecutor.execute {
                     pendingCandidates.remove(viewerId)
@@ -258,6 +279,12 @@ class BroadcastService : Service() {
         socket?.emit("native-screen-signal", JSONObject().put("to", to).put("data", data))
     }
 
+    private fun reportStage(stage: String, detail: String?) {
+        socket?.emit("native-screen-debug", JSONObject()
+            .put("stage", stage)
+            .put("detail", detail ?: ""))
+    }
+
     fun stopBroadcast() {
         if (!stopping.compareAndSet(false, true)) return
         rtcExecutor.execute { releaseBroadcast() }
@@ -271,6 +298,8 @@ class BroadcastService : Service() {
         socket = null
         try { capturer?.stopCapture() } catch (_: Exception) {}
         capturer?.dispose(); capturer = null
+        diagnosticSink?.let { sink -> try { track?.removeSink(sink) } catch (_: Exception) {} }
+        diagnosticSink = null
         track?.dispose(); track = null
         source?.dispose(); source = null
         textureHelper?.dispose(); textureHelper = null
