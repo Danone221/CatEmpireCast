@@ -41,7 +41,7 @@ function setupSocket(server) {
         userId: nativeSocket.screenOwnerId,
         userName: nativeSocket.screenOwnerName
       });
-      if (socket.userId && socket.userId !== nativeSocket.screenOwnerId) {
+      if (socket.userId) {
         nativeSocket.emit('native-screen-viewer-joined', { userId: socket.userId });
       }
     }
@@ -269,10 +269,14 @@ function setupSocket(server) {
         socket.join(`channel-${channelId}`);
 
         const members = await Channel.getVoiceMembers(channelId);
+        const viewers = [...new Set(members.map(member => member.user_id).filter(Boolean))];
         socket.emit('native-screen-registered', {
           peerId,
-          viewers: members.map(member => member.user_id).filter(id => id !== userId)
+          // Inclui o próprio transmissor para que o APK mostre uma prévia
+          // real da tela no mosaico, além dos demais membros do canal.
+          viewers
         });
+        console.log(`📱 Tela nativa de ${socket.screenOwnerName} registrada no canal ${channelId} para ${viewers.length} visualizador(es)`);
         io.to(`channel-${channelId}`).emit('native-screen-started', {
           peerId,
           userId,
