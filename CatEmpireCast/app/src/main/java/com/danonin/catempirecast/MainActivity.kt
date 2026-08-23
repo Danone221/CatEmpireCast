@@ -98,6 +98,10 @@ class MainActivity : AppCompatActivity() {
         }
         pendingProjectionResultCode = result.resultCode
         pendingProjectionData = projectionData
+        if (pendingCastUrl.isNullOrBlank() || pendingCastKey.isNullOrBlank()) {
+            notifyWebBroadcastState("ready", "Captura de tela autorizada.")
+            return@registerForActivityResult
+        }
         if (broadcastBound && broadcastService != null) {
             startPendingBroadcastIfReady()
         } else {
@@ -148,6 +152,53 @@ class MainActivity : AppCompatActivity() {
     }
 
     private inner class WebAppInterface {
+        @JavascriptInterface
+        fun prepareBroadcast(quality: Int, fps: Int) {
+            runOnUiThread {
+                clearPendingBroadcast()
+                pendingCastQuality = if (quality in setOf(480, 720, 1080)) quality else 720
+                pendingCastFps = if (fps in setOf(24, 30, 60)) fps else 30
+                val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                try {
+                    screenCaptureLauncher.launch(projectionManager.createScreenCaptureIntent())
+                } catch (e: Exception) {
+                    notifyWebBroadcastState("error", "Não foi possível abrir a captura de tela.")
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun startPreparedBroadcast(rtmpUrl: String?, streamKey: String?, quality: Int, fps: Int) {
+            runOnUiThread {
+                val validationError = validateRtmpEndpoint(rtmpUrl, streamKey)
+                if (validationError != null) {
+                    notifyWebBroadcastState("error", validationError)
+                    return@runOnUiThread
+                }
+                pendingCastUrl = rtmpUrl?.trim()
+                pendingCastKey = streamKey?.trim()
+                pendingCastQuality = if (quality in setOf(480, 720, 1080)) quality else pendingCastQuality
+                pendingCastFps = if (fps in setOf(24, 30, 60)) fps else pendingCastFps
+                if (pendingProjectionData == null || pendingProjectionResultCode == null) {
+                    prepareBroadcast(pendingCastQuality, pendingCastFps)
+                    return@runOnUiThread
+                }
+                if (broadcastBound && broadcastService != null) {
+                    startPendingBroadcastIfReady()
+                } else {
+                    val didBind = bindService(
+                        BroadcastService.intent(this@MainActivity),
+                        broadcastConnection,
+                        Context.BIND_AUTO_CREATE
+                    )
+                    if (!didBind) {
+                        clearPendingBroadcast()
+                        notifyWebBroadcastState("error", "Não foi possível iniciar o serviço de transmissão.")
+                    }
+                }
+            }
+        }
+
         @JavascriptInterface
         fun startBroadcast(rtmpUrl: String?, streamKey: String?, quality: Int, fps: Int) {
             runOnUiThread {

@@ -1807,6 +1807,7 @@ function hasNativeBroadcast() {
 }
 
 let nativeBroadcasting = false;
+let nativePreparing = false;
 if (hasNativeBroadcast()) {
   document.documentElement.classList.add('cat-native-app');
   document.body.classList.add('cat-native-app');
@@ -1814,19 +1815,52 @@ if (hasNativeBroadcast()) {
   $('mobileCastBtn').classList.add('native-broadcast-btn');
 }
 
-// Chamado pelo app Android (MainActivity.evaluateJavascript) quando o status
-// da transmissão nativa muda — sucesso, erro ou fim.
+function nativeVideoOptions() {
+  return {
+    quality: [480, 720, 1080].includes(Number(videoSettings.quality)) ? Number(videoSettings.quality) : 720,
+    fps: [24, 30, 60].includes(Number(videoSettings.fps)) ? Number(videoSettings.fps) : 30
+  };
+}
+
+async function connectPreparedNativeBroadcast() {
+  try {
+    const r = await fetch('/api/channels/' + voiceChannelId + '/cast-credentials', { headers: headers() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
+    if (!d.configured || typeof d.rtmpUrl !== 'string' || !d.rtmpUrl.trim() ||
+        typeof d.streamKey !== 'string' || !d.streamKey.trim()) {
+      throw new Error('Captura nativa autorizada, mas o servidor RTMP ainda não possui endereço público.');
+    }
+    const { quality, fps } = nativeVideoOptions();
+    if (typeof window.CatEmpireNative.startPreparedBroadcast === 'function') {
+      window.CatEmpireNative.startPreparedBroadcast(d.rtmpUrl.trim(), d.streamKey.trim(), quality, fps);
+    } else {
+      window.CatEmpireNative.startBroadcast(d.rtmpUrl.trim(), d.streamKey.trim(), quality, fps);
+    }
+  } catch (e) {
+    nativePreparing = false;
+    toast(e.message, 'error');
+  }
+}
+
+// Chamado pelo app Android quando a permissão, transmissão, erro ou término muda.
 window.onNativeBroadcastState = function (state, message) {
-  if (state === 'started') {
+  if (state === 'ready') {
+    nativePreparing = false;
+    connectPreparedNativeBroadcast();
+  } else if (state === 'started') {
+    nativePreparing = false;
     nativeBroadcasting = true;
     window.__catNativeBroadcasting = true;
     $('mobileCastBtn').classList.add('active');
     toast(message ? 'Transmitindo em ' + message + '.' : 'Transmitindo a tela ao vivo!', 'success');
   } else if (state === 'stopped') {
+    nativePreparing = false;
     nativeBroadcasting = false;
     window.__catNativeBroadcasting = false;
     $('mobileCastBtn').classList.remove('active');
   } else if (state === 'error') {
+    nativePreparing = false;
     nativeBroadcasting = false;
     window.__catNativeBroadcasting = false;
     $('mobileCastBtn').classList.remove('active');
@@ -1838,28 +1872,19 @@ const originalMobileCastHandler = $('mobileCastBtn').onclick;
 $('mobileCastBtn').onclick = async () => {
   if (!voiceChannelId) return;
   if (hasNativeBroadcast()) {
-    try {
-      if (nativeBroadcasting) {
-        window.CatEmpireNative.stopBroadcast();
-        return;
-      }
-      const r = await fetch('/api/channels/' + voiceChannelId + '/cast-credentials', { headers: headers() });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
-      if (!d.configured || typeof d.rtmpUrl !== 'string' || !d.rtmpUrl.trim() ||
-          typeof d.streamKey !== 'string' || !d.streamKey.trim()) {
-        $('castRtmpUrl').textContent = '—';
-        $('castStreamKey').textContent = '—';
-        $('castWarning').hidden = false;
-        $('mobileCastModal').classList.add('open');
-        return;
-      }
-      const quality = [480, 720, 1080].includes(Number(videoSettings.quality)) ? Number(videoSettings.quality) : 720;
-      const fps = [24, 30, 60].includes(Number(videoSettings.fps)) ? Number(videoSettings.fps) : 30;
-      // O app cuida de pedir a permissão de captura de tela (MediaProjection)
-      // e sobe o RTMP num serviço em primeiro plano — ver BroadcastService.kt.
-      window.CatEmpireNative.startBroadcast(d.rtmpUrl.trim(), d.streamKey.trim(), quality, fps);
-    } catch (e) { toast(e.message, 'error'); }
+    if (nativeBroadcasting) {
+      window.CatEmpireNative.stopBroadcast();
+      return;
+    }
+    if (nativePreparing) return;
+    const { quality, fps } = nativeVideoOptions();
+    if (typeof window.CatEmpireNative.prepareBroadcast === 'function') {
+      nativePreparing = true;
+      window.CatEmpireNative.prepareBroadcast(quality, fps);
+      return;
+    }
+    // Compatibilidade com APKs antigos: obtém o destino antes de abrir a captura.
+    await connectPreparedNativeBroadcast();
     return;
   }
   return originalMobileCastHandler();
