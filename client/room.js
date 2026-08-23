@@ -1654,11 +1654,12 @@ async function refreshServerDataLive() {
     }
     await loadServersRail();
     document.dispatchEvent(new CustomEvent('cat:server-live-data', { detail: data }));
-    const settingsPanel = document.querySelector('.cat-v5-settings');
-    if (settingsPanel && !settingsPanel.hidden) {
-      settingsPanel.hidden = true;
-      $('serverSettingsBtn')?.click();
-    }
+    // Preserve the open editor exactly like the user profile editor does.
+    // Closing the native file picker fires a window focus event; rebuilding the
+    // settings panel here discarded the selected image before it could be saved.
+    // The page behind the editor is already synchronized above, and the settings
+    // runtime updates its own state after a successful save.
+
   } catch (error) { console.error('Sincronização do servidor:', error); }
 }
 socket.on('server-data-changed', payload => {
