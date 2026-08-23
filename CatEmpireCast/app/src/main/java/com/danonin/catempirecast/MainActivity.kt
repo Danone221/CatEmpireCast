@@ -289,6 +289,12 @@ class MainActivity : AppCompatActivity() {
         s.databaseEnabled = true
         s.mediaPlaybackRequiresUserGesture = false
         s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        val cachePrefs = getSharedPreferences("cat_empire_web_cache", MODE_PRIVATE)
+        val cachedVersion = cachePrefs.getInt("app_version", 0)
+        if (cachedVersion < BuildConfig.VERSION_CODE) {
+            binding.webView.clearCache(true)
+            cachePrefs.edit().putInt("app_version", BuildConfig.VERSION_CODE).apply()
+        }
         s.cacheMode = WebSettings.LOAD_DEFAULT
         s.setSupportZoom(false)
         s.builtInZoomControls = false

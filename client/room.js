@@ -1883,8 +1883,7 @@ $('mobileCastBtn').onclick = async () => {
       window.CatEmpireNative.prepareBroadcast(quality, fps);
       return;
     }
-    // Compatibilidade com APKs antigos: obtém o destino antes de abrir a captura.
-    await connectPreparedNativeBroadcast();
+    toast('Atualize o APK para usar a captura nativa de tela.', 'error');
     return;
   }
   return originalMobileCastHandler();
