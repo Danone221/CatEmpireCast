@@ -2,7 +2,7 @@ name: Build Cat Empire APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, codex/native-webrtc-screen ]
   workflow_dispatch:
 
 jobs:

@@ -34,6 +34,7 @@ const VIDEO_PROFILES = {
 };
 let videoSettings = loadVideoSettings();
 const peers = {}; // remoteUserId -> { pc, polite, makingOffer, ignoreOffer }
+const nativeScreenOwners = {}; // screen:<userId> -> perfil do autor
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 $('myName').textContent = userName;
@@ -1076,10 +1077,12 @@ function renderVoiceGrid() {
   const meM = members.find(mm => mm.id === userId);
   upsertTile(userId, userName, meM && meM.avatar, localStream, true);
   Object.keys(peers).forEach(uid => {
-    const m = members.find(mm => mm.id === uid);
+    const owner = nativeScreenOwners[uid];
+    const m = owner ? members.find(mm => mm.id === owner.userId) : members.find(mm => mm.id === uid);
     const state = remoteMediaState[uid];
     const knownVideoOff = state && !state.camera && !state.screen;
-    upsertTile(uid, m ? (m.display_name || m.username) : 'Membro', m && m.avatar, peers[uid].remoteStream, false, knownVideoOff);
+    const displayName = owner?.userName || (m ? (m.display_name || m.username) : 'Membro');
+    upsertTile(uid, owner ? `${displayName} — tela` : displayName, m && m.avatar, peers[uid].remoteStream, false, knownVideoOff);
     ensureRemoteAudio(uid, peers[uid].remoteStream);
   });
 }
@@ -1189,7 +1192,24 @@ socket.on('channel-members', (list) => {
   if (!voiceChannelId) return;
   const others = (list || []).filter(m => m.user_id !== userId);
   others.forEach(m => { if (!peers[m.user_id]) createPeer(m.user_id); });
-  Object.keys(peers).forEach(uid => { if (!others.some(m => m.user_id === uid)) closePeer(uid); });
+  Object.keys(peers).forEach(uid => {
+    if (!uid.startsWith('screen:') && !others.some(m => m.user_id === uid)) closePeer(uid);
+  });
+  renderVoiceGrid();
+});
+
+socket.on('native-screen-started', ({ peerId, userId: ownerId, userName: ownerName }) => {
+  if (!voiceChannelId || !peerId) return;
+  nativeScreenOwners[peerId] = { userId: ownerId, userName: ownerName || 'Membro' };
+  remoteMediaState[peerId] = { camera: false, screen: true };
+  renderVoiceGrid();
+});
+
+socket.on('native-screen-ended', ({ peerId }) => {
+  if (!peerId) return;
+  if (peers[peerId]) closePeer(peerId);
+  delete nativeScreenOwners[peerId];
+  delete remoteMediaState[peerId];
   renderVoiceGrid();
 });
 
@@ -1223,7 +1243,11 @@ function createPeer(remoteId) {
   const peer = { pc, polite, makingOffer: false, ignoreOffer: false, remoteStream: new MediaStream(), pendingCandidates: [] };
   peers[remoteId] = peer;
 
-  if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  // A conexão da tela nativa é somente recepção. Não devolvemos microfone e
+  // câmera do WebView ao serviço Android e evitamos colisão de offers.
+  if (!remoteId.startsWith('screen:') && localStream) {
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  }
 
   pc.onnegotiationneeded = async () => {
     try {
@@ -1797,13 +1821,15 @@ socket.on('server-deleted', ({ serverId: sid }) => {
   }
 });
 
-// ========== APP ANDROID NATIVO (transmissão de tela real via RTMP) ==========
+// ========== APP ANDROID NATIVO (captura + WebRTC do próprio canal) ==========
 // Quando o site roda dentro do app Android (ver CatEmpireCast/…/MainActivity.kt),
 // a ponte "CatEmpireNative" fica disponível no window. Nesse caso trocamos o
 // botão de instruções (app externo tipo Larix) por transmissão nativa de
 // verdade, sem precisar de outro app.
 function hasNativeBroadcast() {
-  return !!window.CatEmpireNative && typeof window.CatEmpireNative.startBroadcast === 'function';
+  return !!window.CatEmpireNative &&
+    typeof window.CatEmpireNative.prepareBroadcast === 'function' &&
+    typeof window.CatEmpireNative.startPreparedWebRtc === 'function';
 }
 
 let nativeBroadcasting = false;
@@ -1822,21 +1848,18 @@ function nativeVideoOptions() {
   };
 }
 
-async function connectPreparedNativeBroadcast() {
+function connectPreparedNativeBroadcast() {
   try {
-    const r = await fetch('/api/channels/' + voiceChannelId + '/cast-credentials', { headers: headers() });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
-    if (!d.configured || typeof d.rtmpUrl !== 'string' || !d.rtmpUrl.trim() ||
-        typeof d.streamKey !== 'string' || !d.streamKey.trim()) {
-      throw new Error('Captura nativa autorizada, mas o servidor RTMP ainda não possui endereço público.');
-    }
+    if (!voiceChannelId) throw new Error('Entre novamente no canal de voz.');
     const { quality, fps } = nativeVideoOptions();
-    if (typeof window.CatEmpireNative.startPreparedBroadcast === 'function') {
-      window.CatEmpireNative.startPreparedBroadcast(d.rtmpUrl.trim(), d.streamKey.trim(), quality, fps);
-    } else {
-      window.CatEmpireNative.startBroadcast(d.rtmpUrl.trim(), d.streamKey.trim(), quality, fps);
-    }
+    window.CatEmpireNative.startPreparedWebRtc(
+      token,
+      userId,
+      voiceChannelId,
+      location.origin,
+      quality,
+      fps
+    );
   } catch (e) {
     nativePreparing = false;
     toast(e.message, 'error');
@@ -1878,12 +1901,8 @@ $('mobileCastBtn').onclick = async () => {
     }
     if (nativePreparing) return;
     const { quality, fps } = nativeVideoOptions();
-    if (typeof window.CatEmpireNative.prepareBroadcast === 'function') {
-      nativePreparing = true;
-      window.CatEmpireNative.prepareBroadcast(quality, fps);
-      return;
-    }
-    toast('Atualize o APK para usar a captura nativa de tela.', 'error');
+    nativePreparing = true;
+    window.CatEmpireNative.prepareBroadcast(quality, fps);
     return;
   }
   return originalMobileCastHandler();

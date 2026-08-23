@@ -3,6 +3,8 @@ const Channel = require('./database/models/Channel');
 const ServerModel = require('./database/models/Server');
 const User = require('./database/models/User');
 const Dm = require('./database/models/Dm');
+const jwt = require('jsonwebtoken');
+const config = require('./config');
 
 function setupSocket(server) {
   const io = new Server(server, {
@@ -28,6 +30,20 @@ function setupSocket(server) {
   const socketUsers = new Map(); // socketId -> userId
   const userChannels = new Map(); // userId -> channelId
   const onlineUsers = new Set(); // userId presente com pelo menos 1 socket ativo
+  const screenShareSockets = new Map(); // screen:<userId> -> socketId
+
+  function notifyScreenSharesToViewer(socket, channelId) {
+    for (const [peerId, nativeSocketId] of screenShareSockets.entries()) {
+      const nativeSocket = io.sockets.sockets.get(nativeSocketId);
+      if (!nativeSocket || nativeSocket.screenChannelId !== channelId) continue;
+      socket.emit('native-screen-started', {
+        peerId,
+        userId: nativeSocket.screenOwnerId,
+        userName: nativeSocket.screenOwnerName
+      });
+      nativeSocket.emit('native-screen-viewer-joined', { userId: socket.userId });
+    }
+  }
 
   io.on('connection', (socket) => {
     console.log('🔌 Conectado:', socket.id);
@@ -129,6 +145,7 @@ function setupSocket(server) {
         if (castInfo) {
           socket.emit('external-cast-live', { channelId, playbackUrl: castInfo.playbackUrl });
         }
+        notifyScreenSharesToViewer(socket, channelId);
 
       } catch (error) {
         console.error('❌ Erro ao entrar no canal de voz:', error);
@@ -199,7 +216,7 @@ function setupSocket(server) {
     // Repassa SDP offers/answers e ICE candidates diretamente para o usuário-alvo.
     socket.on('voice-signal', ({ to, data }) => {
       try {
-        const targetSocketId = userSockets.get(to);
+        const targetSocketId = userSockets.get(to) || screenShareSockets.get(to);
         if (targetSocketId) {
           io.to(targetSocketId).emit('voice-signal', {
             from: socket.userId,
@@ -208,6 +225,55 @@ function setupSocket(server) {
         }
       } catch (error) {
         console.error('❌ Erro na sinalização WebRTC:', error);
+      }
+    });
+
+    // ========== TELA NATIVA DO APK VIA WEBRTC ==========
+    socket.on('register-native-screen', async ({ userId, token, channelId }) => {
+      try {
+        const decoded = jwt.verify(String(token || ''), config.jwtSecret);
+        if (decoded.id !== userId) throw new Error('Token não corresponde ao usuário');
+        const user = await User.findById(userId);
+        const channel = await Channel.findById(channelId);
+        if (!user || !channel || channel.type !== 'voice') throw new Error('Canal de voz inválido');
+        const role = await ServerModel.getMemberRole(channel.server_id, userId);
+        if (!role) throw new Error('Usuário não participa do servidor');
+
+        const peerId = `screen:${userId}`;
+        const previousId = screenShareSockets.get(peerId);
+        if (previousId && previousId !== socket.id) io.sockets.sockets.get(previousId)?.disconnect(true);
+
+        socket.screenPeerId = peerId;
+        socket.screenOwnerId = userId;
+        socket.screenOwnerName = user.display_name || user.username;
+        socket.screenChannelId = channelId;
+        screenShareSockets.set(peerId, socket.id);
+        socket.join(`channel-${channelId}`);
+
+        const members = await Channel.getVoiceMembers(channelId);
+        socket.emit('native-screen-registered', {
+          peerId,
+          viewers: members.map(member => member.user_id).filter(id => id !== userId)
+        });
+        io.to(`channel-${channelId}`).emit('native-screen-started', {
+          peerId,
+          userId,
+          userName: socket.screenOwnerName
+        });
+      } catch (error) {
+        console.error('❌ Erro ao registrar tela nativa:', error.message);
+        socket.emit('native-screen-error', { message: 'Não foi possível iniciar a tela nativa.' });
+      }
+    });
+
+    socket.on('native-screen-signal', ({ to, data }) => {
+      try {
+        if (!socket.screenPeerId || !socket.screenChannelId) return;
+        const targetSocketId = userSockets.get(to);
+        if (!targetSocketId) return;
+        io.to(targetSocketId).emit('voice-signal', { from: socket.screenPeerId, data });
+      } catch (error) {
+        console.error('❌ Erro na sinalização da tela nativa:', error);
       }
     });
 
@@ -390,6 +456,14 @@ function setupSocket(server) {
     // ========== DESCONEXÃO ==========
     socket.on('disconnect', async () => {
       console.log('🔌 Desconectado:', socket.id);
+
+      if (socket.screenPeerId && screenShareSockets.get(socket.screenPeerId) === socket.id) {
+        screenShareSockets.delete(socket.screenPeerId);
+        io.to(`channel-${socket.screenChannelId}`).emit('native-screen-ended', {
+          peerId: socket.screenPeerId,
+          userId: socket.screenOwnerId
+        });
+      }
 
       const userId = socketUsers.get(socket.id);
       if (userId) {

@@ -14,8 +14,8 @@ android {
         // funciona a partir da API 21.
         minSdk 26
         targetSdk 34
-        versionCode 2
-        versionName "1.1"
+        versionCode 3
+        versionName "1.2"
     }
 
     buildTypes {
@@ -45,8 +45,8 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.activity:activity-ktx:1.9.2'
-    // RootEncoder — encoder RTMP com captura de tela via MediaProjection
-    // (DisplayBase/RtmpDisplay). Usado no BroadcastService pra transmitir
-    // a tela do celular de verdade pro node-media-server do backend.
-    implementation 'com.github.pedroSG94.RootEncoder:library:2.5.4'
+    implementation 'io.getstream:stream-webrtc-android:1.3.10'
+    implementation('io.socket:socket.io-client:2.1.0') {
+        exclude group: 'org.json', module: 'json'
+    }
 }
