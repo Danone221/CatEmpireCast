@@ -10,159 +10,265 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import com.pedro.common.ConnectChecker
-import com.pedro.library.rtmp.RtmpDisplay
+import io.socket.client.IO
+import io.socket.client.Socket
+import org.json.JSONObject
+import org.webrtc.*
+import java.net.URI
+import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Serviço em primeiro plano que transmite a tela do celular (+ microfone)
- * via RTMP de verdade, usando a lib RootEncoder (MediaProjection + encoder
- * de vídeo/áudio embutido). É isso que faz o botão "📱" na chamada de voz
- * funcionar sem precisar de nenhum app externo (tipo Larix) — só dentro do
- * nosso próprio app Android.
- *
- * Fluxo:
- *  1. MainActivity pede a permissão de captura de tela (MediaProjectionManager)
- *  2. Com o resultCode/data da permissão, chama startBroadcast(...) aqui
- *  3. Esse serviço sobe em foreground (obrigatório desde o Android 10+ pra
- *     usar MediaProjection) e começa a publicar RTMP pras credenciais que
- *     vieram do backend (rtmpUrl + streamKey — ver server/media.js)
- *  4. Callbacks de conexão (sucesso/erro/desconexão) são repassados de volta
- *     pra MainActivity, que injeta window.onNativeBroadcastState(...) na
- *     página aberta no WebView.
- */
-class BroadcastService : Service(), ConnectChecker {
-
+/** Captura MediaProjection e publica a tela no mesh WebRTC do canal. */
+class BroadcastService : Service() {
     private val binder = LocalBinder()
-    private var rtmpDisplay: RtmpDisplay? = null
     private var listener: BroadcastStateListener? = null
-    private var activeVideoProfile: VideoProfile? = null
-    private var activeFps = 30
+    private var socket: Socket? = null
+    private var eglBase: EglBase? = null
+    private var factory: PeerConnectionFactory? = null
+    private var source: VideoSource? = null
+    private var track: VideoTrack? = null
+    private var capturer: VideoCapturer? = null
+    private var textureHelper: SurfaceTextureHelper? = null
+    private val peers = ConcurrentHashMap<String, PeerConnection>()
+    private var profileLabel = ""
+    private var broadcastBitrateBps = 2_500_000
+    private var broadcastFps = 30
+    private var stopping = false
 
     inner class LocalBinder : Binder() {
         fun getService(): BroadcastService = this@BroadcastService
     }
-
     interface BroadcastStateListener {
         fun onState(state: String, message: String?)
     }
-
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onCreate() {
         super.onCreate()
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Cat Empire — transmissão ao vivo",
-                NotificationManager.IMPORTANCE_LOW
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL_ID, "Cat Empire — transmissão ao vivo", NotificationManager.IMPORTANCE_LOW)
             )
-            manager.createNotificationChannel(channel)
         }
     }
 
-    fun setListener(l: BroadcastStateListener?) {
-        listener = l
-    }
+    fun setListener(value: BroadcastStateListener?) { listener = value }
 
-    /**
-     * Inicia a transmissão. resultCode/data vêm do diálogo de permissão do
-     * MediaProjection (ActivityResultContracts.StartActivityForResult
-     * lançado a partir de MediaProjectionManager.createScreenCaptureIntent()).
-     */
     fun startBroadcast(
         resultCode: Int,
-        data: Intent,
-        rtmpUrl: String,
-        streamKey: String,
+        projectionData: Intent,
+        baseUrl: String,
+        token: String,
+        userId: String,
+        channelId: String,
         quality: Int,
         fps: Int
     ) {
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Cat Empire")
-            .setContentText("Transmitindo sua tela ao vivo…")
-            .setSmallIcon(android.R.drawable.presence_video_online)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .build()
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
-
+        if (socket != null) return
+        stopping = false
+        startProjectionForeground()
         try {
-            val display = RtmpDisplay(this, true, this)
-            rtmpDisplay = display
-
-            val baseProfile = when (quality) {
-                480 -> VideoProfile(480, 854, 1_500_000, "480p")
-                1080 -> VideoProfile(1080, 1920, 5_000_000, "1080p")
-                else -> VideoProfile(720, 1280, 3_000_000, "720p")
+            val base = when (quality) {
+                480 -> Triple(854, 480, "480p")
+                1080 -> Triple(1920, 1080, "1080p")
+                else -> Triple(1280, 720, "720p")
             }
-            val profile = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                baseProfile.copy(width = baseProfile.height, height = baseProfile.width)
-            } else {
-                baseProfile
-            }
+            val portrait = resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
+            val width = if (portrait) base.second else base.first
+            val height = if (portrait) base.first else base.second
             val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
-            activeVideoProfile = profile
-            activeFps = safeFps
-
-            // O Android exige um densityDpi estritamente positivo ao criar a
-            // VirtualDisplay. O valor 0 usado anteriormente causava:
-            // "Virtual display density must be positive".
-            val safeDpi = resources.displayMetrics.densityDpi.coerceAtLeast(160)
-
-            // RootEncoder recomenda informar o resultado do MediaProjection
-            // antes de preparar o vídeo/áudio e antes de iniciar o stream.
-            display.setIntentResult(resultCode, data)
-
-            val prepared = display.prepareVideo(
-                profile.width,
-                profile.height,
-                safeFps,
-                profile.bitrate,
-                0,
-                safeDpi
-            ) &&
-                display.prepareAudio(128_000, 44100, true)
-
-            if (!prepared) {
-                listener?.onState("error", "Não foi possível preparar a captura de tela/áudio.")
-                stopSelfCleanly()
-                return
+            broadcastFps = safeFps
+            broadcastBitrateBps = when (quality) {
+                480 -> 1_200_000
+                1080 -> 5_000_000
+                else -> 2_500_000
             }
+            profileLabel = "${base.third} · $safeFps FPS"
 
-            val endpoint = rtmpUrl.trimEnd('/') + "/" + streamKey
-            display.startStream(endpoint)
-        } catch (e: Exception) {
-            listener?.onState("error", "Erro ao iniciar transmissão: ${e.message}")
-            stopSelfCleanly()
+            PeerConnectionFactory.initialize(
+                PeerConnectionFactory.InitializationOptions.builder(applicationContext).createInitializationOptions()
+            )
+            eglBase = EglBase.create()
+            val context = eglBase!!.eglBaseContext
+            factory = PeerConnectionFactory.builder()
+                .setVideoEncoderFactory(DefaultVideoEncoderFactory(context, true, true))
+                .setVideoDecoderFactory(DefaultVideoDecoderFactory(context))
+                .createPeerConnectionFactory()
+
+            capturer = ScreenCapturerAndroid(
+                projectionData,
+                object : android.media.projection.MediaProjection.Callback() {
+                    override fun onStop() { stopBroadcast() }
+                }
+            )
+            source = factory!!.createVideoSource(true)
+            textureHelper = SurfaceTextureHelper.create("CatEmpireScreen", context)
+            capturer!!.initialize(textureHelper, applicationContext, source!!.capturerObserver)
+            capturer!!.startCapture(width, height, safeFps)
+            track = factory!!.createVideoTrack("cat-native-screen", source)
+            connectSignaling(baseUrl, token, userId, channelId)
+        } catch (error: Exception) {
+            listener?.onState("error", "Erro ao preparar WebRTC: ${error.message}")
+            stopBroadcast()
         }
     }
 
-    fun stopBroadcast() {
-        try {
-            rtmpDisplay?.let { if (it.isStreaming) it.stopStream() }
-        } catch (e: Exception) {
-            // já parado / estado inconsistente — ignora, só finaliza o serviço
+    private fun connectSignaling(baseUrl: String, token: String, userId: String, channelId: String) {
+        val options = IO.Options.builder()
+            .setReconnection(true)
+            .setReconnectionAttempts(Int.MAX_VALUE)
+            .setReconnectionDelay(1_000)
+            .setTimeout(15_000)
+            .build()
+        val client = IO.socket(URI(baseUrl), options)
+        socket = client
+        client.on(Socket.EVENT_CONNECT) {
+            client.emit("register-native-screen", JSONObject()
+                .put("token", token).put("userId", userId).put("channelId", channelId))
         }
-        rtmpDisplay = null
-        activeVideoProfile = null
+        client.on("native-screen-registered") { args ->
+            val payload = args.firstOrNull() as? JSONObject ?: return@on
+            val viewers = payload.optJSONArray("viewers") ?: return@on
+            peers.values.forEach { it.close() }
+            peers.clear()
+            for (index in 0 until viewers.length()) {
+                viewers.optString(index).takeIf { it.isNotBlank() }?.let(::createOfferFor)
+            }
+            listener?.onState("started", profileLabel)
+        }
+        client.on("native-screen-viewer-joined") { args ->
+            val id = (args.firstOrNull() as? JSONObject)?.optString("userId").orEmpty()
+            if (id.isNotBlank()) createOfferFor(id)
+        }
+        client.on("native-screen-viewer-left") { args ->
+            val id = (args.firstOrNull() as? JSONObject)?.optString("userId").orEmpty()
+            if (id.isNotBlank()) peers.remove(id)?.close()
+        }
+        client.on("voice-signal") { args ->
+            val payload = args.firstOrNull() as? JSONObject ?: return@on
+            val from = payload.optString("from")
+            val data = payload.optJSONObject("data")
+            if (from.isNotBlank() && data != null) handleSignal(from, data)
+        }
+        client.on("native-screen-error") { args ->
+            val message = (args.firstOrNull() as? JSONObject)?.optString("message")
+            listener?.onState("error", message ?: "Falha na sinalização da tela.")
+            stopBroadcast()
+        }
+        client.on(Socket.EVENT_CONNECT_ERROR) {
+            listener?.onState("error", "Não foi possível conectar a transmissão ao canal.")
+        }
+        client.connect()
+    }
+
+    private fun createOfferFor(viewerId: String) {
+        if (peers.containsKey(viewerId)) return
+        val rtcConfig = PeerConnection.RTCConfiguration(listOf(
+            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
+        )).apply { sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN }
+        val pc = factory?.createPeerConnection(rtcConfig, peerObserver(viewerId)) ?: return
+        peers[viewerId] = pc
+        val sender = pc.addTrack(track ?: return, listOf("cat-native-screen"))
+        val parameters = sender.parameters
+        parameters.encodings.forEach { encoding ->
+            encoding.maxBitrateBps = broadcastBitrateBps
+            encoding.maxFramerate = broadcastFps
+        }
+        sender.parameters = parameters
+        pc.createOffer(object : BasicSdpObserver() {
+            override fun onCreateSuccess(description: SessionDescription?) {
+                if (description == null) return
+                pc.setLocalDescription(object : BasicSdpObserver() {
+                    override fun onSetSuccess() {
+                        emitSignal(viewerId, JSONObject().put("sdp", JSONObject()
+                            .put("type", description.type.canonicalForm())
+                            .put("sdp", description.description)))
+                    }
+                }, description)
+            }
+        }, MediaConstraints())
+    }
+
+    private fun handleSignal(from: String, data: JSONObject) {
+        val pc = peers[from] ?: return
+        data.optJSONObject("sdp")?.let { sdp ->
+            val type = if (sdp.optString("type") == "answer") SessionDescription.Type.ANSWER else SessionDescription.Type.OFFER
+            pc.setRemoteDescription(BasicSdpObserver(), SessionDescription(type, sdp.optString("sdp")))
+            return
+        }
+        data.optJSONObject("candidate")?.let { candidate ->
+            pc.addIceCandidate(IceCandidate(
+                candidate.optString("sdpMid").ifBlank { null },
+                candidate.optInt("sdpMLineIndex", 0),
+                candidate.optString("candidate")
+            ))
+        }
+    }
+
+    private fun peerObserver(viewerId: String) = object : PeerConnection.Observer {
+        override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
+        override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
+            if (state == PeerConnection.IceConnectionState.FAILED || state == PeerConnection.IceConnectionState.CLOSED) {
+                peers.remove(viewerId)?.close()
+            }
+        }
+        override fun onIceConnectionReceivingChange(value: Boolean) {}
+        override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
+        override fun onIceCandidate(candidate: IceCandidate?) {
+            if (candidate == null) return
+            emitSignal(viewerId, JSONObject().put("candidate", JSONObject()
+                .put("candidate", candidate.sdp)
+                .put("sdpMid", candidate.sdpMid)
+                .put("sdpMLineIndex", candidate.sdpMLineIndex)))
+        }
+        override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) {}
+        override fun onAddStream(stream: MediaStream?) {}
+        override fun onRemoveStream(stream: MediaStream?) {}
+        override fun onDataChannel(channel: DataChannel?) {}
+        override fun onRenegotiationNeeded() {}
+        override fun onAddTrack(receiver: RtpReceiver?, streams: Array<out MediaStream>?) {}
+    }
+
+    private fun emitSignal(to: String, data: JSONObject) {
+        socket?.emit("native-screen-signal", JSONObject().put("to", to).put("data", data))
+    }
+
+    fun stopBroadcast() {
+        if (stopping) return
+        stopping = true
+        peers.values.forEach { it.close() }
+        peers.clear()
+        socket?.disconnect()
+        socket?.close()
+        socket = null
+        try { capturer?.stopCapture() } catch (_: Exception) {}
+        capturer?.dispose(); capturer = null
+        track?.dispose(); track = null
+        source?.dispose(); source = null
+        textureHelper?.dispose(); textureHelper = null
+        factory?.dispose(); factory = null
+        eglBase?.release(); eglBase = null
         listener?.onState("stopped", null)
         stopSelfCleanly()
     }
 
+    private fun startProjectionForeground() {
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Cat Empire")
+            .setContentText("Transmitindo sua tela no canal…")
+            .setSmallIcon(android.R.drawable.presence_video_online)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification,
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+        } else startForeground(NOTIFICATION_ID, notification)
+    }
+
     private fun stopSelfCleanly() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } else {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) stopForeground(STOP_FOREGROUND_REMOVE)
+        else {
             @Suppress("DEPRECATION")
             stopForeground(true)
         }
@@ -170,50 +276,20 @@ class BroadcastService : Service(), ConnectChecker {
     }
 
     override fun onDestroy() {
-        try { rtmpDisplay?.let { if (it.isStreaming) it.stopStream() } } catch (e: Exception) {}
-        rtmpDisplay = null
-        activeVideoProfile = null
+        if (!stopping) stopBroadcast()
         super.onDestroy()
     }
 
-    // ========== ConnectChecker (callbacks do RootEncoder) ==========
-    override fun onConnectionStarted(url: String) {}
-
-    override fun onConnectionSuccess() {
-        val profile = activeVideoProfile
-        val applied = if (profile == null) null else "${profile.label} · ${activeFps} FPS"
-        listener?.onState("started", applied)
+    private open class BasicSdpObserver : SdpObserver {
+        override fun onCreateSuccess(description: SessionDescription?) {}
+        override fun onSetSuccess() {}
+        override fun onCreateFailure(message: String?) {}
+        override fun onSetFailure(message: String?) {}
     }
-
-    override fun onConnectionFailed(reason: String) {
-        listener?.onState("error", reason)
-        stopBroadcast()
-    }
-
-    override fun onNewBitrate(bitrate: Long) {}
-
-    override fun onDisconnect() {
-        listener?.onState("stopped", null)
-    }
-
-    override fun onAuthError() {
-        listener?.onState("error", "Erro de autenticação RTMP.")
-        stopBroadcast()
-    }
-
-    override fun onAuthSuccess() {}
 
     companion object {
         private const val CHANNEL_ID = "cat_empire_broadcast"
         private const val NOTIFICATION_ID = 4202
-
         fun intent(context: Context): Intent = Intent(context, BroadcastService::class.java)
     }
-
-    private data class VideoProfile(
-        val width: Int,
-        val height: Int,
-        val bitrate: Int,
-        val label: String
-    )
 }
