@@ -241,7 +241,9 @@ class MainActivity : AppCompatActivity() {
         fun stopBroadcast() {
             runOnUiThread {
                 clearPendingBroadcast()
-                broadcastService?.stopBroadcast()
+                val service = broadcastService
+                if (service != null) service.stopBroadcast()
+                else stopService(BroadcastService.intent(this@MainActivity))
             }
         }
     }
@@ -304,9 +306,9 @@ class MainActivity : AppCompatActivity() {
         s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         val cachePrefs = getSharedPreferences("cat_empire_web_cache", MODE_PRIVATE)
         val cachedVersion = cachePrefs.getInt("app_version", 0)
-        if (cachedVersion < 7) {
+        if (cachedVersion < 8) {
             binding.webView.clearCache(true)
-            cachePrefs.edit().putInt("app_version", 7).apply()
+            cachePrefs.edit().putInt("app_version", 8).apply()
         }
         s.cacheMode = WebSettings.LOAD_DEFAULT
         s.setSupportZoom(false)

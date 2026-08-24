@@ -70,6 +70,34 @@ function setupSocket(server) {
     }
   }
 
+  function stopNativeScreenForOwner(userId, reason = 'voice-left') {
+    if (!userId) return false;
+    const peerId = `screen:${userId}`;
+    const nativeSocketId = screenShareSockets.get(peerId);
+    const nativeSocket = nativeSocketId && io.sockets.sockets.get(nativeSocketId);
+    if (!nativeSocket) {
+      screenShareSockets.delete(peerId);
+      return false;
+    }
+    const channelId = nativeSocket.screenChannelId;
+    screenShareSockets.delete(peerId);
+    if (channelId) {
+      nativeSocket.leave(`channel-${channelId}`);
+      io.to(`channel-${channelId}`).emit('native-screen-ended', {
+        peerId,
+        userId,
+        reason
+      });
+    }
+    // O serviço Android encerra MediaProjection, áudio, peers e foreground
+    // service. Apenas desconectar faria o Socket.IO reconectar e registrar
+    // a transmissão órfã novamente.
+    nativeSocket.emit('native-screen-force-stop', { reason });
+    nativeSocket.screenPeerId = null;
+    nativeSocket.screenChannelId = null;
+    return true;
+  }
+
   io.on('connection', (socket) => {
     console.log('🔌 Conectado:', socket.id);
 
@@ -136,6 +164,7 @@ function setupSocket(server) {
         // Sair do canal anterior
         const prevChannel = userChannels.get(socket.userId);
         if (prevChannel) {
+          stopNativeScreenForOwner(socket.userId, 'channel-changed');
           await Channel.leaveVoice(socket.userId, prevChannel);
           io.to(`channel-${prevChannel}`).emit('user-left', {
             userId: socket.userId,
@@ -183,6 +212,8 @@ function setupSocket(server) {
       try {
         const channelId = userChannels.get(socket.userId);
         if (!channelId) return;
+
+        stopNativeScreenForOwner(socket.userId, 'voice-left');
 
         await Channel.leaveVoice(socket.userId, channelId);
         userChannels.delete(socket.userId);
@@ -274,6 +305,7 @@ function setupSocket(server) {
         if (!user || !channel || channel.type !== 'voice') throw new Error('Canal de voz inválido');
         const role = await ServerModel.getMemberRole(channel.server_id, userId);
         if (!role) throw new Error('Usuário não participa do servidor');
+        if (userChannels.get(userId) !== channelId) throw new Error('Usuário não está neste canal de voz');
 
         const peerId = `screen:${userId}`;
         const previousId = screenShareSockets.get(peerId);
@@ -588,6 +620,7 @@ function setupSocket(server) {
         const stillCurrentSocket = userSockets.get(userId) === socket.id;
         if (channelId && stillCurrentSocket) {
           try {
+            stopNativeScreenForOwner(userId, 'voice-disconnected');
             await Channel.leaveVoice(userId, channelId);
             const members = await Channel.getVoiceMembers(channelId);
             io.to(`channel-${channelId}`).emit('channel-members', members);

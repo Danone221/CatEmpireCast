@@ -200,6 +200,12 @@ class BroadcastService : Service() {
             listener?.onState("error", message ?: "Falha na sinalização da tela.")
             stopBroadcast()
         }
+        client.on("native-screen-force-stop") {
+            // A página saiu/trocou de call ou o socket principal foi
+            // desconectado. Encerra MediaProjection e o serviço de verdade,
+            // evitando uma transmissão órfã que se registra novamente.
+            stopBroadcast()
+        }
         client.on(Socket.EVENT_CONNECT_ERROR) {
             listener?.onState("error", "Não foi possível conectar a transmissão ao canal.")
         }

@@ -26,6 +26,7 @@ let micOn = true;
 let camOn = false;
 let screenOn = false;
 let screenAudioTrack = null; // faixa de áudio da tela (som do jogo/vídeo compartilhado), separada do mic
+let screenAudioPlaybackOn = localStorage.getItem('cat_screen_audio_playback') !== 'off';
 const VIDEO_SETTINGS_KEY = 'cat_video_settings';
 const VIDEO_PROFILES = {
   480: { width: 854, height: 480, bitrate: 1_500_000 },
@@ -657,10 +658,11 @@ async function joinVoiceChannel(channelId) {
 
 function leaveVoiceChannel(switchView = true) {
   if (!voiceChannelId) return;
+  stopNativeBroadcastForCallExit();
   socket.emit('leave-voice-channel');
+  removeScreenAudioTrack();
   Object.keys(peers).forEach(closePeer);
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-  screenAudioTrack = null;
   stopAllNativeScreenAudio();
   voiceChannelId = null;
   camOn = false;
@@ -679,12 +681,11 @@ $('voiceBarLeave').onclick = () => leaveVoiceChannel(false);
 $('micBtn').onclick = () => {
   if (!localStream) return;
   micOn = !micOn;
-  // Silenciar o microfone não pode silenciar junto o áudio da tela.
-  localStream.getAudioTracks().forEach(t => {
-    if (t !== screenAudioTrack) t.enabled = micOn;
-  });
+  // A faixa da tela não pertence mais ao MediaStream do microfone. Este
+  // botão altera exclusivamente as faixas de entrada de voz.
+  localStream.getAudioTracks().forEach(t => { t.enabled = micOn; });
   updateMicButton();
-  socket.emit('voice-media-state', { muted: !micOn, camera: camOn });
+  socket.emit('voice-media-state', { muted: !micOn, camera: camOn, screen: screenOn });
 };
 
 function removeCurrentVideoTrack() {
@@ -707,7 +708,6 @@ function removeScreenAudioTrack() {
     if (sender) p.pc.removeTrack(sender);
   });
   track.stop();
-  if (localStream) localStream.removeTrack(track);
 }
 
 function addVideoTrackToPeers(track) {
@@ -837,9 +837,10 @@ $('screenBtn').onclick = async () => {
         screenAudioTrack = screenAudio;
         screenAudio.enabled = true;
         if ('contentHint' in screenAudio) screenAudio.contentHint = 'music';
-        if (!localStream) localStream = new MediaStream();
-        localStream.addTrack(screenAudio);
-        Object.values(peers).forEach(p => p.pc.addTrack(screenAudio, localStream));
+        // Mantém áudio da tela fora do MediaStream do microfone. Assim o
+        // botão de mute nunca toca nessa faixa nem encerra sua negociação.
+        const screenSoundStream = new MediaStream([screenAudio]);
+        Object.values(peers).forEach(p => p.pc.addTrack(screenAudio, screenSoundStream));
         screenAudio.addEventListener('ended', () => removeScreenAudioTrack());
       } else {
         toast('O navegador não liberou o áudio desta tela. Ao escolher uma aba, ative “Compartilhar áudio”.', 'error');
@@ -852,6 +853,7 @@ $('screenBtn').onclick = async () => {
         removeScreenAudioTrack();
         updateScreenButton();
         renderVoiceGrid();
+        socket.emit('voice-media-state', { muted: !micOn, camera: camOn, screen: false });
       });
     } catch (e) {
       if (e.name !== 'NotAllowedError') toast('Não foi possível compartilhar a tela.', 'error');
@@ -985,6 +987,7 @@ function audioElId(uid) { return 'audio-' + uid; }
 // Analisa o volume do áudio de cada participante em tempo real via Web
 // Audio API e liga/desliga a classe .speaking no tile correspondente.
 let sharedAudioCtx = null;
+let nativeScreenAudioGain = null;
 let remoteAudioWarningShown = false;
 function getAudioCtx() {
   if (!sharedAudioCtx) {
@@ -995,13 +998,57 @@ function getAudioCtx() {
   return sharedAudioCtx;
 }
 
+function isScreenAudioUid(uid) {
+  return String(uid || '').startsWith('screen:') || !!remoteMediaState[uid]?.screen;
+}
+
+function getNativeScreenAudioGain() {
+  const ctx = getAudioCtx();
+  if (!nativeScreenAudioGain) {
+    nativeScreenAudioGain = ctx.createGain();
+    nativeScreenAudioGain.connect(ctx.destination);
+  }
+  nativeScreenAudioGain.gain.setValueAtTime(screenAudioPlaybackOn ? 1 : 0, ctx.currentTime);
+  return nativeScreenAudioGain;
+}
+
+function updateScreenVolumeButton() {
+  const button = $('screenVolumeBtn');
+  if (!button) return;
+  button.classList.toggle('active', screenAudioPlaybackOn);
+  button.textContent = screenAudioPlaybackOn ? '🔊' : '🔇';
+  button.title = screenAudioPlaybackOn ? 'Desativar áudio da transmissão' : 'Ativar áudio da transmissão';
+  button.setAttribute('aria-pressed', String(screenAudioPlaybackOn));
+}
+
+function applyScreenAudioPlaybackState() {
+  updateScreenVolumeButton();
+  if (nativeScreenAudioGain && sharedAudioCtx) {
+    nativeScreenAudioGain.gain.setValueAtTime(screenAudioPlaybackOn ? 1 : 0, sharedAudioCtx.currentTime);
+  }
+  document.querySelectorAll('audio[id^="audio-"]').forEach((el) => {
+    const uid = el.id.slice('audio-'.length);
+    if (isScreenAudioUid(uid)) el.muted = !screenAudioPlaybackOn;
+  });
+  if (screenAudioPlaybackOn) unlockRemoteAudioPlayback();
+}
+
+$('screenVolumeBtn')?.addEventListener('click', () => {
+  screenAudioPlaybackOn = !screenAudioPlaybackOn;
+  localStorage.setItem('cat_screen_audio_playback', screenAudioPlaybackOn ? 'on' : 'off');
+  applyScreenAudioPlaybackState();
+  toast(screenAudioPlaybackOn ? 'Áudio da transmissão ativado.' : 'Áudio da transmissão desativado.', 'success');
+});
+updateScreenVolumeButton();
+
 function unlockRemoteAudioPlayback() {
   try {
     const ctx = getAudioCtx();
     if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   } catch (_) {}
   document.querySelectorAll('audio[id^="audio-"]').forEach((el) => {
-    el.muted = false;
+    const uid = el.id.slice('audio-'.length);
+    el.muted = isScreenAudioUid(uid) ? !screenAudioPlaybackOn : false;
     el.volume = 1;
     if (el.srcObject?.getAudioTracks().some(track => track.readyState === 'live')) {
       el.play().then(() => { remoteAudioWarningShown = false; }).catch(() => {});
@@ -1050,7 +1097,7 @@ socket.on('native-screen-audio', ({ peerId, data, sampleRate, channels }) => {
       (nativeScreenAudioPlayers[peerId] = { nextAt: 0, generation: 0 });
     const source = ctx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(ctx.destination);
+    source.connect(getNativeScreenAudioGain());
     const minimumStart = ctx.currentTime + 0.06;
     if (player.nextAt < ctx.currentTime || player.nextAt > ctx.currentTime + 0.5) {
       player.nextAt = minimumStart;
@@ -1136,12 +1183,13 @@ function ensureRemoteAudio(uid, stream) {
     el.autoplay = true;
     el.playsInline = true;
     el.preload = 'auto';
-    el.muted = false;
+    el.muted = isScreenAudioUid(uid) ? !screenAudioPlaybackOn : false;
     el.volume = 1;
     el.hidden = true;
     document.body.appendChild(el);
   }
   if (el.srcObject !== stream) el.srcObject = stream || null;
+  el.muted = isScreenAudioUid(uid) ? !screenAudioPlaybackOn : false;
   const hasLiveAudio = stream?.getAudioTracks().some(track => track.readyState === 'live');
   if (hasLiveAudio) {
     el.play().then(() => { remoteAudioWarningShown = false; }).catch((error) => {
@@ -1382,6 +1430,9 @@ function createPeer(remoteId) {
   // câmera do WebView ao serviço Android e evitamos colisão de offers.
   if (!isNativeScreen && localStream) {
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    if (screenAudioTrack?.readyState === 'live') {
+      pc.addTrack(screenAudioTrack, new MediaStream([screenAudioTrack]));
+    }
   }
 
   pc.onnegotiationneeded = createAndSendOffer;
@@ -1391,11 +1442,9 @@ function createPeer(remoteId) {
   };
 
   pc.ontrack = (e) => {
-    if (e.streams && e.streams[0]) {
-      peer.remoteStream = e.streams[0];
-    } else if (e.track && !peer.remoteStream.getTracks().some(track => track.id === e.track.id)) {
-      // Alguns WebViews entregam o track nativo sem preencher event.streams.
-      // Sem este fallback o vídeo estava conectado, mas o tile permanecia vazio.
+    // Áudio da tela e microfone podem chegar em streams WebRTC separados.
+    // Mesclar as faixas impede que um ontrack substitua e apague o anterior.
+    if (e.track && !peer.remoteStream.getTracks().some(track => track.id === e.track.id)) {
       peer.remoteStream.addTrack(e.track);
     }
     reportScreenStage('track-received', e.track && e.track.kind);
@@ -1995,6 +2044,17 @@ if (hasNativeBroadcast()) {
   document.body.classList.add('cat-native-app');
   $('mobileCastBtn').title = 'Transmitir a tela (nativo)';
   $('mobileCastBtn').classList.add('native-broadcast-btn');
+}
+
+function stopNativeBroadcastForCallExit() {
+  if (!hasNativeBroadcast()) return;
+  if (nativeBroadcasting || nativePreparing || window.__catNativeBroadcasting) {
+    try { window.CatEmpireNative.stopBroadcast(); } catch (_) {}
+  }
+  nativePreparing = false;
+  nativeBroadcasting = false;
+  window.__catNativeBroadcasting = false;
+  $('mobileCastBtn')?.classList.remove('active');
 }
 
 function nativeVideoOptions() {
