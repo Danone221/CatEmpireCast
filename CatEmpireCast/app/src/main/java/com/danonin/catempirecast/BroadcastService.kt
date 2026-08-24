@@ -5,12 +5,21 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioPlaybackCaptureConfiguration
+import android.media.AudioRecord
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
 import android.os.Binder
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.Process
+import android.util.Base64
 import androidx.core.app.NotificationCompat
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -20,6 +29,7 @@ import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 /** Captura MediaProjection e publica a tela no mesh WebRTC do canal. */
 class BroadcastService : Service() {
@@ -32,6 +42,9 @@ class BroadcastService : Service() {
     private var track: VideoTrack? = null
     private var capturer: VideoCapturer? = null
     private var textureHelper: SurfaceTextureHelper? = null
+    private var mediaProjection: MediaProjection? = null
+    private var playbackAudioRecord: AudioRecord? = null
+    private var playbackAudioThread: Thread? = null
     private var diagnosticSink: VideoSink? = null
     private val peers = ConcurrentHashMap<String, PeerConnection>()
     private val pendingCandidates = ConcurrentHashMap<String, MutableList<IceCandidate>>()
@@ -40,8 +53,11 @@ class BroadcastService : Service() {
     private var broadcastFps = 30
     private val rtcExecutor = Executors.newSingleThreadExecutor()
     private val stopping = AtomicBoolean(false)
+    private val playbackAudioRunning = AtomicBoolean(false)
+    private val playbackAudioSequence = AtomicLong(0)
     private val firstFrameReported = AtomicBoolean(false)
     @Volatile private var firstFrameDetail: String? = null
+    private var screenAudioAllowed = false
 
     inner class LocalBinder : Binder() {
         fun getService(): BroadcastService = this@BroadcastService
@@ -75,6 +91,8 @@ class BroadcastService : Service() {
     ) {
         if (socket != null || stopping.get()) return
         stopping.set(false)
+        screenAudioAllowed = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         firstFrameReported.set(false)
         firstFrameDetail = null
         startProjectionForeground()
@@ -106,12 +124,13 @@ class BroadcastService : Service() {
                 .setVideoDecoderFactory(DefaultVideoDecoderFactory(context))
                 .createPeerConnectionFactory()
 
-            capturer = ScreenCapturerAndroid(
-                projectionData,
-                object : android.media.projection.MediaProjection.Callback() {
-                    override fun onStop() { stopBroadcast() }
-                }
-            )
+            val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+            mediaProjection = projectionManager.getMediaProjection(resultCode, projectionData)
+                ?: throw IllegalStateException("O Android não criou a captura de tela")
+            val projectionCallback = object : MediaProjection.Callback() {
+                override fun onStop() { stopBroadcast() }
+            }
+            capturer = SharedProjectionScreenCapturer(mediaProjection!!, projectionCallback)
             source = factory!!.createVideoSource(true)
             textureHelper = SurfaceTextureHelper.create("CatEmpireScreen", context)
             capturer!!.initialize(textureHelper, applicationContext, source!!.capturerObserver)
@@ -149,6 +168,7 @@ class BroadcastService : Service() {
             rtcExecutor.execute {
                 reportStage("registered", "${viewers.length()} viewer(s)")
                 firstFrameDetail?.let { reportStage("first-frame", it) }
+                startPlaybackAudioCapture()
                 peers.values.forEach { it.close() }
                 peers.clear()
                 pendingCandidates.clear()
@@ -285,6 +305,79 @@ class BroadcastService : Service() {
             .put("detail", detail ?: ""))
     }
 
+    private fun startPlaybackAudioCapture() {
+        if (!screenAudioAllowed || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || playbackAudioRunning.get()) {
+            reportStage("screen-audio-unavailable", "Android 10+ e permissão de áudio são necessários")
+            return
+        }
+        val projection = mediaProjection ?: return
+        try {
+            val sampleRate = 48_000
+            val channelCount = 1
+            val format = AudioFormat.Builder()
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+                .build()
+            val captureConfig = AudioPlaybackCaptureConfiguration.Builder(projection)
+                .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                .build()
+            val minimum = AudioRecord.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            )
+            val packetBytes = 3_840 // 40 ms de PCM mono, 16-bit, 48 kHz.
+            val record = AudioRecord.Builder()
+                .setAudioFormat(format)
+                .setBufferSizeInBytes(maxOf(minimum * 2, packetBytes * 4))
+                .setAudioPlaybackCaptureConfig(captureConfig)
+                .build()
+            if (record.state != AudioRecord.STATE_INITIALIZED) {
+                record.release()
+                throw IllegalStateException("AudioRecord não inicializado")
+            }
+            playbackAudioRecord = record
+            playbackAudioRunning.set(true)
+            playbackAudioSequence.set(0)
+            record.startRecording()
+            playbackAudioThread = Thread({
+                Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
+                val buffer = ByteArray(packetBytes)
+                reportStage("screen-audio-started", "${sampleRate}Hz mono")
+                while (playbackAudioRunning.get()) {
+                    val read = try {
+                        record.read(buffer, 0, buffer.size, AudioRecord.READ_BLOCKING)
+                    } catch (_: Exception) { break }
+                    if (read <= 0 || socket?.connected() != true) continue
+                    val encoded = Base64.encodeToString(
+                        if (read == buffer.size) buffer else buffer.copyOf(read),
+                        Base64.NO_WRAP
+                    )
+                    socket?.emit("native-screen-audio", JSONObject()
+                        .put("data", encoded)
+                        .put("sampleRate", sampleRate)
+                        .put("channels", channelCount)
+                        .put("sequence", playbackAudioSequence.getAndIncrement()))
+                }
+            }, "CatEmpireScreenAudio").also { it.start() }
+        } catch (error: Exception) {
+            stopPlaybackAudioCapture()
+            reportStage("screen-audio-error", error.message)
+        }
+    }
+
+    private fun stopPlaybackAudioCapture() {
+        playbackAudioRunning.set(false)
+        try { playbackAudioRecord?.stop() } catch (_: Exception) {}
+        try { playbackAudioThread?.join(750) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+        playbackAudioThread = null
+        playbackAudioRecord?.release()
+        playbackAudioRecord = null
+    }
+
     fun stopBroadcast() {
         if (!stopping.compareAndSet(false, true)) return
         rtcExecutor.execute { releaseBroadcast() }
@@ -296,6 +389,7 @@ class BroadcastService : Service() {
         pendingCandidates.clear()
         socket?.disconnect()
         socket = null
+        stopPlaybackAudioCapture()
         try { capturer?.stopCapture() } catch (_: Exception) {}
         capturer?.dispose(); capturer = null
         diagnosticSink?.let { sink -> try { track?.removeSink(sink) } catch (_: Exception) {} }
@@ -305,6 +399,8 @@ class BroadcastService : Service() {
         textureHelper?.dispose(); textureHelper = null
         factory?.dispose(); factory = null
         eglBase?.release(); eglBase = null
+        try { mediaProjection?.stop() } catch (_: Exception) {}
+        mediaProjection = null
         Handler(Looper.getMainLooper()).post {
             listener?.onState("stopped", null)
             stopSelfCleanly()
@@ -320,8 +416,11 @@ class BroadcastService : Service() {
             .setOngoing(true)
             .build()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+            var serviceType = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            if (screenAudioAllowed) {
+                serviceType = serviceType or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            startForeground(NOTIFICATION_ID, notification, serviceType)
         } else startForeground(NOTIFICATION_ID, notification)
     }
 

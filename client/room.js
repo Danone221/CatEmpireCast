@@ -658,6 +658,7 @@ function leaveVoiceChannel(switchView = true) {
   Object.keys(peers).forEach(closePeer);
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
   screenAudioTrack = null;
+  stopAllNativeScreenAudio();
   voiceChannelId = null;
   camOn = false;
   screenOn = false;
@@ -675,7 +676,10 @@ $('voiceBarLeave').onclick = () => leaveVoiceChannel(false);
 $('micBtn').onclick = () => {
   if (!localStream) return;
   micOn = !micOn;
-  localStream.getAudioTracks().forEach(t => t.enabled = micOn);
+  // Silenciar o microfone não pode silenciar junto o áudio da tela.
+  localStream.getAudioTracks().forEach(t => {
+    if (t !== screenAudioTrack) t.enabled = micOn;
+  });
   updateMicButton();
   socket.emit('voice-media-state', { muted: !micOn, camera: camOn });
 };
@@ -816,16 +820,26 @@ $('screenBtn').onclick = async () => {
       // Depende do navegador/SO aceitar — se não vier áudio nenhum, a
       // pessoa que está assistindo simplesmente não ouve o som da tela
       // (não quebra nada, só não tem áudio extra).
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+        systemAudio: 'include',
+        surfaceSwitching: 'include'
+      });
       const track = screenStream.getVideoTracks()[0];
       addVideoTrackToPeers(track);
 
       const screenAudio = screenStream.getAudioTracks()[0];
       if (screenAudio) {
         screenAudioTrack = screenAudio;
+        screenAudio.enabled = true;
+        if ('contentHint' in screenAudio) screenAudio.contentHint = 'music';
+        if (!localStream) localStream = new MediaStream();
         localStream.addTrack(screenAudio);
         Object.values(peers).forEach(p => p.pc.addTrack(screenAudio, localStream));
         screenAudio.addEventListener('ended', () => removeScreenAudioTrack());
+      } else {
+        toast('O navegador não liberou o áudio desta tela. Ao escolher uma aba, ative “Compartilhar áudio”.', 'error');
       }
 
       screenOn = true;
@@ -976,6 +990,54 @@ function getAudioCtx() {
   if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume().catch(() => {});
   return sharedAudioCtx;
 }
+
+// Áudio interno enviado pelo APK. É reproduzido automaticamente para os
+// outros participantes e nunca devolvido ao próprio transmissor.
+const nativeScreenAudioPlayers = {};
+
+function stopNativeScreenAudio(peerId) {
+  const player = nativeScreenAudioPlayers[peerId];
+  if (!player) return;
+  player.generation += 1;
+  delete nativeScreenAudioPlayers[peerId];
+}
+
+function stopAllNativeScreenAudio() {
+  Object.keys(nativeScreenAudioPlayers).forEach(stopNativeScreenAudio);
+}
+
+socket.on('native-screen-audio', ({ peerId, data, sampleRate, channels }) => {
+  if (!voiceChannelId || !peerId || typeof data !== 'string') return;
+  if (Number(sampleRate) !== 48000 || Number(channels) !== 1) return;
+  try {
+    const binary = atob(data);
+    if (!binary.length || binary.length % 2) return;
+    const samples = binary.length / 2;
+    const ctx = getAudioCtx();
+    const audioBuffer = ctx.createBuffer(1, samples, 48000);
+    const output = audioBuffer.getChannelData(0);
+    for (let index = 0; index < samples; index++) {
+      const low = binary.charCodeAt(index * 2);
+      const high = binary.charCodeAt(index * 2 + 1);
+      const value = (high << 8) | low;
+      output[index] = (value & 0x8000 ? value - 0x10000 : value) / 32768;
+    }
+
+    const player = nativeScreenAudioPlayers[peerId] ||
+      (nativeScreenAudioPlayers[peerId] = { nextAt: 0, generation: 0 });
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(ctx.destination);
+    const minimumStart = ctx.currentTime + 0.06;
+    if (player.nextAt < ctx.currentTime || player.nextAt > ctx.currentTime + 0.5) {
+      player.nextAt = minimumStart;
+    }
+    source.start(Math.max(minimumStart, player.nextAt));
+    player.nextAt = Math.max(minimumStart, player.nextAt) + audioBuffer.duration;
+  } catch (error) {
+    console.error('Falha ao reproduzir áudio da tela nativa:', error);
+  }
+});
 
 const speakingAnalysers = {}; // uid -> { source, analyser, data, stream, raf }
 
@@ -1212,6 +1274,7 @@ socket.on('native-screen-started', ({ peerId, userId: ownerId, userName: ownerNa
 
 socket.on('native-screen-ended', ({ peerId }) => {
   if (!peerId) return;
+  stopNativeScreenAudio(peerId);
   if (peers[peerId]) closePeer(peerId);
   delete nativeScreenOwners[peerId];
   delete remoteMediaState[peerId];

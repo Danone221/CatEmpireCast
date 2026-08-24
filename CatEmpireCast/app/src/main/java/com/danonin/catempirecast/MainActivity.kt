@@ -124,6 +124,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val screenAudioPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        // Mesmo se o usuário negar o áudio, a tela continua funcionando.
+        // Quando concedido, o serviço inclui o áudio interno automaticamente.
+        launchScreenCapturePermission()
+    }
+
+    private fun launchScreenCapturePermission() {
+        val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        try {
+            screenCaptureLauncher.launch(projectionManager.createScreenCaptureIntent())
+        } catch (_: Exception) {
+            clearPendingBroadcast()
+            notifyWebBroadcastState("error", "Não foi possível abrir a captura de tela.")
+        }
+    }
+
     private fun startPendingBroadcastIfReady() {
         val service = broadcastService ?: return
         val resultCode = pendingProjectionResultCode ?: return
@@ -165,11 +183,12 @@ class MainActivity : AppCompatActivity() {
                 clearPendingBroadcast()
                 pendingCastQuality = if (quality in setOf(480, 720, 1080)) quality else 720
                 pendingCastFps = if (fps in setOf(24, 30, 60)) fps else 30
-                val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                try {
-                    screenCaptureLauncher.launch(projectionManager.createScreenCaptureIntent())
-                } catch (e: Exception) {
-                    notifyWebBroadcastState("error", "Não foi possível abrir a captura de tela.")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                    !hasPermission(Manifest.permission.RECORD_AUDIO)
+                ) {
+                    screenAudioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                } else {
+                    launchScreenCapturePermission()
                 }
             }
         }
@@ -285,9 +304,9 @@ class MainActivity : AppCompatActivity() {
         s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         val cachePrefs = getSharedPreferences("cat_empire_web_cache", MODE_PRIVATE)
         val cachedVersion = cachePrefs.getInt("app_version", 0)
-        if (cachedVersion < 6) {
+        if (cachedVersion < 7) {
             binding.webView.clearCache(true)
-            cachePrefs.edit().putInt("app_version", 6).apply()
+            cachePrefs.edit().putInt("app_version", 7).apply()
         }
         s.cacheMode = WebSettings.LOAD_DEFAULT
         s.setSupportZoom(false)

@@ -349,6 +349,38 @@ function setupSocket(server) {
       console.log(`🔎 Tela ${socket.screenPeerId} · APK · ${safeStage}${safeDetail ? ` · ${safeDetail}` : ''}`);
     });
 
+    socket.on('native-screen-audio', ({ data, sampleRate, channels, sequence }) => {
+      try {
+        if (!socket.screenPeerId || !socket.screenChannelId || typeof data !== 'string') return;
+        // 40 ms de PCM mono/48 kHz gera ~5,1 KB em Base64. Limites abaixo
+        // impedem que um cliente adulterado use o evento para pacotes grandes.
+        if (data.length < 1 || data.length > 6_000 || Number(sampleRate) !== 48_000 || Number(channels) !== 1) return;
+        const now = Date.now();
+        if (!socket.screenAudioWindowAt || now - socket.screenAudioWindowAt >= 1_000) {
+          socket.screenAudioWindowAt = now;
+          socket.screenAudioWindowBytes = 0;
+        }
+        socket.screenAudioWindowBytes += data.length;
+        if (socket.screenAudioWindowBytes > 150_000) return;
+
+        const room = io.sockets.adapter.rooms.get(`channel-${socket.screenChannelId}`) || new Set();
+        for (const viewerSocketId of room) {
+          const viewer = io.sockets.sockets.get(viewerSocketId);
+          if (!viewer?.userId || viewer.userId === socket.screenOwnerId) continue;
+          if (userChannels.get(viewer.userId) !== socket.screenChannelId) continue;
+          viewer.emit('native-screen-audio', {
+            peerId: socket.screenPeerId,
+            data,
+            sampleRate: 48_000,
+            channels: 1,
+            sequence: Number(sequence) || 0
+          });
+        }
+      } catch (error) {
+        console.error('❌ Erro ao encaminhar áudio da tela nativa:', error);
+      }
+    });
+
     // ========== ENTRAR NO CANAL DE TEXTO (necessário pro broadcast de mensagens) ==========
     socket.on('join-text-channel', ({ channelId }) => {
       try {
