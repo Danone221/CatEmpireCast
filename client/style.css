@@ -83,6 +83,13 @@ button{cursor:pointer}
 .modal-hint{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:13px;line-height:1.5;color:#c0b0dd;margin-bottom:14px}
 .modal-hint.warn{color:#ff8fa0}
 .kv-row{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:2px;padding:8px 10px;margin-bottom:12px;background:#09020f;flex-wrap:wrap}
+.cast-platform-notice{display:flex;align-items:flex-start;gap:13px;border:2px solid #6e36b2;background:rgba(110,54,178,.12);padding:15px;margin:4px 0 16px;box-shadow:4px 4px 0 #050007}
+.cast-platform-notice[hidden]{display:none}
+.cast-platform-icon{font-size:24px;line-height:1}
+.cast-platform-notice strong{display:block;color:#e9dcff;font-size:14px;margin-bottom:7px}
+.cast-platform-notice p{color:#b9a7d5;font-size:13px;line-height:1.55;margin:0}
+.cast-platform-action{margin:0 0 18px;text-decoration:none}
+.cast-platform-action[hidden],#castCredentials[hidden]{display:none}
 .kv-label{font-family:'Press Start 2P',monospace;font-size:8px;color:#8c74a9;min-width:80px}
 .kv-value{flex:1;font-family:monospace;font-size:11px;color:var(--gold);word-break:break-all}
 .kv-copy{padding:6px 10px;font-family:'Press Start 2P',monospace;font-size:8px;flex:none}

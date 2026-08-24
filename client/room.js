@@ -924,16 +924,68 @@ $('saveVideoSettingsBtn').onclick = async () => {
 };
 
 // ========== CAST EXTERNO ==========
+const CAT_EMPIRE_APK_URL = 'https://www.mediafire.com/file/wgcapmj950aylli/CatEmpire.apk/file';
+
+function mobileCastPlatform() {
+  const ua = navigator.userAgent || '';
+  if (/android/i.test(ua)) return 'android';
+  if (/iPad|iPhone|iPod/i.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
+  return 'other';
+}
+
+function showMobileCastModal(platform, credentials = null) {
+  const isAndroid = platform === 'android';
+  const isIos = platform === 'ios';
+  const configured = !!credentials?.configured;
+  const notice = $('castPlatformNotice');
+  const action = $('castPlatformAction');
+
+  notice.hidden = !(isAndroid || isIos);
+  action.hidden = !isAndroid;
+  $('castCredentials').hidden = isAndroid || (isIos && !configured);
+  $('castWarning').hidden = isAndroid || !isIos || configured;
+  $('castRtmpUrl').textContent = credentials?.rtmpUrl || '—';
+  $('castStreamKey').textContent = credentials?.streamKey || '—';
+
+  if (isAndroid) {
+    $('castModalTitle').textContent = '📱 Transmissão no Android';
+    $('castModalHint').textContent = 'A captura de tela pelo navegador móvel não é suportada.';
+    $('castPlatformIcon').textContent = '🤖';
+    $('castPlatformTitle').textContent = 'Use o aplicativo CatEmpire';
+    $('castPlatformText').textContent = 'Baixe o APK, entre na chamada pelo aplicativo e toque no botão de transmitir a tela.';
+    action.href = CAT_EMPIRE_APK_URL;
+  } else if (isIos) {
+    $('castModalTitle').textContent = '📡 Transmissão no iPhone/iPad';
+    $('castModalHint').textContent = 'No iOS, a transmissão deve ser feita por um encoder externo.';
+    $('castPlatformIcon').textContent = '🍎';
+    $('castPlatformTitle').textContent = 'Use o Larix Broadcaster';
+    $('castPlatformText').textContent = configured
+      ? 'Abra o Larix Broadcaster e cole a URL RTMP e a chave mostradas abaixo.'
+      : 'Instale o Larix Broadcaster. As credenciais aparecerão aqui quando o servidor RTMP estiver disponível.';
+    $('castWarning').textContent = '⚠️ A transmissão pelo Larix ainda não está disponível porque o servidor RTMP não possui endereço público.';
+  } else {
+    $('castModalTitle').textContent = '📱 Transmitir a tela do celular';
+    $('castModalHint').textContent = 'Use um encoder RTMP. Cole a URL e a chave no encoder.';
+    $('castCredentials').hidden = false;
+    $('castWarning').hidden = configured;
+    $('castWarning').textContent = '⚠️ O serviço RTMP ainda não possui endereço público.';
+  }
+  $('mobileCastModal').classList.add('open');
+}
+
 $('mobileCastBtn').onclick = async () => {
   if (!voiceChannelId) return;
+  const platform = mobileCastPlatform();
+  if (platform === 'android') {
+    showMobileCastModal(platform);
+    return;
+  }
   try {
     const r = await fetch('/api/channels/' + voiceChannelId + '/cast-credentials', { headers: headers() });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
-    $('castRtmpUrl').textContent = d.rtmpUrl;
-    $('castStreamKey').textContent = d.streamKey;
-    $('castWarning').hidden = !!d.configured;
-    $('mobileCastModal').classList.add('open');
+    showMobileCastModal(platform, d);
   } catch (e) { toast(e.message, 'error'); }
 };
 $('closeCastModalBtn').onclick = () => $('mobileCastModal').classList.remove('open');
