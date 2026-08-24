@@ -23,7 +23,7 @@ class SharedProjectionScreenCapturer(
     private var height = 0
     private var densityDpi = 320
     @Volatile private var targetFps = 30
-    private var lastFrameAtNs = 0L
+    private var nextFrameAtNs = 0L
     private var disposed = false
 
     override fun initialize(
@@ -48,7 +48,7 @@ class SharedProjectionScreenCapturer(
         this.width = width
         this.height = height
         targetFps = framerate.coerceIn(1, 60)
-        lastFrameAtNs = 0L
+        nextFrameAtNs = 0L
         helper.setTextureSize(width, height)
         projection.registerCallback(projectionCallback, helper.handler)
         surface = Surface(helper.surfaceTexture)
@@ -81,7 +81,7 @@ class SharedProjectionScreenCapturer(
         this.width = width
         this.height = height
         targetFps = framerate.coerceIn(1, 60)
-        lastFrameAtNs = 0L
+        nextFrameAtNs = 0L
         val helper = textureHelper ?: return
         helper.setTextureSize(width, height)
         display?.resize(width, height, densityDpi)
@@ -101,9 +101,22 @@ class SharedProjectionScreenCapturer(
         // 60/90/120 Hz). Sem limitar aqui, a opção de FPS era apenas visual e
         // cada encoder WebRTC tentava processar quadros desnecessários.
         val now = System.nanoTime()
-        val minimumIntervalNs = 1_000_000_000L / targetFps.coerceAtLeast(1)
-        if (lastFrameAtNs != 0L && now - lastFrameAtNs < minimumIntervalNs) return
-        lastFrameAtNs = now
+        val frameIntervalNs = 1_000_000_000L / targetFps.coerceAtLeast(1)
+        if (nextFrameAtNs == 0L) {
+            nextFrameAtNs = now + frameIntervalNs
+        } else {
+            // Aceita o quadro físico ligeiramente adiantado. Sem tolerância,
+            // uma tela de 60 Hz podia entregar 33,2 ms em vez de 33,3 ms e o
+            // limitador descartava esse quadro, fazendo 30 FPS virar ~20 FPS.
+            if (now + FRAME_EARLY_TOLERANCE_NS < nextFrameAtNs) return
+            do {
+                nextFrameAtNs += frameIntervalNs
+            } while (nextFrameAtNs <= now)
+        }
         observer?.onFrameCaptured(frame)
+    }
+
+    companion object {
+        private const val FRAME_EARLY_TOLERANCE_NS = 2_000_000L
     }
 }

@@ -386,7 +386,8 @@ function setupSocket(server) {
         if (!socket.screenPeerId || !socket.screenChannelId || typeof data !== 'string') return;
         // 40 ms de PCM mono/48 kHz gera ~5,1 KB em Base64. Limites abaixo
         // impedem que um cliente adulterado use o evento para pacotes grandes.
-        if (data.length < 1 || data.length > 6_000 || Number(sampleRate) !== 48_000 || Number(channels) !== 1) return;
+        const safeSampleRate = Number(sampleRate);
+        if (data.length < 1 || data.length > 6_000 || ![32_000, 48_000].includes(safeSampleRate) || Number(channels) !== 1) return;
         const now = Date.now();
         if (!socket.screenAudioWindowAt || now - socket.screenAudioWindowAt >= 1_000) {
           socket.screenAudioWindowAt = now;
@@ -403,7 +404,7 @@ function setupSocket(server) {
           viewer.emit('native-screen-audio', {
             peerId: socket.screenPeerId,
             data,
-            sampleRate: 48_000,
+            sampleRate: safeSampleRate,
             channels: 1,
             sequence: Number(sequence) || 0
           });

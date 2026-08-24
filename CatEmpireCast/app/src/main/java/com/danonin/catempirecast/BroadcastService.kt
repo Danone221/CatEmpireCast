@@ -106,13 +106,13 @@ class BroadcastService : Service() {
         val width = if (portrait) landscape.second else landscape.first
         val height = if (portrait) landscape.first else landscape.second
         val baseBitrate = when (safeQuality) {
-            480 -> 850_000
-            1080 -> 3_000_000
-            else -> 1_600_000
+            480 -> 1_100_000
+            1080 -> 4_000_000
+            else -> 2_200_000
         }
         val bitrate = when (safeFps) {
             24 -> (baseBitrate * 0.88).toInt()
-            60 -> (baseBitrate * 1.25).toInt()
+            60 -> (baseBitrate * 1.30).toInt()
             else -> baseBitrate
         }
         return StreamProfile(width, height, safeQuality, safeFps, bitrate, "${safeQuality}p · $safeFps FPS")
@@ -166,7 +166,10 @@ class BroadcastService : Service() {
                 override fun onStop() { stopBroadcast() }
             }
             capturer = SharedProjectionScreenCapturer(mediaProjection!!, projectionCallback)
-            source = factory!!.createVideoSource(true)
+            // Tratar como vídeo em tempo real favorece movimento/FPS. O modo
+            // clássico de screencast prioriza texto parado e derruba quadros
+            // em jogos ou ao abrir outros apps com muita mudança de pixels.
+            source = factory!!.createVideoSource(false)
             textureHelper = SurfaceTextureHelper.create("CatEmpireScreen", context)
             capturer!!.initialize(textureHelper, applicationContext, source!!.capturerObserver)
             capturer!!.startCapture(profile.width, profile.height, profile.fps)
@@ -267,23 +270,31 @@ class BroadcastService : Service() {
         // limite, mantendo resolução/FPS escolhidos com bitrate adaptativo.
         val viewerScale = when (viewers) {
             1 -> 1.0
-            2 -> 0.72
-            else -> 0.55
+            2 -> 0.80
+            else -> 0.65
+        }
+        val resolutionScale = when (viewers) {
+            1 -> 1.0
+            2 -> 1.25
+            else -> 1.5
         }
         val perViewerBitrate = (broadcastBitrateBps * viewerScale).toInt().coerceAtLeast(450_000)
         peers.values.forEach { pc ->
             pc.senders.filter { it.track()?.kind() == "video" }.forEach { sender ->
                 val parameters = sender.parameters
+                parameters.degradationPreference = RtpParameters.DegradationPreference.MAINTAIN_FRAMERATE
                 parameters.encodings.forEach { encoding ->
                     encoding.maxBitrateBps = perViewerBitrate
                     encoding.maxFramerate = broadcastFps
+                    encoding.scaleResolutionDownBy = resolutionScale
                 }
                 sender.parameters = parameters
             }
         }
         reportStage(
             "profile-active",
-            "${broadcastWidth}x${broadcastHeight}@${broadcastFps}; ${perViewerBitrate / 1000}kbps; $viewers viewer(s)"
+            "${broadcastWidth}x${broadcastHeight}@${broadcastFps}; ${perViewerBitrate / 1000}kbps; " +
+                "scale ${resolutionScale}x; $viewers viewer(s)"
         )
     }
 
@@ -395,7 +406,9 @@ class BroadcastService : Service() {
         }
         val projection = mediaProjection ?: return
         try {
-            val sampleRate = 48_000
+            // 32 kHz mantém boa inteligibilidade/áudio de jogo e reduz em 1/3
+            // o tráfego PCM que disputa upload com o vídeo.
+            val sampleRate = 32_000
             val channelCount = 1
             val format = AudioFormat.Builder()
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
@@ -412,7 +425,7 @@ class BroadcastService : Service() {
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT
             )
-            val packetBytes = 3_840 // 40 ms de PCM mono, 16-bit, 48 kHz.
+            val packetBytes = 2_560 // 40 ms de PCM mono, 16-bit, 32 kHz.
             val record = AudioRecord.Builder()
                 .setAudioFormat(format)
                 .setBufferSizeInBytes(maxOf(minimum * 2, packetBytes * 4))

@@ -1098,13 +1098,14 @@ function stopAllNativeScreenAudio() {
 
 socket.on('native-screen-audio', ({ peerId, data, sampleRate, channels }) => {
   if (!voiceChannelId || !peerId || typeof data !== 'string') return;
-  if (Number(sampleRate) !== 48000 || Number(channels) !== 1) return;
+  const safeSampleRate = Number(sampleRate);
+  if (![32000, 48000].includes(safeSampleRate) || Number(channels) !== 1) return;
   try {
     const binary = atob(data);
     if (!binary.length || binary.length % 2) return;
     const samples = binary.length / 2;
     const ctx = getAudioCtx();
-    const audioBuffer = ctx.createBuffer(1, samples, 48000);
+    const audioBuffer = ctx.createBuffer(1, samples, safeSampleRate);
     const output = audioBuffer.getChannelData(0);
     for (let index = 0; index < samples; index++) {
       const low = binary.charCodeAt(index * 2);
@@ -1289,6 +1290,11 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff, isNativeSc
         ? 'screen-waiting'
         : 'avatar';
 
+  // Nunca deixe um tile ampliado trocar o vídeo por avatar/placeholder.
+  // Era exatamente isso que mantinha a foto do autor ocupando a tela toda
+  // no WebView depois que a transmissão era encerrada.
+  if (expandedVoiceTile === tile && wantKind !== 'video') closeTileFullscreen();
+
   if (tile.dataset.kind !== wantKind) {
     if (wantKind === 'sharing') {
       tile.innerHTML = `
@@ -1332,17 +1338,18 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff, isNativeSc
 let expandedVoiceTile = null;
 
 function closeTileFullscreen() {
-  if (!expandedVoiceTile) return;
-  expandedVoiceTile.classList.remove('voice-tile-expanded');
-  const btn = expandedVoiceTile.querySelector('.fs-btn');
+  const tile = expandedVoiceTile;
+  expandedVoiceTile = null;
+  document.body.classList.remove('voice-expanded-active');
+  if (!tile) return;
+  tile.classList.remove('voice-tile-expanded');
+  const btn = tile.querySelector('.fs-btn');
   if (btn) {
     btn.textContent = '⛶';
     btn.title = 'Ampliar';
     btn.setAttribute('aria-label', 'Ampliar transmissão');
     btn.setAttribute('aria-expanded', 'false');
   }
-  expandedVoiceTile = null;
-  document.body.classList.remove('voice-expanded-active');
 }
 
 function requestTileFullscreen(tile) {
@@ -1447,6 +1454,7 @@ function createPeer(remoteId) {
   const peer = { pc, polite, makingOffer: false, ignoreOffer: false, remoteStream: new MediaStream(), pendingCandidates: [] };
   peers[remoteId] = peer;
   const isNativeScreen = remoteId.startsWith('screen:');
+  let nativeCodecPreference = 'default';
 
   const reportScreenStage = (stage, detail = '') => {
     if (!isNativeScreen) return;
@@ -1496,6 +1504,10 @@ function createPeer(remoteId) {
       peer.remoteStream.addTrack(e.track);
     }
     if (isNativeScreen && e.track?.kind === 'video') {
+      e.track.addEventListener('mute', () => {
+        const tile = document.getElementById(tileId(remoteId));
+        if (tile && expandedVoiceTile === tile) closeTileFullscreen();
+      });
       e.track.addEventListener('ended', () => {
         const current = peers[remoteId];
         if (!current || current !== peer || current.closing) return;
@@ -1537,11 +1549,27 @@ function createPeer(remoteId) {
   // A tela nativa responde à oferta criada pelo visualizador. Essa direção
   // é mais confiável no WebView do que aguardar o Android iniciar a oferta.
   if (isNativeScreen && typeof pc.addTransceiver === 'function') {
-    pc.addTransceiver('video', { direction: 'recvonly' });
+    const transceiver = pc.addTransceiver('video', { direction: 'recvonly' });
+    try {
+      const codecs = globalThis.RTCRtpReceiver?.getCapabilities?.('video')?.codecs || [];
+      const h264 = codecs.filter(codec => String(codec.mimeType).toLowerCase() === 'video/h264');
+      if (h264.length && typeof transceiver.setCodecPreferences === 'function') {
+        transceiver.setCodecPreferences([
+          ...h264,
+          ...codecs.filter(codec => String(codec.mimeType).toLowerCase() !== 'video/h264')
+        ]);
+        nativeCodecPreference = 'h264-first';
+      }
+    } catch (error) {
+      nativeCodecPreference = 'default';
+    }
   }
 
   if (isNativeScreen) {
-    reportScreenStage('peer-created', typeof pc.addTransceiver === 'function' ? 'transceiver' : 'legacy-offer');
+    reportScreenStage(
+      'peer-created',
+      typeof pc.addTransceiver === 'function' ? `transceiver; ${nativeCodecPreference}` : 'legacy-offer'
+    );
     // Não depende apenas de negotiationneeded: há WebViews em que esse
     // evento não dispara para um transceiver recvonly.
     setTimeout(createAndSendOffer, 0);
@@ -1552,14 +1580,19 @@ function createPeer(remoteId) {
 
 function closePeer(remoteId) {
   const p = peers[remoteId];
-  if (!p) return;
+  const tile = document.getElementById(tileId(remoteId));
+  if (tile && expandedVoiceTile === tile) closeTileFullscreen();
+  if (!p) {
+    tile?.remove();
+    removeRemoteAudio(remoteId);
+    return;
+  }
   p.closing = true;
   clearTimeout(p.disconnectTimer);
   try { p.pc.close(); } catch (e) {}
   delete peers[remoteId];
   delete remoteMediaState[remoteId];
   teardownSpeakingDetection(remoteId);
-  const tile = document.getElementById(tileId(remoteId));
   if (tile && $('voiceGrid').contains(tile)) tile.remove();
   removeRemoteAudio(remoteId);
 }
