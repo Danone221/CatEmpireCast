@@ -893,10 +893,25 @@ $('saveVideoSettingsBtn').onclick = async () => {
       await replaceCameraTrack(track);
       renderVoiceGrid();
     }
+    if (screenOn && localStream?.getVideoTracks()[0]) {
+      const profile = VIDEO_PROFILES[videoSettings.quality];
+      await localStream.getVideoTracks()[0].applyConstraints({
+        width: { ideal: profile.width },
+        height: { ideal: profile.height },
+        frameRate: { ideal: videoSettings.fps, max: videoSettings.fps }
+      });
+    }
     localStorage.setItem(VIDEO_SETTINGS_KEY, JSON.stringify(videoSettings));
     $('videoSettingsModal').classList.remove('open');
-    const suffix = nativeBroadcasting ? ' Reinicie a transmissão de tela para aplicar.' : '';
-    toast(`${videoSettings.quality}p · ${videoSettings.fps} FPS aplicados.${suffix}`, 'success');
+    const canUpdateNative = nativeBroadcasting &&
+      typeof window.CatEmpireNative?.updateBroadcastProfile === 'function';
+    if (canUpdateNative) {
+      window.CatEmpireNative.updateBroadcastProfile(videoSettings.quality, videoSettings.fps);
+      toast(`Aplicando ${videoSettings.quality}p · ${videoSettings.fps} FPS na transmissão…`, 'success');
+    } else {
+      const suffix = nativeBroadcasting ? ' Instale o APK atualizado para aplicar sem reiniciar.' : '';
+      toast(`${videoSettings.quality}p · ${videoSettings.fps} FPS aplicados.${suffix}`, 'success');
+    }
   } catch (error) {
     videoSettings = previous;
     toast('O dispositivo não aceitou essa combinação de qualidade e FPS.', 'error');
@@ -1230,12 +1245,20 @@ function renderVoiceGrid() {
     const state = remoteMediaState[uid];
     const knownVideoOff = state && !state.camera && !state.screen;
     const displayName = owner?.userName || (m ? (m.display_name || m.username) : 'Membro');
-    upsertTile(uid, owner ? `${displayName} — tela` : displayName, m && m.avatar, peers[uid].remoteStream, false, knownVideoOff);
+    upsertTile(
+      uid,
+      owner ? `${displayName} — tela` : displayName,
+      m && m.avatar,
+      peers[uid].remoteStream,
+      false,
+      knownVideoOff,
+      !!owner
+    );
     ensureRemoteAudio(uid, peers[uid].remoteStream);
   });
 }
 
-function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
+function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff, isNativeScreen = false) {
   const id = tileId(uid);
   let tile = document.getElementById(id);
   if (tile && !$('voiceGrid').contains(tile)) tile = null;
@@ -1249,7 +1272,13 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
   }
 
   const isOwnScreenShare = isSelf && screenOn && hasVideo;
-  const wantKind = isOwnScreenShare ? 'sharing' : hasVideo ? 'video' : 'avatar';
+  const wantKind = isOwnScreenShare
+    ? 'sharing'
+    : hasVideo
+      ? 'video'
+      : isNativeScreen
+        ? 'screen-waiting'
+        : 'avatar';
 
   if (tile.dataset.kind !== wantKind) {
     if (wantKind === 'sharing') {
@@ -1262,6 +1291,13 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
     } else if (wantKind === 'video') {
       const fsBtn = `<button type="button" class="fs-btn" data-tile="${id}" title="Tela cheia">⛶</button>`;
       tile.innerHTML = `<video autoplay playsinline muted></video>${fsBtn}<div class="tile-name"><span class="mic-icon">🎤</span></div>`;
+    } else if (wantKind === 'screen-waiting') {
+      tile.innerHTML = `
+        <div class="tile-avatar tile-sharing">
+          <span class="share-icon">🖥️</span>
+          <span class="share-label">conectando transmissão…</span>
+        </div>
+        <div class="tile-name"><span class="mic-icon">📱</span></div>`;
     } else {
       tile.innerHTML = `<div class="tile-avatar"><img alt=""></div><div class="tile-name"><span class="mic-icon">🎤</span></div>`;
     }
@@ -1362,10 +1398,11 @@ socket.on('native-screen-started', ({ peerId, userId: ownerId, userName: ownerNa
 
 socket.on('native-screen-ended', ({ peerId }) => {
   if (!peerId) return;
-  stopNativeScreenAudio(peerId);
-  if (peers[peerId]) closePeer(peerId);
   delete nativeScreenOwners[peerId];
   delete remoteMediaState[peerId];
+  stopNativeScreenAudio(peerId);
+  if (peers[peerId]) closePeer(peerId);
+  document.getElementById(tileId(peerId))?.remove();
   renderVoiceGrid();
 });
 
@@ -1447,6 +1484,17 @@ function createPeer(remoteId) {
     if (e.track && !peer.remoteStream.getTracks().some(track => track.id === e.track.id)) {
       peer.remoteStream.addTrack(e.track);
     }
+    if (isNativeScreen && e.track?.kind === 'video') {
+      e.track.addEventListener('ended', () => {
+        const current = peers[remoteId];
+        if (!current || current !== peer || current.closing) return;
+        delete nativeScreenOwners[remoteId];
+        delete remoteMediaState[remoteId];
+        stopNativeScreenAudio(remoteId);
+        closePeer(remoteId);
+        renderVoiceGrid();
+      }, { once: true });
+    }
     reportScreenStage('track-received', e.track && e.track.kind);
     renderVoiceGrid();
   };
@@ -1493,6 +1541,7 @@ function createPeer(remoteId) {
 function closePeer(remoteId) {
   const p = peers[remoteId];
   if (!p) return;
+  p.closing = true;
   clearTimeout(p.disconnectTimer);
   try { p.pc.close(); } catch (e) {}
   delete peers[remoteId];
@@ -2093,6 +2142,8 @@ window.onNativeBroadcastState = function (state, message) {
     window.__catNativeBroadcasting = true;
     $('mobileCastBtn').classList.add('active');
     toast(message ? 'Transmitindo em ' + message + '.' : 'Transmitindo a tela ao vivo!', 'success');
+  } else if (state === 'profile') {
+    toast(message ? `Transmissão ajustada para ${message}.` : 'Qualidade da transmissão atualizada.', 'success');
   } else if (state === 'stopped') {
     nativePreparing = false;
     nativeBroadcasting = false;

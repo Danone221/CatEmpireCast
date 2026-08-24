@@ -21,6 +21,9 @@ class SharedProjectionScreenCapturer(
     private var surface: Surface? = null
     private var width = 0
     private var height = 0
+    private var densityDpi = 320
+    @Volatile private var targetFps = 30
+    private var lastFrameAtNs = 0L
     private var disposed = false
 
     override fun initialize(
@@ -31,6 +34,7 @@ class SharedProjectionScreenCapturer(
         check(!disposed) { "Capturador já descartado" }
         textureHelper = surfaceTextureHelper
         observer = capturerObserver
+        densityDpi = applicationContext.resources.displayMetrics.densityDpi.coerceAtLeast(160)
     }
 
     override fun startCapture(width: Int, height: Int, framerate: Int) {
@@ -38,6 +42,8 @@ class SharedProjectionScreenCapturer(
         val helper = requireNotNull(textureHelper) { "Capturador não inicializado" }
         this.width = width
         this.height = height
+        targetFps = framerate.coerceIn(1, 60)
+        lastFrameAtNs = 0L
         helper.setTextureSize(width, height)
         projection.registerCallback(projectionCallback, helper.handler)
         surface = Surface(helper.surfaceTexture)
@@ -45,8 +51,8 @@ class SharedProjectionScreenCapturer(
             "CatEmpireScreenCapture",
             width,
             height,
-            400,
-            DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION,
+            densityDpi,
+            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
             surface,
             null,
             null
@@ -69,9 +75,11 @@ class SharedProjectionScreenCapturer(
     override fun changeCaptureFormat(width: Int, height: Int, framerate: Int) {
         this.width = width
         this.height = height
+        targetFps = framerate.coerceIn(1, 60)
+        lastFrameAtNs = 0L
         val helper = textureHelper ?: return
         helper.setTextureSize(width, height)
-        display?.resize(width, height, 400)
+        display?.resize(width, height, densityDpi)
         surface?.release()
         surface = Surface(helper.surfaceTexture)
         display?.setSurface(surface)
@@ -84,6 +92,13 @@ class SharedProjectionScreenCapturer(
     override fun isScreencast(): Boolean = true
 
     override fun onFrame(frame: VideoFrame) {
+        // MediaProjection entrega na taxa física do aparelho (com frequência
+        // 60/90/120 Hz). Sem limitar aqui, a opção de FPS era apenas visual e
+        // cada encoder WebRTC tentava processar quadros desnecessários.
+        val now = System.nanoTime()
+        val minimumIntervalNs = 1_000_000_000L / targetFps.coerceAtLeast(1)
+        if (lastFrameAtNs != 0L && now - lastFrameAtNs < minimumIntervalNs) return
+        lastFrameAtNs = now
         observer?.onFrameCaptured(frame)
     }
 }

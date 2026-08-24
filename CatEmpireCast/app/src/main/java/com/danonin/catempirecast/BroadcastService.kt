@@ -51,6 +51,8 @@ class BroadcastService : Service() {
     private var profileLabel = ""
     private var broadcastBitrateBps = 2_500_000
     private var broadcastFps = 30
+    private var broadcastWidth = 1280
+    private var broadcastHeight = 720
     private val rtcExecutor = Executors.newSingleThreadExecutor()
     private val stopping = AtomicBoolean(false)
     private val playbackAudioRunning = AtomicBoolean(false)
@@ -79,6 +81,47 @@ class BroadcastService : Service() {
 
     fun setListener(value: BroadcastStateListener?) { listener = value }
 
+    private data class StreamProfile(
+        val width: Int,
+        val height: Int,
+        val quality: Int,
+        val fps: Int,
+        val bitrate: Int,
+        val label: String
+    )
+
+    private fun streamProfile(quality: Int, fps: Int): StreamProfile {
+        val safeQuality = if (quality in setOf(480, 720, 1080)) quality else 720
+        val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
+        val landscape = when (safeQuality) {
+            480 -> 854 to 480
+            1080 -> 1920 to 1080
+            else -> 1280 to 720
+        }
+        val portrait = resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
+        val width = if (portrait) landscape.second else landscape.first
+        val height = if (portrait) landscape.first else landscape.second
+        val baseBitrate = when (safeQuality) {
+            480 -> 850_000
+            1080 -> 3_000_000
+            else -> 1_600_000
+        }
+        val bitrate = when (safeFps) {
+            24 -> (baseBitrate * 0.88).toInt()
+            60 -> (baseBitrate * 1.25).toInt()
+            else -> baseBitrate
+        }
+        return StreamProfile(width, height, safeQuality, safeFps, bitrate, "${safeQuality}p · $safeFps FPS")
+    }
+
+    private fun useProfile(profile: StreamProfile) {
+        broadcastWidth = profile.width
+        broadcastHeight = profile.height
+        broadcastFps = profile.fps
+        broadcastBitrateBps = profile.bitrate
+        profileLabel = profile.label
+    }
+
     fun startBroadcast(
         resultCode: Int,
         projectionData: Intent,
@@ -97,22 +140,8 @@ class BroadcastService : Service() {
         firstFrameDetail = null
         startProjectionForeground()
         rtcExecutor.execute { try {
-            val base = when (quality) {
-                480 -> Triple(854, 480, "480p")
-                1080 -> Triple(1920, 1080, "1080p")
-                else -> Triple(1280, 720, "720p")
-            }
-            val portrait = resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
-            val width = if (portrait) base.second else base.first
-            val height = if (portrait) base.first else base.second
-            val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
-            broadcastFps = safeFps
-            broadcastBitrateBps = when (quality) {
-                480 -> 1_200_000
-                1080 -> 5_000_000
-                else -> 2_500_000
-            }
-            profileLabel = "${base.third} · $safeFps FPS"
+            val profile = streamProfile(quality, fps)
+            useProfile(profile)
 
             PeerConnectionFactory.initialize(
                 PeerConnectionFactory.InitializationOptions.builder(applicationContext).createInitializationOptions()
@@ -134,7 +163,7 @@ class BroadcastService : Service() {
             source = factory!!.createVideoSource(true)
             textureHelper = SurfaceTextureHelper.create("CatEmpireScreen", context)
             capturer!!.initialize(textureHelper, applicationContext, source!!.capturerObserver)
-            capturer!!.startCapture(width, height, safeFps)
+            capturer!!.startCapture(profile.width, profile.height, profile.fps)
             track = factory!!.createVideoTrack("cat-native-screen", source)
             diagnosticSink = VideoSink { frame ->
                 if (firstFrameReported.compareAndSet(false, true)) {
@@ -187,6 +216,7 @@ class BroadcastService : Service() {
             if (id.isNotBlank()) rtcExecutor.execute {
                 peers.remove(id)?.close()
                 pendingCandidates.remove(id)
+                applySenderLimits()
             }
         }
         client.on("voice-signal") { args ->
@@ -219,14 +249,54 @@ class BroadcastService : Service() {
         )).apply { sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN }
         val pc = factory?.createPeerConnection(rtcConfig, peerObserver(viewerId)) ?: return null
         peers[viewerId] = pc
-        val sender = pc.addTrack(track ?: return null, listOf("cat-native-screen"))
-        val parameters = sender.parameters
-        parameters.encodings.forEach { encoding ->
-            encoding.maxBitrateBps = broadcastBitrateBps
-            encoding.maxFramerate = broadcastFps
-        }
-        sender.parameters = parameters
+        pc.addTrack(track ?: return null, listOf("cat-native-screen"))
+        applySenderLimits()
         return pc
+    }
+
+    private fun applySenderLimits() {
+        val viewers = peers.size.coerceAtLeast(1)
+        // Cada espectador cria um encoder no mesh. Reduzir a taxa por peer
+        // impede que 2/3 espectadores multipliquem o upload do celular sem
+        // limite, mantendo resolução/FPS escolhidos com bitrate adaptativo.
+        val viewerScale = when (viewers) {
+            1 -> 1.0
+            2 -> 0.72
+            else -> 0.55
+        }
+        val perViewerBitrate = (broadcastBitrateBps * viewerScale).toInt().coerceAtLeast(450_000)
+        peers.values.forEach { pc ->
+            pc.senders.filter { it.track()?.kind() == "video" }.forEach { sender ->
+                val parameters = sender.parameters
+                parameters.encodings.forEach { encoding ->
+                    encoding.maxBitrateBps = perViewerBitrate
+                    encoding.maxFramerate = broadcastFps
+                }
+                sender.parameters = parameters
+            }
+        }
+        reportStage(
+            "profile-active",
+            "${broadcastWidth}x${broadcastHeight}@${broadcastFps}; ${perViewerBitrate / 1000}kbps; $viewers viewer(s)"
+        )
+    }
+
+    fun updateBroadcastProfile(quality: Int, fps: Int) {
+        if (stopping.get() || socket == null) {
+            listener?.onState("error", "Inicie a transmissão antes de alterar qualidade e FPS.")
+            return
+        }
+        rtcExecutor.execute {
+            try {
+                val profile = streamProfile(quality, fps)
+                useProfile(profile)
+                capturer?.changeCaptureFormat(profile.width, profile.height, profile.fps)
+                applySenderLimits()
+                listener?.onState("profile", profile.label)
+            } catch (error: Exception) {
+                listener?.onState("error", "Não foi possível aplicar ${quality}p · $fps FPS: ${error.message}")
+            }
+        }
     }
 
     private fun handleSignal(from: String, data: JSONObject) {
@@ -281,6 +351,7 @@ class BroadcastService : Service() {
                 rtcExecutor.execute {
                     pendingCandidates.remove(viewerId)
                     peers.remove(viewerId)?.close()
+                    applySenderLimits()
                 }
             }
         }

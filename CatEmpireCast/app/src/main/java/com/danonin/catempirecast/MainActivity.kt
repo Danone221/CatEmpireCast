@@ -246,6 +246,20 @@ class MainActivity : AppCompatActivity() {
                 else stopService(BroadcastService.intent(this@MainActivity))
             }
         }
+
+        @JavascriptInterface
+        fun updateBroadcastProfile(quality: Int, fps: Int) {
+            runOnUiThread {
+                val safeQuality = if (quality in setOf(480, 720, 1080)) quality else 720
+                val safeFps = if (fps in setOf(24, 30, 60)) fps else 30
+                val service = broadcastService
+                if (service == null) {
+                    notifyWebBroadcastState("error", "A transmissão não está ativa.")
+                } else {
+                    service.updateBroadcastProfile(safeQuality, safeFps)
+                }
+            }
+        }
     }
 
     private fun notifyWebBroadcastState(state: String, message: String?) {
@@ -306,9 +320,9 @@ class MainActivity : AppCompatActivity() {
         s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         val cachePrefs = getSharedPreferences("cat_empire_web_cache", MODE_PRIVATE)
         val cachedVersion = cachePrefs.getInt("app_version", 0)
-        if (cachedVersion < 8) {
+        if (cachedVersion < 9) {
             binding.webView.clearCache(true)
-            cachePrefs.edit().putInt("app_version", 8).apply()
+            cachePrefs.edit().putInt("app_version", 9).apply()
         }
         s.cacheMode = WebSettings.LOAD_DEFAULT
         s.setSupportZoom(false)
