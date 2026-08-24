@@ -630,6 +630,9 @@ $('messageForm').onsubmit = (e) => {
 
 // ========== CANAL DE VOZ / WEBRTC ==========
 async function joinVoiceChannel(channelId) {
+  // Aproveita o clique de entrada no canal para liberar a reprodução. Sem
+  // isso a faixa WebRTC pode chegar e continuar silenciosa por autoplay.
+  unlockRemoteAudioPlayback();
   if (voiceChannelId === channelId) { showView('voice'); return; }
   if (voiceChannelId) leaveVoiceChannel(false);
 
@@ -982,6 +985,7 @@ function audioElId(uid) { return 'audio-' + uid; }
 // Analisa o volume do áudio de cada participante em tempo real via Web
 // Audio API e liga/desliga a classe .speaking no tile correspondente.
 let sharedAudioCtx = null;
+let remoteAudioWarningShown = false;
 function getAudioCtx() {
   if (!sharedAudioCtx) {
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -990,6 +994,25 @@ function getAudioCtx() {
   if (sharedAudioCtx.state === 'suspended') sharedAudioCtx.resume().catch(() => {});
   return sharedAudioCtx;
 }
+
+function unlockRemoteAudioPlayback() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  } catch (_) {}
+  document.querySelectorAll('audio[id^="audio-"]').forEach((el) => {
+    el.muted = false;
+    el.volume = 1;
+    if (el.srcObject?.getAudioTracks().some(track => track.readyState === 'live')) {
+      el.play().then(() => { remoteAudioWarningShown = false; }).catch(() => {});
+    }
+  });
+}
+
+// Uma interação posterior também recupera o áudio caso o navegador tenha
+// bloqueado o primeiro play. Isso vale para WebRTC e para o PCM vindo do APK.
+document.addEventListener('pointerdown', unlockRemoteAudioPlayback, { passive: true });
+document.addEventListener('keydown', unlockRemoteAudioPlayback);
 
 // Áudio interno enviado pelo APK. É reproduzido automaticamente para os
 // outros participantes e nunca devolvido ao próprio transmissor.
@@ -1111,10 +1134,23 @@ function ensureRemoteAudio(uid, stream) {
     el = document.createElement('audio');
     el.id = audioElId(uid);
     el.autoplay = true;
+    el.playsInline = true;
+    el.preload = 'auto';
+    el.muted = false;
+    el.volume = 1;
     el.hidden = true;
     document.body.appendChild(el);
   }
   if (el.srcObject !== stream) el.srcObject = stream || null;
+  const hasLiveAudio = stream?.getAudioTracks().some(track => track.readyState === 'live');
+  if (hasLiveAudio) {
+    el.play().then(() => { remoteAudioWarningShown = false; }).catch((error) => {
+      if (error?.name === 'NotAllowedError' && !remoteAudioWarningShown) {
+        remoteAudioWarningShown = true;
+        toast('O navegador bloqueou o áudio automático. Clique uma vez dentro da chamada para liberar.', 'error');
+      }
+    });
+  }
 }
 function removeRemoteAudio(uid) {
   document.getElementById(audioElId(uid))?.remove();
@@ -1128,7 +1164,9 @@ function renderVoiceGrid() {
   existingIds.forEach(id => {
     if (id === 'tile-external-cast') return;
     if (![...wantIds].some(u => tileId(u) === id)) {
-      const staleTile = grid.querySelector('#' + id);
+      // O ID da tela nativa contém ':'. querySelector tratava o trecho após
+      // os dois-pontos como pseudo-classe e interrompia o mosaico inteiro.
+      const staleTile = document.getElementById(id);
       if (staleTile && expandedVoiceTile === staleTile) closeTileFullscreen();
       staleTile?.remove();
       const uid = id.replace(/^tile-/, '');
@@ -1151,7 +1189,8 @@ function renderVoiceGrid() {
 
 function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
   const id = tileId(uid);
-  let tile = $('voiceGrid').querySelector('#' + id);
+  let tile = document.getElementById(id);
+  if (tile && !$('voiceGrid').contains(tile)) tile = null;
   const hasVideo = !knownVideoOff && stream && stream.getVideoTracks().some(t => t.readyState === 'live');
   if (!tile) {
     tile = document.createElement('div');
@@ -1187,6 +1226,7 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff) {
   if (wantKind === 'video') {
     const v = tile.querySelector('video');
     if (v && v.srcObject !== stream) v.srcObject = stream;
+    v?.play().catch(() => {});
   } else if (wantKind === 'avatar') {
     const img = tile.querySelector('.tile-avatar img');
     const wanted = avatar || '/logo.svg';
@@ -1300,7 +1340,7 @@ const remoteMediaState = {};
 
 socket.on('user-media-state', ({ userId: uid, muted, camera, screen }) => {
   remoteMediaState[uid] = { camera: !!camera, screen: !!screen };
-  const tile = $('voiceGrid').querySelector('#' + tileId(uid));
+  const tile = document.getElementById(tileId(uid));
   if (tile) tile.classList.toggle('muted', !!muted);
   renderVoiceGrid();
 });
@@ -1409,7 +1449,8 @@ function closePeer(remoteId) {
   delete peers[remoteId];
   delete remoteMediaState[remoteId];
   teardownSpeakingDetection(remoteId);
-  $('voiceGrid').querySelector('#' + tileId(remoteId))?.remove();
+  const tile = document.getElementById(tileId(remoteId));
+  if (tile && $('voiceGrid').contains(tile)) tile.remove();
   removeRemoteAudio(remoteId);
 }
 
