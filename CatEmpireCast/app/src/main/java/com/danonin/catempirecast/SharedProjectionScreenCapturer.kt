@@ -35,6 +35,11 @@ class SharedProjectionScreenCapturer(
         textureHelper = surfaceTextureHelper
         observer = capturerObserver
         densityDpi = applicationContext.resources.displayMetrics.densityDpi.coerceAtLeast(160)
+        surfaceTextureHelper.handler.post {
+            try {
+                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DISPLAY)
+            } catch (_: Exception) {}
+        }
     }
 
     override fun startCapture(width: Int, height: Int, framerate: Int) {

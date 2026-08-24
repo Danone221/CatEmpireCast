@@ -34,8 +34,11 @@ jobs:
           cd CatEmpireCast
           ../gradle-${GRADLE_VERSION}/bin/gradle assembleDebug --stacktrace --no-daemon
 
+      - name: Renomear APK
+        run: cp CatEmpireCast/app/build/outputs/apk/debug/app-debug.apk CatEmpireCast/app/build/outputs/apk/debug/CatEmpire.apk
+
       - name: Upload do APK gerado
         uses: actions/upload-artifact@v4
         with:
-          name: cat-empire-debug-apk
-          path: CatEmpireCast/app/build/outputs/apk/debug/*.apk
+          name: CatEmpire
+          path: CatEmpireCast/app/build/outputs/apk/debug/CatEmpire.apk

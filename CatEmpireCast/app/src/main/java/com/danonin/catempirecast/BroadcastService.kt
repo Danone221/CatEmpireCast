@@ -13,11 +13,13 @@ import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.net.wifi.WifiManager
 import android.os.Binder
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.Process
 import android.util.Base64
 import androidx.core.app.NotificationCompat
@@ -46,6 +48,8 @@ class BroadcastService : Service() {
     private var playbackAudioRecord: AudioRecord? = null
     private var playbackAudioThread: Thread? = null
     private var diagnosticSink: VideoSink? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
     private val peers = ConcurrentHashMap<String, PeerConnection>()
     private val pendingCandidates = ConcurrentHashMap<String, MutableList<IceCandidate>>()
     private var profileLabel = ""
@@ -139,7 +143,9 @@ class BroadcastService : Service() {
         firstFrameReported.set(false)
         firstFrameDetail = null
         startProjectionForeground()
+        acquirePerformanceLocks()
         rtcExecutor.execute { try {
+            try { Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY) } catch (_: Exception) {}
             val profile = streamProfile(quality, fps)
             useProfile(profile)
 
@@ -478,6 +484,7 @@ class BroadcastService : Service() {
         eglBase?.release(); eglBase = null
         try { mediaProjection?.stop() } catch (_: Exception) {}
         mediaProjection = null
+        releasePerformanceLocks()
         Handler(Looper.getMainLooper()).post {
             listener?.onState("stopped", null)
             stopSelfCleanly()
@@ -501,6 +508,47 @@ class BroadcastService : Service() {
         } else startForeground(NOTIFICATION_ID, notification)
     }
 
+    /**
+     * Ao abrir um jogo/outro app, o WebView deixa de ser a janela visível.
+     * O serviço continua em primeiro plano, e estes locks evitam que CPU e
+     * Wi-Fi entrem em economia no meio da codificação/upload da tela.
+     */
+    private fun acquirePerformanceLocks() {
+        try {
+            val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = power.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "CatEmpire:ScreenBroadcast"
+            ).apply {
+                setReferenceCounted(false)
+                acquire(PERFORMANCE_LOCK_TIMEOUT_MS)
+            }
+        } catch (_: Exception) {
+            wakeLock = null
+        }
+
+        try {
+            val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            @Suppress("DEPRECATION")
+            wifiLock = wifi.createWifiLock(
+                WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                "CatEmpire:ScreenBroadcast"
+            ).apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        } catch (_: Exception) {
+            wifiLock = null
+        }
+    }
+
+    private fun releasePerformanceLocks() {
+        try { if (wifiLock?.isHeld == true) wifiLock?.release() } catch (_: Exception) {}
+        wifiLock = null
+        try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Exception) {}
+        wakeLock = null
+    }
+
     private fun stopSelfCleanly() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) stopForeground(STOP_FOREGROUND_REMOVE)
         else {
@@ -512,6 +560,7 @@ class BroadcastService : Service() {
 
     override fun onDestroy() {
         if (!stopping.get()) stopBroadcast()
+        releasePerformanceLocks()
         rtcExecutor.shutdown()
         super.onDestroy()
     }
@@ -526,6 +575,7 @@ class BroadcastService : Service() {
     companion object {
         private const val CHANNEL_ID = "cat_empire_broadcast"
         private const val NOTIFICATION_ID = 4202
+        private const val PERFORMANCE_LOCK_TIMEOUT_MS = 4 * 60 * 60 * 1000L
         fun intent(context: Context): Intent = Intent(context, BroadcastService::class.java)
     }
 }

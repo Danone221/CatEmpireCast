@@ -36,6 +36,9 @@ const VIDEO_PROFILES = {
 let videoSettings = loadVideoSettings();
 const peers = {}; // remoteUserId -> { pc, polite, makingOffer, ignoreOffer }
 const nativeScreenOwners = {}; // screen:<userId> -> perfil do autor
+// Um sinal ICE/SDP pode chegar depois de native-screen-ended. Guardar esses
+// IDs impede que o WebView recrie a tela encerrada como um tile de avatar.
+const endedNativeScreenPeers = new Set();
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 $('myName').textContent = userName;
@@ -661,7 +664,9 @@ function leaveVoiceChannel(switchView = true) {
   stopNativeBroadcastForCallExit();
   socket.emit('leave-voice-channel');
   removeScreenAudioTrack();
+  Object.keys(nativeScreenOwners).forEach(peerId => endedNativeScreenPeers.add(peerId));
   Object.keys(peers).forEach(closePeer);
+  Object.keys(nativeScreenOwners).forEach(peerId => delete nativeScreenOwners[peerId]);
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
   stopAllNativeScreenAudio();
   voiceChannelId = null;
@@ -1240,6 +1245,10 @@ function renderVoiceGrid() {
   const meM = members.find(mm => mm.id === userId);
   upsertTile(userId, userName, meM && meM.avatar, localStream, true);
   Object.keys(peers).forEach(uid => {
+    if (uid.startsWith('screen:') && (!nativeScreenOwners[uid] || endedNativeScreenPeers.has(uid))) {
+      closePeer(uid);
+      return;
+    }
     const owner = nativeScreenOwners[uid];
     const m = owner ? members.find(mm => mm.id === owner.userId) : members.find(mm => mm.id === uid);
     const state = remoteMediaState[uid];
@@ -1386,6 +1395,7 @@ socket.on('channel-members', (list) => {
 
 socket.on('native-screen-started', ({ peerId, userId: ownerId, userName: ownerName }) => {
   if (!voiceChannelId || !peerId) return;
+  endedNativeScreenPeers.delete(peerId);
   nativeScreenOwners[peerId] = { userId: ownerId, userName: ownerName || 'Membro' };
   remoteMediaState[peerId] = { camera: false, screen: true };
   if (!peers[peerId]) createPeer(peerId);
@@ -1398,6 +1408,7 @@ socket.on('native-screen-started', ({ peerId, userId: ownerId, userName: ownerNa
 
 socket.on('native-screen-ended', ({ peerId }) => {
   if (!peerId) return;
+  endedNativeScreenPeers.add(peerId);
   delete nativeScreenOwners[peerId];
   delete remoteMediaState[peerId];
   stopNativeScreenAudio(peerId);
@@ -1488,6 +1499,7 @@ function createPeer(remoteId) {
       e.track.addEventListener('ended', () => {
         const current = peers[remoteId];
         if (!current || current !== peer || current.closing) return;
+        endedNativeScreenPeers.add(remoteId);
         delete nativeScreenOwners[remoteId];
         delete remoteMediaState[remoteId];
         stopNativeScreenAudio(remoteId);
@@ -1553,6 +1565,10 @@ function closePeer(remoteId) {
 }
 
 socket.on('voice-signal', async ({ from, data }) => {
+  if (!from || !data) return;
+  if (from.startsWith('screen:') && (
+    !voiceChannelId || endedNativeScreenPeers.has(from) || !nativeScreenOwners[from]
+  )) return;
   let peer = peers[from] || createPeer(from);
   try {
     if (data.sdp) {
