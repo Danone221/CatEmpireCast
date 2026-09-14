@@ -119,5 +119,5 @@
   const oldOpenMyProfile=window.openMyProfile;
   if(oldOpenMyProfile&&!window.__catV5ProfilePatched){window.__catV5ProfilePatched=true;window.openMyProfile=()=>{document.querySelector('#viewProfileModal')?.classList.remove('open');return oldOpenMyProfile.apply(window,arguments);};}
   if($('viewProfileModal'))$('viewProfileModal').addEventListener('click',e=>{if(e.target===$('viewProfileModal'))$('viewProfileModal').classList.remove('open');});
-  setTimeout(()=>{wireMessageActions();refreshCallTimes();installFriends();},500);
+  setTimeout(()=>{wireMessageActions();fetchCallTimes();installFriends();},500);
 })();

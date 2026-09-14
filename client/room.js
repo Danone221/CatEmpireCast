@@ -388,8 +388,15 @@ function closeMobileSidebar() {
 // ========== VIEW SWITCHING ==========
 function showView(view) {
   activeMainView = view;
-  $('textView').hidden = view !== 'text';
+  // Keep the selected text channel available beside the live stage.
+  // Reuse its existing message list and listeners rather than duplicating chat.
+  $('textView').hidden = false;
   $('voiceView').hidden = view !== 'voice';
+  document.body.classList.toggle('watch-mode', view === 'voice');
+  document.body.classList.remove('watch-chat-hidden');
+  document.body.classList.remove('show-workspace-members');
+  document.getElementById('workspaceMembers')?.setAttribute('aria-pressed', 'false');
+  document.getElementById('watchChatToggle')?.setAttribute('aria-pressed', 'true');
   $('voiceBar').hidden = !(voiceChannelId && view === 'text');
   renderChannelList();
 }

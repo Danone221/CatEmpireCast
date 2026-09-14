@@ -3,66 +3,36 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>CAT EMPIRE</title><link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/empire.css?v=20260914-ui2">
 </head>
 <body class="landing-page">
-<div class="sky">
-  <div class="moon"></div>
-  <div class="stars"></div>
-  <div class="skyline"></div>
-</div>
 <header class="landing-topbar">
-  <div class="brand"><img src="/logo.svg" class="brand-logo" alt="Cat Empire"> <span>CAT EMPIRE</span></div>
-  <div class="topbar-right">
-    <div class="active-pill"><span class="dot"></span>SERVIDORES ATIVOS <strong id="activeRoomsTop">0</strong>/90</div>
-    <span class="deco-icon" title="Em breve" aria-hidden="true">♛</span>
-    <span class="deco-icon" title="Em breve" aria-hidden="true">⚙</span>
-  </div>
+  <a class="brand" href="/"><img src="/logo.svg" class="brand-logo" alt=""> <span>Cat Empire</span></a>
+  <div class="active-pill"><span class="dot"></span><strong id="activeRoomsTop">—</strong> servidores</div>
 </header>
-
 <main class="landing-main">
-  <section class="hero">
-   <img src="/logo.svg" class="pixel-cat" alt="Cat Empire">
-    <h1>CAT EMPIRE</h1>
-    <p class="creator">DESENVOLVIDO POR DANONIN</p>
+  <section class="hero" aria-labelledby="welcomeTitle">
+    <span class="eyebrow">SEU PONTO DE ENCONTRO</span>
+    <h1 id="welcomeTitle">Juntos, em qualquer tela.</h1>
+    <p class="intro">Compartilhe momentos ao vivo, converse com seus amigos e encontre sua comunidade.</p>
     <div class="auth">
-      <button class="btn btn-discord" id="discordBtn">🎮 ENTRAR COM DISCORD</button>
-      <button class="btn" id="guestBtn">🎭 CONTA ALEATÓRIA</button>
-      <div class="form-card" id="guestForm" hidden>
-        <input id="guestName" maxlength="16" placeholder="Como você deseja ser chamado?">
-        <button class="btn btn-primary" id="guestGo">ENTRAR</button>
+      <button class="btn" id="guestBtn" hidden>Entrar com uma conta rápida</button>
+      <div class="form-card" id="guestForm">
+        <label for="guestName">Como podemos chamar você?</label>
+        <input id="guestName" maxlength="16" placeholder="Seu nome" autocomplete="nickname">
+        <button class="btn btn-primary" id="guestGo">Entrar no Cat Empire →</button>
       </div>
+      <p class="entry-note">Uma conta rápida para começar. Seu acesso fica salvo neste navegador.</p>
+      <div class="auth-divider">OU</div>
+      <button class="btn btn-discord" id="discordBtn">Entrar com Discord</button>
       <div id="serversList" class="server-list"></div>
     </div>
+    <div class="entry-features"><span>◉ Transmissões</span><span>♧ Comunidades</span><span>↗ Mensagens</span></div>
   </section>
-
-  <aside class="status-card">
-    <h3><span class="deco-icon small" aria-hidden="true">♛</span>STATUS</h3>
-    <div class="status-row">
-      <span><span class="dot success" aria-hidden="true"></span>Servidores ativos</span>
-      <strong id="activeRooms">0</strong>
-    </div>
-  </aside>
 </main>
-
-<footer class="landing-footer">
-  <div class="footer-item">
-    <span class="deco-icon" aria-hidden="true">☺</span>
-    <div>
-      <h4>COMUNIDADE</h4>
-      <p>Faça parte de uma comunidade incrível</p>
-    </div>
-  </div>
-  <div class="footer-item">
-    <span class="deco-icon" aria-hidden="true">⚑</span>
-    <div>
-      <h4>REPORTE DE BUGS</h4>
-      <p>Encontrou um problema? Avise no nosso Discord e ajude a melhorar o Cat Empire: <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">discord.gg/FdgS3V2b7e</a></p>
-    </div>
-  </div>
-</footer>
-<p class="landing-copyright">© CAT EMPIRE • Desenvolvido por Danonin</p>
+<p class="landing-copyright">Cat Empire · Feito para estar junto. · <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">Comunidade e suporte</a></p>
 
 <script src="/ui.js"></script>
-<script src="/app.js"></script>
+<script src="/app.js?v=20260914-ui2"></script>
 </body>
 </html>

@@ -74,7 +74,7 @@
   background:transparent;
   color:#eee8ff;
   text-align:left;
-  font:8px/1.5 'Press Start 2P',monospace;
+  font:8px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   cursor:pointer
 }
 .profile-sheet-menu button:last-child{border-bottom:0}
@@ -115,7 +115,7 @@
 .profile-sheet .profile-display-name{
   margin:14px 0 7px!important;
   color:#d66bff!important;
-  font:11px/1.45 'Press Start 2P',monospace!important;
+  font:11px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;
   text-align:left!important;
   letter-spacing:0!important;
   text-transform:none!important;
@@ -131,7 +131,7 @@
   min-height:20px;
   margin-top:10px;
   color:#8d7ba9;
-  font:8px/1.55 'Press Start 2P',monospace
+  font:8px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
 }
 .profile-sheet-actions{
   display:grid!important;
@@ -144,7 +144,7 @@
   margin:0!important;
   border:2px solid #6e36b2!important;
   border-radius:0!important;
-  font:8px 'Press Start 2P',monospace!important;
+  font:8px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important;
   box-shadow:4px 4px 0 #030006!important
 }
 .profile-sheet-actions .btn-primary{
@@ -169,7 +169,7 @@
 .profile-sheet-label{
   margin-bottom:10px;
   color:#8c74a9;
-  font:7px/1.5 'Press Start 2P',monospace;
+  font:7px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   text-transform:uppercase
 }
 .profile-sheet .profile-bio,.profile-sheet-value{
