@@ -3385,6 +3385,32 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 LiquidMetal contrast balance */
+#liquidMetalReactRoot{
+  opacity:.62!important;
+}
+#liquidMetalReactRoot canvas{
+  filter:brightness(.72) contrast(1.10) saturate(.86)!important;
+}
+#liquidMetalReactRoot::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg,rgba(2,4,9,.12),rgba(2,4,9,.28)),
+    radial-gradient(circle at 50% 46%,transparent 0 34%,rgba(2,4,9,.18) 76%,rgba(2,4,9,.32) 100%);
+}
+@media(max-width:860px){
+  #liquidMetalReactRoot{
+    opacity:.60!important;
+  }
+  #liquidMetalReactRoot canvas{
+    filter:brightness(.70) contrast(1.10) saturate(.84)!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
