@@ -302,11 +302,218 @@ body[data-theme="void"]{
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
+
+/* Animated shader + chrome orb + LimelightNav ------------------------- */
+.shader-layer{
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  overflow:hidden;
+}
+#shaderCanvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  opacity:.82;
+  mix-blend-mode:screen;
+}
+.shader-vignette{
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 50% 42%,transparent 0 28%,rgba(0,0,0,.14) 62%,rgba(0,0,0,.68) 100%),
+    linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.32));
+}
+
+.chrome-orb{
+  position:absolute;
+  z-index:0;
+  top:18%;
+  left:52%;
+  width:clamp(210px,28vw,400px);
+  aspect-ratio:.78;
+  pointer-events:none;
+  transform:translateX(-50%) rotate(-7deg);
+  border-radius:48% 52% 49% 51% / 39% 41% 59% 61%;
+  background:
+    radial-gradient(ellipse at 58% 24%,#fff 0 18%,#ffe45c 19%,#ff5b1f 22%,#25396b 27%,transparent 31%),
+    radial-gradient(ellipse at 42% 36%,rgba(190,231,255,.98) 0 7%,rgba(69,101,151,.9) 14%,rgba(13,19,43,.96) 31%,transparent 48%),
+    radial-gradient(ellipse at 64% 67%,rgba(226,232,244,.84),rgba(69,76,106,.92) 28%,#11172e 58%,#050710 78%);
+  box-shadow:
+    inset 18px 8px 36px rgba(255,255,255,.17),
+    inset -28px -26px 60px rgba(0,0,0,.48),
+    0 0 0 1px rgba(198,216,255,.14),
+    0 0 38px rgba(102,160,255,.16),
+    0 46px 90px rgba(0,0,0,.52);
+  filter:saturate(1.15) contrast(1.06);
+  opacity:calc(.34 + (.28 * var(--depth)));
+  animation:chrome-orb-float calc(10s / max(.25,var(--motion))) ease-in-out infinite;
+}
+.chrome-orb::before{
+  content:"";
+  position:absolute;
+  inset:4% 8% 42% 10%;
+  border-radius:55% 45% 54% 46% / 44% 45% 55% 56%;
+  background:
+    linear-gradient(150deg,rgba(255,255,255,.72),rgba(175,213,255,.21) 34%,rgba(42,55,96,.06) 62%,transparent);
+  filter:blur(1px);
+}
+.chrome-orb::after{
+  content:"";
+  position:absolute;
+  inset:16% 17% 54% 15%;
+  border-radius:52% 48% 48% 52% / 49% 48% 52% 51%;
+  background:#fff;
+  box-shadow:
+    0 0 10px rgba(255,255,255,.95),
+    0 0 16px #ffd369,
+    0 0 24px #ff5e2d,
+    0 0 31px rgba(86,141,255,.78);
+}
+@keyframes chrome-orb-float{
+  0%,100%{transform:translateX(-50%) translateY(0) rotate(-7deg) scale(1)}
+  35%{transform:translateX(-50%) translateY(-10px) rotate(-4deg) scale(1.018)}
+  68%{transform:translateX(-50%) translateY(3px) rotate(-9deg) scale(.992)}
+}
+
+.limelight-wrap{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  z-index:40;
+  transform:translateX(-50%);
+  width:min(560px,calc(100vw - 26px));
+  pointer-events:none;
+}
+.limelight-nav{
+  --nav-index:2;
+  --nav-count:5;
+  position:relative;
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  align-items:stretch;
+  min-height:76px;
+  padding:5px 8px;
+  border:1px solid rgba(255,255,255,.085);
+  border-radius:22px;
+  background:
+    linear-gradient(180deg,rgba(19,20,25,.86),rgba(10,11,15,.90));
+  backdrop-filter:blur(20px) saturate(125%);
+  box-shadow:
+    0 22px 55px rgba(0,0,0,.46),
+    inset 0 1px rgba(255,255,255,.035);
+  overflow:hidden;
+  pointer-events:auto;
+}
+.limelight-beam{
+  position:absolute;
+  top:0;
+  left:0;
+  width:calc(100% / var(--nav-count));
+  height:100%;
+  transform:translateX(calc(var(--nav-index) * 100%));
+  transition:transform .36s cubic-bezier(.2,.75,.2,1);
+  pointer-events:none;
+}
+.limelight-beam::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:-1px;
+  width:52%;
+  height:5px;
+  transform:translateX(-50%);
+  border-radius:0 0 8px 8px;
+  background:#fff;
+  box-shadow:0 0 10px rgba(255,255,255,.98),0 0 18px color-mix(in srgb,var(--accent2) 52%,white);
+}
+.limelight-beam::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:3px;
+  width:82%;
+  height:82%;
+  transform:translateX(-50%);
+  clip-path:polygon(34% 0,66% 0,100% 100%,0 100%);
+  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.06) 44%,transparent 92%);
+  filter:blur(2px);
+}
+.limelight-item{
+  position:relative;
+  z-index:2;
+  display:grid;
+  place-items:center;
+  gap:2px;
+  padding:11px 6px 9px;
+  border:0;
+  border-radius:14px;
+  background:transparent;
+  color:#666a73;
+  transition:color .22s ease,transform .22s ease,background .22s ease;
+}
+.limelight-item:hover{color:#b8bbc2;background:rgba(255,255,255,.025)}
+.limelight-item.active{
+  color:#fff;
+  transform:translateY(-1px);
+}
+.limelight-item svg{
+  width:25px;
+  height:25px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.limelight-label{
+  font-size:8px;
+  font-weight:750;
+  letter-spacing:.04em;
+  opacity:0;
+  transform:translateY(2px);
+  transition:.18s ease;
+}
+.limelight-item.active .limelight-label{opacity:.72;transform:none}
+
+.lab{
+  bottom:108px;
+}
+
+@media(max-width:860px){
+  .chrome-orb{
+    top:33%;
+    left:74%;
+    width:260px;
+    opacity:calc(.20 + (.22 * var(--depth)));
+  }
+  .limelight-wrap{bottom:12px}
+  .lab{margin-bottom:104px}
+}
+@media(max-width:560px){
+  .chrome-orb{
+    top:26%;
+    left:82%;
+    width:210px;
+  }
+  .limelight-nav{min-height:68px;border-radius:19px}
+  .limelight-item{padding:9px 4px 7px}
+  .limelight-item svg{width:22px;height:22px}
+  .limelight-label{display:none}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
 <div class="scene">
+  <div class="shader-layer" aria-hidden="true">
+    <canvas id="shaderCanvas"></canvas>
+    <div class="shader-vignette"></div>
+  </div>
   <div class="gridfx"></div>
+  <div class="chrome-orb" aria-hidden="true"></div>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Voltar ao Cat Empire">
@@ -342,6 +549,32 @@ body[data-theme="void"]{
     </section>
   </main>
 </div>
+
+<nav class="limelight-wrap" aria-label="Navegação visual de teste">
+  <div class="limelight-nav" id="limelightNav">
+    <div class="limelight-beam" aria-hidden="true"></div>
+    <button class="limelight-item" type="button" data-index="0" aria-label="Home">
+      <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21h-6v-6H9v6H3z"/></svg>
+      <span class="limelight-label">Home</span>
+    </button>
+    <button class="limelight-item" type="button" data-index="1" aria-label="Salvos">
+      <svg viewBox="0 0 24 24"><path d="M6 4h12v17l-6-4-6 4z"/></svg>
+      <span class="limelight-label">Salvos</span>
+    </button>
+    <button class="limelight-item active" type="button" data-index="2" aria-label="Adicionar">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>
+      <span class="limelight-label">Criar</span>
+    </button>
+    <button class="limelight-item" type="button" data-index="3" aria-label="Perfil">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 20v-2.5A6.5 6.5 0 0 1 12 11a6.5 6.5 0 0 1 6.5 6.5V20"/></svg>
+      <span class="limelight-label">Perfil</span>
+    </button>
+    <button class="limelight-item" type="button" data-index="4" aria-label="Configurações">
+      <svg viewBox="0 0 24 24"><path d="M10 3h4l.7 2.5 2 .8 2.3-1.1 2 3.4-1.9 1.7.2 2.2 2 1.5-2 3.5-2.5-.8-1.8 1.1-.5 2.6h-4l-.6-2.5-1.9-.9-2.4 1-2-3.4 1.9-1.8-.1-2.1-2-1.5 2-3.5 2.5.8 1.8-1z"/><circle cx="12" cy="12" r="2.5"/></svg>
+      <span class="limelight-label">Ajustes</span>
+    </button>
+  </div>
+</nav>
 
 <aside class="lab" id="lab">
   <div class="lab-head">
@@ -415,6 +648,105 @@ body[data-theme="void"]{
   });
 
   apply();
+
+  // Limelight navigation preview
+  const nav = document.getElementById('limelightNav');
+  nav?.querySelectorAll('.limelight-item').forEach(item => {
+    item.addEventListener('click', () => {
+      nav.style.setProperty('--nav-index', item.dataset.index);
+      nav.querySelectorAll('.limelight-item').forEach(x => x.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+
+  // Canvas shader-inspired streak field. Pure client-side visual only.
+  const canvas = document.getElementById('shaderCanvas');
+  const ctx = canvas?.getContext('2d', { alpha:true });
+  let shaderW = 0, shaderH = 0, dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+  let streaks = [];
+  let shaderFrame = 0;
+
+  const paletteForTheme = () => {
+    const cs = getComputedStyle(document.documentElement);
+    return [
+      cs.getPropertyValue('--accent').trim() || '#8b5cf6',
+      cs.getPropertyValue('--accent2').trim() || '#36d9ff',
+      cs.getPropertyValue('--accent3').trim() || '#4ee3a8',
+      '#3348ff'
+    ];
+  };
+
+  const makeStreak = (randomY=true) => {
+    const colors = paletteForTheme();
+    const speed = 0.18 + Math.random() * 0.55;
+    return {
+      x: Math.random() * shaderW * 1.4 - shaderW * .2,
+      y: randomY ? Math.random() * shaderH : -80,
+      len: 42 + Math.random() * 160,
+      width: .45 + Math.random() * 1.5,
+      speed,
+      drift: .58 + Math.random() * .9,
+      alpha: .12 + Math.random() * .34,
+      color: colors[(Math.random() * colors.length) | 0]
+    };
+  };
+
+  const resizeShader = () => {
+    if (!canvas || !ctx) return;
+    shaderW = canvas.clientWidth;
+    shaderH = canvas.clientHeight;
+    dpr = Math.min(window.devicePixelRatio || 1, 1.75);
+    canvas.width = Math.max(1, Math.floor(shaderW * dpr));
+    canvas.height = Math.max(1, Math.floor(shaderH * dpr));
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    const count = Math.max(14, Math.min(32, Math.floor(shaderW / 48)));
+    streaks = Array.from({length:count}, () => makeStreak(true));
+  };
+
+  const hexToRgba = (hex,a) => {
+    const h = hex.replace('#','').trim();
+    if (h.length !== 6) return 'rgba(70,150,255,'+a+')';
+    const n = parseInt(h,16);
+    return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+  };
+
+  const drawShader = () => {
+    if (!ctx || !canvas) return;
+    shaderFrame = requestAnimationFrame(drawShader);
+    const speedFactor = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion')) || 1;
+    ctx.clearRect(0,0,shaderW,shaderH);
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (const s of streaks) {
+      s.x += s.speed * 2.1 * speedFactor;
+      s.y += s.speed * s.drift * 1.35 * speedFactor;
+      if (s.x > shaderW + s.len || s.y > shaderH + s.len) Object.assign(s, makeStreak(false), {x:-s.len});
+
+      const x2 = s.x + s.len;
+      const y2 = s.y + s.len * .42;
+      const grad = ctx.createLinearGradient(s.x,s.y,x2,y2);
+      grad.addColorStop(0,hexToRgba(s.color,0));
+      grad.addColorStop(.45,hexToRgba(s.color,s.alpha));
+      grad.addColorStop(.72,'rgba(220,245,255,'+(s.alpha*.72)+')');
+      grad.addColorStop(1,hexToRgba(s.color,0));
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = s.width;
+      ctx.shadowColor = s.color;
+      ctx.shadowBlur = 9 + s.width * 6;
+      ctx.beginPath();
+      ctx.moveTo(s.x,s.y);
+      ctx.lineTo(x2,y2);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalCompositeOperation = 'source-over';
+  };
+
+  window.addEventListener('resize', resizeShader, {passive:true});
+  resizeShader();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) drawShader();
+
 })();
 </script>
 </body>
