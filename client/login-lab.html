@@ -1580,6 +1580,44 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 mobile width containment */
+@media(max-width:860px){
+  .shell{
+    width:auto!important;
+    max-width:none!important;
+    margin:0!important;
+  }
+
+  .preview,
+  .login-card,
+  .feature-row,
+  .subtitle,
+  h1{
+    width:auto!important;
+    max-width:none!important;
+  }
+
+  .feature-row{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    overflow:visible!important;
+  }
+
+  .feature-row span{
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    white-space:nowrap!important;
+    text-overflow:clip!important;
+    padding-left:2px!important;
+    padding-right:2px!important;
+  }
+
+  .login-card{
+    align-self:stretch!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
