@@ -699,3 +699,433 @@ body.room-page::before{
     scroll-behavior:auto!important;
   }
 }
+
+
+/* Production user profile card --------------------------------------- */
+.room-page .profile-sheet-modal{
+  align-items:center!important;
+  padding:22px!important;
+  background:rgba(2,5,8,.78)!important;
+  backdrop-filter:blur(14px) saturate(115%)!important;
+}
+
+.room-page .profile-sheet-modal .profile-sheet{
+  position:relative!important;
+  width:min(580px,calc(100vw - 36px))!important;
+  max-width:580px!important;
+  max-height:min(820px,90dvh)!important;
+  margin:auto!important;
+  padding:0 0 20px!important;
+  overflow:auto!important;
+  border:1px solid rgba(111,255,210,.16)!important;
+  border-radius:26px!important;
+  background:
+    linear-gradient(180deg,rgba(8,18,21,.985),rgba(5,11,15,.995))!important;
+  background-image:none!important;
+  box-shadow:
+    0 36px 110px rgba(0,0,0,.60),
+    0 0 60px rgba(53,239,178,.045),
+    inset 0 1px rgba(235,255,248,.045)!important;
+  color:var(--srv-text)!important;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(91,244,194,.16) transparent;
+}
+
+.room-page .profile-sheet-handle{
+  left:50%!important;
+  top:10px!important;
+  width:46px!important;
+  height:4px!important;
+  transform:translateX(-50%)!important;
+  border-radius:999px!important;
+  background:rgba(180,241,220,.28)!important;
+  box-shadow:none!important;
+}
+
+.room-page .profile-sheet-more{
+  right:16px!important;
+  top:16px!important;
+  width:38px!important;
+  height:38px!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  border-radius:11px!important;
+  background:rgba(5,12,15,.68)!important;
+  color:rgba(232,245,240,.72)!important;
+  font:800 15px/1 system-ui,sans-serif!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.22)!important;
+  backdrop-filter:blur(8px)!important;
+  transition:.2s ease!important;
+}
+.room-page .profile-sheet-more:hover,
+.room-page .profile-sheet-more:focus-visible{
+  border-color:rgba(91,244,194,.28)!important;
+  background:rgba(25,72,57,.55)!important;
+  color:#fff!important;
+  outline:none!important;
+  transform:translateY(-1px)!important;
+}
+
+.room-page .profile-sheet-menu{
+  right:16px!important;
+  top:60px!important;
+  width:min(300px,calc(100% - 32px))!important;
+  overflow:hidden!important;
+  border:1px solid rgba(111,255,210,.14)!important;
+  border-radius:14px!important;
+  background:rgba(5,12,16,.96)!important;
+  box-shadow:0 18px 48px rgba(0,0,0,.46)!important;
+  backdrop-filter:blur(12px)!important;
+}
+.room-page .profile-sheet-menu button{
+  min-height:45px!important;
+  padding:0 14px!important;
+  border:0!important;
+  border-bottom:1px solid rgba(255,255,255,.055)!important;
+  background:transparent!important;
+  color:rgba(226,239,234,.72)!important;
+  font:650 11px/1.4 system-ui,sans-serif!important;
+}
+.room-page .profile-sheet-menu button:last-child{
+  border-bottom:0!important;
+}
+.room-page .profile-sheet-menu button:hover,
+.room-page .profile-sheet-menu button:focus-visible{
+  background:rgba(67,226,171,.08)!important;
+  color:#ecfff8!important;
+  outline:none!important;
+}
+
+/* Banner gets a readable dark fade so the profile identity always survives custom images. */
+.room-page .profile-sheet .profile-banner{
+  position:relative!important;
+  height:188px!important;
+  min-height:188px!important;
+  margin:0!important;
+  border:0!important;
+  border-bottom:1px solid rgba(111,255,210,.09)!important;
+  border-radius:26px 26px 0 0!important;
+  background-position:center!important;
+  background-size:cover!important;
+  overflow:hidden!important;
+  box-shadow:inset 0 -55px 65px rgba(3,9,12,.42)!important;
+}
+.room-page .profile-sheet .profile-banner::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  pointer-events:none!important;
+  background:
+    linear-gradient(180deg,rgba(1,6,8,.02) 0%,rgba(3,9,12,.10) 54%,rgba(3,9,12,.74) 100%),
+    radial-gradient(circle at 18% 16%,rgba(97,255,207,.10),transparent 38%)!important;
+}
+
+.room-page .profile-sheet .profile-avatar-row{
+  position:relative!important;
+  height:58px!important;
+  margin:0!important;
+}
+
+.room-page .profile-sheet .profile-avatar-big{
+  position:absolute!important;
+  left:24px!important;
+  bottom:-3px!important;
+  width:108px!important;
+  height:108px!important;
+  padding:4px!important;
+  border:1px solid rgba(113,255,211,.40)!important;
+  border-radius:50%!important;
+  background:
+    linear-gradient(145deg,rgba(22,82,62,.96),rgba(5,15,18,.98))!important;
+  box-shadow:
+    0 12px 34px rgba(0,0,0,.46),
+    0 0 0 6px rgba(5,12,15,.92),
+    0 0 32px rgba(65,238,180,.10)!important;
+}
+.room-page .profile-sheet .profile-avatar-big::after{
+  content:""!important;
+  position:absolute!important;
+  inset:5px!important;
+  border-radius:50%!important;
+  pointer-events:none!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.045)!important;
+}
+.room-page .profile-sheet .profile-avatar-big img{
+  width:100%!important;
+  height:100%!important;
+  border-radius:50%!important;
+  object-fit:cover!important;
+}
+
+.room-page .profile-sheet-content{
+  padding:0 24px 4px!important;
+}
+
+.room-page .profile-sheet .profile-display-name{
+  margin:16px 0 2px!important;
+  padding-left:120px!important;
+  min-height:28px!important;
+  color:#f2fff9!important;
+  font:850 24px/1.15 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  letter-spacing:-.025em!important;
+  text-align:left!important;
+  text-transform:none!important;
+  text-shadow:none!important;
+}
+
+.room-page .profile-sheet .profile-username{
+  margin:0!important;
+  padding-left:120px!important;
+  color:rgba(177,209,198,.50)!important;
+  font:650 11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace!important;
+  text-align:left!important;
+}
+
+.room-page .profile-sheet-mutual{
+  min-height:20px!important;
+  margin:10px 0 0!important;
+  padding-left:120px!important;
+  color:rgba(155,193,180,.40)!important;
+  font:600 10px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+}
+
+.room-page .profile-sheet-actions{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 46px!important;
+  gap:9px!important;
+  margin:22px 0 18px!important;
+}
+
+.room-page .profile-sheet-actions .btn{
+  height:46px!important;
+  min-height:46px!important;
+  margin:0!important;
+  padding:0 14px!important;
+  border:1px solid rgba(255,255,255,.075)!important;
+  border-radius:12px!important;
+  background:rgba(13,22,27,.82)!important;
+  color:rgba(230,241,236,.78)!important;
+  font:750 11px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  box-shadow:none!important;
+  transition:.2s ease!important;
+}
+
+.room-page .profile-sheet-actions .btn-primary{
+  border-color:rgba(104,255,207,.30)!important;
+  background:
+    linear-gradient(135deg,rgba(54,213,157,.98),rgba(34,128,101,.98))!important;
+  color:#03150f!important;
+  box-shadow:0 10px 26px rgba(39,210,153,.13)!important;
+}
+
+.room-page .profile-sheet-actions .btn-primary:hover{
+  transform:translateY(-1px)!important;
+  filter:brightness(1.08)!important;
+  box-shadow:0 14px 30px rgba(39,210,153,.18)!important;
+}
+
+.room-page .profile-sheet-actions .profile-close-action{
+  width:46px!important;
+  padding:0!important;
+  background:rgba(14,22,27,.84)!important;
+  color:rgba(225,238,233,.62)!important;
+  font-size:18px!important;
+}
+.room-page .profile-sheet-actions .profile-close-action:hover{
+  color:#fff!important;
+  border-color:rgba(255,255,255,.13)!important;
+  background:rgba(29,39,46,.92)!important;
+}
+
+.room-page .profile-sheet-section{
+  margin-top:10px!important;
+  padding:15px 16px!important;
+  border:1px solid rgba(255,255,255,.06)!important;
+  border-radius:14px!important;
+  background:
+    linear-gradient(145deg,rgba(12,21,25,.66),rgba(6,12,15,.78))!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.018)!important;
+}
+
+.room-page .profile-sheet-label{
+  margin-bottom:8px!important;
+  color:rgba(151,193,179,.46)!important;
+  font:850 9px/1.4 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  letter-spacing:.12em!important;
+  text-transform:uppercase!important;
+}
+
+.room-page .profile-sheet .profile-bio,
+.room-page .profile-sheet-value{
+  margin:0!important;
+  color:rgba(230,240,236,.74)!important;
+  font:500 12px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  text-align:left!important;
+  white-space:pre-wrap!important;
+  overflow-wrap:anywhere!important;
+}
+
+.room-page .profile-sheet-roles{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:7px!important;
+}
+
+.room-page .profile-sheet-role{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  min-height:30px!important;
+  padding:6px 10px!important;
+  border:1px solid color-mix(in srgb,var(--role-color,#61e7b6) 38%,transparent)!important;
+  border-radius:999px!important;
+  background:color-mix(in srgb,var(--role-color,#61e7b6) 9%,rgba(7,14,17,.86))!important;
+  color:rgba(235,244,241,.82)!important;
+  font:700 10px/1.2 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  box-shadow:none!important;
+}
+.room-page .profile-sheet-role::before{
+  width:7px!important;
+  height:7px!important;
+  border-radius:50%!important;
+  background:var(--role-color,#61e7b6)!important;
+  box-shadow:0 0 8px color-mix(in srgb,var(--role-color,#61e7b6) 55%,transparent)!important;
+}
+
+/* Give the editing profile card the same material language without altering its fields/actions. */
+.room-page #editProfileModal .profile-modal-box{
+  border:1px solid rgba(111,255,210,.13)!important;
+  border-radius:22px!important;
+  background:linear-gradient(180deg,rgba(8,18,21,.98),rgba(5,11,15,.99))!important;
+  box-shadow:0 30px 90px rgba(0,0,0,.52)!important;
+}
+.room-page #editProfileModal .profile-banner{
+  border-radius:14px!important;
+  border:1px solid rgba(255,255,255,.055)!important;
+}
+.room-page #editProfileModal .profile-avatar-big{
+  border-radius:50%!important;
+  border:1px solid rgba(111,255,210,.24)!important;
+  background:#071015!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.28),0 0 0 4px rgba(85,242,189,.035)!important;
+}
+.room-page #editProfileModal .profile-avatar-big img{
+  border-radius:50%!important;
+}
+
+/* Desktop-only soft spotlight following the profile card pointer. */
+@media(pointer:fine){
+  .room-page .profile-sheet-modal .profile-sheet{
+    --profile-x:50%;
+    --profile-y:38%;
+  }
+  .room-page .profile-sheet-modal .profile-sheet::after{
+    content:""!important;
+    position:absolute!important;
+    inset:0!important;
+    z-index:0!important;
+    pointer-events:none!important;
+    border-radius:inherit!important;
+    background:
+      radial-gradient(circle at var(--profile-x) var(--profile-y),rgba(83,239,184,.075),transparent 28%)!important;
+    opacity:0!important;
+    transition:opacity .2s ease!important;
+  }
+  .room-page .profile-sheet-modal .profile-sheet:hover::after{
+    opacity:1!important;
+  }
+  .room-page .profile-sheet-modal .profile-sheet > *{
+    position:relative;
+    z-index:1;
+  }
+}
+
+/* Mobile stays a sheet, but no longer looks like the old purple pixel card. */
+@media(max-width:720px){
+  .room-page .profile-sheet-modal{
+    align-items:flex-end!important;
+    padding:0!important;
+    background:rgba(2,5,8,.72)!important;
+  }
+
+  .room-page .profile-sheet-modal .profile-sheet{
+    width:100%!important;
+    max-width:100%!important;
+    max-height:91dvh!important;
+    margin:0!important;
+    padding-bottom:max(18px,env(safe-area-inset-bottom))!important;
+    border-left:0!important;
+    border-right:0!important;
+    border-bottom:0!important;
+    border-radius:24px 24px 0 0!important;
+    box-shadow:0 -24px 80px rgba(0,0,0,.48)!important;
+  }
+
+  .room-page .profile-sheet .profile-banner{
+    height:144px!important;
+    min-height:144px!important;
+    border-radius:24px 24px 0 0!important;
+  }
+
+  .room-page .profile-sheet .profile-avatar-row{
+    height:50px!important;
+  }
+
+  .room-page .profile-sheet .profile-avatar-big{
+    left:18px!important;
+    width:88px!important;
+    height:88px!important;
+    padding:3px!important;
+    box-shadow:
+      0 10px 28px rgba(0,0,0,.42),
+      0 0 0 5px rgba(5,12,15,.94),
+      0 0 26px rgba(65,238,180,.08)!important;
+  }
+
+  .room-page .profile-sheet-content{
+    padding:0 18px 2px!important;
+  }
+
+  .room-page .profile-sheet .profile-display-name{
+    margin-top:12px!important;
+    padding-left:100px!important;
+    min-height:24px!important;
+    font-size:19px!important;
+  }
+
+  .room-page .profile-sheet .profile-username,
+  .room-page .profile-sheet-mutual{
+    padding-left:100px!important;
+  }
+
+  .room-page .profile-sheet-actions{
+    margin-top:18px!important;
+  }
+
+  .room-page .profile-sheet-section{
+    padding:13px 14px!important;
+    border-radius:12px!important;
+  }
+
+  .room-page .profile-sheet-more{
+    right:12px!important;
+    top:12px!important;
+    width:36px!important;
+    height:36px!important;
+  }
+
+  .room-page .profile-sheet-menu{
+    right:12px!important;
+    top:54px!important;
+    width:calc(100% - 24px)!important;
+  }
+}
+
+html.cat-native-app .room-page .profile-sheet-modal{
+  padding:8px 8px max(8px,env(safe-area-inset-bottom))!important;
+}
+html.cat-native-app .room-page .profile-sheet-modal .profile-sheet{
+  max-height:86dvh!important;
+  border:1px solid rgba(111,255,210,.14)!important;
+  border-radius:20px!important;
+}
+
