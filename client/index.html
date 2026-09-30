@@ -3,55 +3,170 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#09090b">
+<meta name="theme-color" content="#05060a">
 <title>Cat Empire — Comunidade, chat e transmissão</title>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/empire.css?v=20260914-ui2">
-<link rel="stylesheet" href="/login-depth-theme.css?v=20260930c">
+<link rel="stylesheet" href="/login-real-theme.css?v=20260930-real1">
 </head>
-<body class="landing-page">
-<header class="landing-topbar">
-  <a class="brand" href="/" aria-label="Cat Empire — início">
-    <img src="/logo.svg" class="brand-logo" alt="">
-    <span>Cat Empire</span>
-  </a>
-  <nav class="landing-nav" aria-label="Navegação principal">
-    <a href="/" class="active">Início</a>
-    <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">Comunidade</a>
-  </nav>
-  <div class="active-pill"><span class="dot"></span><strong id="activeRoomsTop">—</strong> servidores</div>
-</header>
+<body class="landing-page real-login-page">
+<div class="real-scene">
+  <div id="liquidMetalReactRoot" aria-hidden="true"></div>
 
-<main class="landing-main">
-  <section class="hero" aria-labelledby="welcomeTitle">
-    <div class="crystal-kicker"><span class="dot"></span> Cat Empire está online</div>
-    <h1 id="welcomeTitle">Entre na sua comunidade.</h1>
-    <p class="intro">Converse, participe de chamadas e compartilhe sua tela com seus amigos em um só lugar.</p>
+  <header class="real-topbar">
+    <a class="real-brand" href="/" aria-label="Cat Empire — início">
+      <img src="/logo.svg" alt="">
+      <span>Cat Empire</span>
+    </a>
+    <nav class="real-nav" aria-label="Navegação principal">
+      <a href="/" class="active">Início</a>
+      <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">Comunidade</a>
+    </nav>
+    <div class="real-active-pill"><span class="real-dot"></span><strong id="activeRoomsTop">—</strong> servidores</div>
+  </header>
 
-    <div class="auth">
-      <button class="btn" id="guestBtn" hidden>Entrar com uma conta rápida</button>
-      <div class="form-card" id="guestForm">
-        <label for="guestName">Como podemos chamar você?</label>
-        <input id="guestName" maxlength="16" placeholder="Seu nome" autocomplete="nickname">
-        <button class="btn btn-primary" id="guestGo">Continuar</button>
+  <main class="real-shell">
+    <section class="real-preview" aria-labelledby="welcomeTitle">
+      <div class="real-kicker"><span class="real-dot"></span><span>Cat Empire está online</span></div>
+      <h1 id="welcomeTitle">Entre na sua comunidade.</h1>
+      <p class="real-subtitle">Converse, participe de chamadas e compartilhe sua tela com seus amigos em um só lugar.</p>
+      <div class="real-features">
+        <span>Transmissões</span>
+        <span>Comunidades</span>
+        <span>Mensagens</span>
       </div>
-      <p class="entry-note">Uma conta rápida para começar. Seu acesso fica salvo neste navegador.</p>
-      <div class="auth-divider">ou</div>
-      <button class="btn btn-discord" id="discordBtn">Entrar com Discord</button>
-      <div id="serversList" class="server-list"></div>
+    </section>
+
+    <section class="real-login-card" aria-label="Entrar no Cat Empire">
+      <div class="real-visual-pane" aria-hidden="true">
+        <div class="real-lamp">
+          <span class="real-lamp-wire"></span>
+          <span class="real-lamp-cap"></span>
+          <span class="real-lamp-light"></span>
+        </div>
+        <div class="real-beam"></div>
+        <div class="real-orbit real-orbit-a"></div>
+        <div class="real-orbit real-orbit-b"></div>
+        <div class="real-mascot">
+          <span class="real-mascot-ring"></span>
+          <img src="/logo.svg" alt="">
+        </div>
+        <span class="real-particle rp1"></span>
+        <span class="real-particle rp2"></span>
+        <span class="real-particle rp3"></span>
+      </div>
+
+      <div class="real-form-pane">
+        <div class="real-card-title">Bem-vindo de volta.</div>
+        <div class="real-card-sub">Entre no Cat Empire para continuar sua experiência.</div>
+
+        <button class="btn" id="guestBtn" hidden type="button">Entrar com uma conta rápida</button>
+
+        <div id="guestForm" class="real-guest-form">
+          <div class="real-field">
+            <label for="guestName">Seu nome</label>
+            <input id="guestName" maxlength="16" placeholder="DanoneDev" autocomplete="nickname">
+          </div>
+
+          <div class="real-primary-wrap">
+            <button class="real-primary" id="guestGo" type="button" aria-label="Continuar">
+              <span class="real-primary-text real-primary-text-main">
+                <span>C</span><span>o</span><span>n</span><span>t</span><span>i</span><span>n</span><span>u</span><span>a</span><span>r</span>
+              </span>
+              <span class="real-primary-text real-primary-text-loading">
+                <span>E</span><span>n</span><span>t</span><span>r</span><span>a</span><span>n</span><span>d</span><span>o</span>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div class="real-sep"><span>ou</span></div>
+
+        <button class="real-discord" id="discordBtn" type="button">
+          <span class="real-discord-sheen" aria-hidden="true"></span>
+          <span class="real-discord-icon-wrap" aria-hidden="true">
+            <svg class="real-discord-icon" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19.55 5.42A16.6 16.6 0 0 0 15.45 4l-.55 1.15a15.2 15.2 0 0 0-5.8 0L8.55 4A16.5 16.5 0 0 0 4.45 5.42C1.9 9.3 1.2 13.1 1.55 16.8c1.72 1.28 3.42 2.1 5.1 2.66.42-.58.82-1.18 1.16-1.82-.64-.24-1.25-.54-1.83-.88.15-.12.3-.23.45-.35 3.54 1.64 7.37 1.64 10.87 0 .15.12.3.23.45.35-.58.34-1.19.64-1.83.88.34.64.73 1.24 1.16 1.82 1.68-.56 3.38-1.38 5.1-2.66.42-4.26-.72-8-3-11.38ZM9.25 14.25c-1.02 0-1.85-.94-1.85-2.1 0-1.16.81-2.1 1.85-2.1s1.87.95 1.85 2.1c0 1.16-.82 2.1-1.85 2.1Zm5.5 0c-1.02 0-1.85-.94-1.85-2.1 0-1.16.81-2.1 1.85-2.1s1.87.95 1.85 2.1c0 1.16-.81 2.1-1.85 2.1Z"></path>
+            </svg>
+          </span>
+          <span>Entrar com Discord</span>
+        </button>
+
+        <p class="real-entry-note">Uma conta rápida para começar. Seu acesso fica salvo neste navegador.</p>
+        <div id="serversList" class="server-list real-server-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="real-footer" aria-label="Rodapé Cat Empire">
+    <div class="real-footer-card">
+      <div class="real-footer-grid">
+        <section class="real-footer-brand-col">
+          <a class="real-footer-brand" href="/" aria-label="Cat Empire">
+            <img src="/logo.svg" alt="">
+            <span>Cat Empire</span>
+          </a>
+          <p>Comunidades, transmissões e mensagens reunidas em uma experiência feita para o Cat Empire.</p>
+        </section>
+
+        <nav class="real-footer-col" aria-label="Explorar">
+          <h4>Explorar</h4>
+          <a href="/">Início</a>
+          <a href="/server.html">Comunidades</a>
+          <a href="/dms.html">Mensagens</a>
+        </nav>
+
+        <nav class="real-footer-col" aria-label="Acesso">
+          <h4>Acesso</h4>
+          <a href="/invite.html">Convites</a>
+          <a href="/">Entrar</a>
+          <a href="/server.html" class="real-footer-live">Ao vivo <span></span></a>
+        </nav>
+
+        <section class="real-footer-col real-footer-contact">
+          <h4>Cat Empire</h4>
+          <div class="real-footer-contact-row"><span>◆</span><span>Comunidade online</span></div>
+          <div class="real-footer-contact-row"><span>●</span><span>Experiência web</span></div>
+        </section>
+      </div>
+
+      <div class="real-footer-divider"></div>
+
+      <div class="real-footer-bottom">
+        <a class="real-footer-discord" href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener" aria-label="Discord do Cat Empire">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.55 5.42A16.6 16.6 0 0 0 15.45 4l-.55 1.15a15.2 15.2 0 0 0-5.8 0L8.55 4A16.5 16.5 0 0 0 4.45 5.42C1.9 9.3 1.2 13.1 1.55 16.8c1.72 1.28 3.42 2.1 5.1 2.66.42-.58.82-1.18 1.16-1.82-.64-.24-1.25-.54-1.83-.88.15-.12.3-.23.45-.35 3.54 1.64 7.37 1.64 10.87 0 .15.12.3.23.45.35-.58.34-1.19.64-1.83.88.34.64.73 1.24 1.16 1.82 1.68-.56 3.38-1.38 5.1-2.66.42-4.26-.72-8-3-11.38ZM9.25 14.25c-1.02 0-1.85-.94-1.85-2.1 0-1.16.81-2.1 1.85-2.1s1.87.95 1.85 2.1c0 1.16-.82 2.1-1.85 2.1Zm5.5 0c-1.02 0-1.85-.94-1.85-2.1 0-1.16.81-2.1 1.85-2.1s1.87.95 1.85 2.1c0 1.16-.81 2.1-1.85 2.1Z"></path></svg>
+        </a>
+        <p>© 2026 Cat Empire · BY:DANONIN · <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">Suporte</a></p>
+      </div>
+
+      <div class="real-footer-wordmark" aria-hidden="true">
+        <svg class="real-footer-hover-svg" viewBox="0 0 1000 220" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="realFooterTextGradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#33efae"/>
+              <stop offset="38%" stop-color="#80eeb4"/>
+              <stop offset="70%" stop-color="#3ca2fa"/>
+              <stop offset="100%" stop-color="#8b5cf6"/>
+            </linearGradient>
+            <radialGradient id="realFooterReveal" gradientUnits="objectBoundingBox" cx="50%" cy="50%" r="24%">
+              <stop offset="0%" stop-color="white"/>
+              <stop offset="100%" stop-color="black"/>
+            </radialGradient>
+            <mask id="realFooterMask"><rect width="100%" height="100%" fill="url(#realFooterReveal)"/></mask>
+          </defs>
+          <text class="rft-outline" x="50%" y="53%" text-anchor="middle" dominant-baseline="middle">CAT EMPIRE</text>
+          <text class="rft-draw" x="50%" y="53%" text-anchor="middle" dominant-baseline="middle">CAT EMPIRE</text>
+          <text class="rft-reveal" x="50%" y="53%" text-anchor="middle" dominant-baseline="middle" mask="url(#realFooterMask)">CAT EMPIRE</text>
+        </svg>
+      </div>
+      <div class="real-footer-bg" aria-hidden="true"></div>
     </div>
+  </footer>
+</div>
 
-    <div class="entry-features">
-      <span>Transmissões</span>
-      <span>Comunidades</span>
-      <span>Mensagens</span>
-    </div>
-  </section>
-</main>
-
-<p class="landing-copyright">Cat Empire · BY:DANONIN · <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">Suporte</a></p>
-
+<script defer src="/liquid-metal-react.bundle.js"></script>
 <script src="/ui.js"></script>
-<script src="/app.js?v=20260914-ui2"></script>
+<script src="/app.js?v=20260930-real1"></script>
+<script src="/login-real-ui.js?v=20260930-real1"></script>
 </body>
 </html>
