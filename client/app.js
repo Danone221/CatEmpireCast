@@ -150,18 +150,33 @@ $('guestBtn').onclick = () => {
   if (!$('guestForm').hidden) $('guestName').focus();
 };
 
-$('guestName').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('guestGo').click(); } });
+function setGuestButtonLoading(loading) {
+  const btn = $('guestGo');
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.dataset.loading = loading ? 'true' : 'false';
+  btn.setAttribute('aria-busy', loading ? 'true' : 'false');
+}
+
+$('guestName').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    $('guestGo').click();
+  }
+});
+
 $('guestGo').onclick = async () => {
   if ($('guestGo').disabled) return;
-  $('guestGo').disabled = true;
-  $('guestGo').textContent = 'Entrando…';
+  setGuestButtonLoading(true);
   try {
     await ensureGuest($('guestName').value.trim(), true);
-    $('guestForm').hidden = true;
     toast('🐱 Conta criada!', 'success');
     await resumeUserDestination();
-  } catch (e) { toast(e.message, 'error'); }
-  finally { $('guestGo').disabled = false; $('guestGo').textContent = 'Entrar no Cat Empire →'; }
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    setGuestButtonLoading(false);
+  }
 };
 
 $('discordBtn').onclick = () => { location.href = '/auth/discord'; };
