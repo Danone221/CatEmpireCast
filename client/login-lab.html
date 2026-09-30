@@ -84,12 +84,12 @@ button{cursor:pointer}
 .scene::before{
   top:-22vw;left:-16vw;
   background:radial-gradient(circle,var(--accent),transparent 66%);
-  animation:driftA calc(15s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:driftA 15s ease-in-out infinite;
 }
 .scene::after{
   right:-18vw;bottom:-24vw;
   background:radial-gradient(circle,var(--accent2),transparent 67%);
-  animation:driftB calc(18s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:driftB 18s ease-in-out infinite;
 }
 
 .gridfx{
@@ -186,13 +186,13 @@ h1{
     0 0 calc(64px * var(--depth)) color-mix(in srgb,var(--accent) 14%,transparent),
     inset 0 1px rgba(255,255,255,.06);
   overflow:hidden;
-  animation:floatCard calc(8s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:floatCard 8s ease-in-out infinite;
 }
 .login-card::before{
   content:"";
   position:absolute;inset:-70%;z-index:-2;
   background:conic-gradient(from 10deg,transparent 0 14%,color-mix(in srgb,var(--accent) 30%,transparent) 19%,transparent 29% 51%,color-mix(in srgb,var(--accent2) 23%,transparent) 59%,transparent 69% 83%,color-mix(in srgb,var(--accent3) 18%,transparent) 89%,transparent 96%);
-  animation:borderFlow calc(14s / max(.25,var(--motion))) linear infinite;
+  animation:borderFlow 14s linear infinite;
 }
 .login-card::after{
   content:"";position:absolute;inset:1px;z-index:-1;border-radius:27px;
@@ -221,12 +221,12 @@ h1{
   background-size:180% 180%;
   color:#fff;font-size:11px;font-weight:900;letter-spacing:.11em;text-transform:uppercase;
   box-shadow:0 14px 34px color-mix(in srgb,var(--accent) 30%,transparent);
-  animation:borderFlow calc(6s / max(.25,var(--motion))) ease infinite;
+  animation:borderFlow 6s ease infinite;
 }
 .cta::after{
   content:"";position:absolute;top:-45%;left:-40%;width:32%;height:190%;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
-  animation:shine calc(4.6s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:shine 4.6s ease-in-out infinite;
 }
 .cta:hover{transform:translateY(-2px);filter:brightness(1.08)}
 .sep{display:flex;align-items:center;gap:10px;margin:15px 0;color:#697286;font-size:9px;text-transform:uppercase;letter-spacing:.16em}
@@ -299,8 +299,6 @@ body[data-theme="void"]{
   .login-card::after{border-radius:21px}
   .lab-grid{grid-template-columns:1fr}
 }
-@media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation:none!important;transition:none!important}
 }
 
 /* Animated shader + chrome orb + LimelightNav ------------------------- */
@@ -349,7 +347,7 @@ body[data-theme="void"]{
     0 46px 90px rgba(0,0,0,.52);
   filter:saturate(1.15) contrast(1.06);
   opacity:calc(.34 + (.28 * var(--depth)));
-  animation:chrome-orb-float calc(10s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:chrome-orb-float 10s ease-in-out infinite;
 }
 .chrome-orb::before{
   content:"";
@@ -433,7 +431,7 @@ body[data-theme="void"]{
     0 0 8px rgba(255,255,255,.96),
     0 0 16px color-mix(in srgb,var(--accent2) 60%,white),
     0 0 28px color-mix(in srgb,var(--accent) 38%,transparent);
-  animation:limelight-scan calc(8s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:limelight-scan 8s ease-in-out infinite;
 }
 .limelight-effect .limelight-head::after{
   content:"";
@@ -519,27 +517,27 @@ body[data-theme="void"]{
   background:
     radial-gradient(ellipse at 24% 50%,transparent 0 26%,color-mix(in srgb,var(--accent2) 22%,transparent) 39%,transparent 54%),
     radial-gradient(ellipse at 68% 52%,transparent 0 22%,color-mix(in srgb,var(--accent) 20%,transparent) 39%,transparent 58%);
-  animation:wave-drift calc(18s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:wave-drift 18s ease-in-out infinite;
 }
 .wave-field::after{
   top:47%;
   background:
     radial-gradient(ellipse at 36% 50%,transparent 0 24%,color-mix(in srgb,var(--accent3) 14%,transparent) 39%,transparent 55%),
     radial-gradient(ellipse at 78% 46%,transparent 0 25%,color-mix(in srgb,var(--accent2) 15%,transparent) 40%,transparent 57%);
-  animation:wave-drift-reverse calc(23s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:wave-drift-reverse 23s ease-in-out infinite;
 }
 
 .chrome-orb{
   background-size:135% 135%,125% 125%,135% 135%;
   animation:
-    chrome-orb-float calc(10s / max(.25,var(--motion))) ease-in-out infinite,
-    liquid-crystal-morph calc(11s / max(.25,var(--motion))) ease-in-out infinite;
+    chrome-orb-float 10s ease-in-out infinite,
+    liquid-crystal-morph 11s ease-in-out infinite;
 }
 .chrome-orb::before{
-  animation:wave-drift calc(13s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:wave-drift 13s ease-in-out infinite;
 }
 .chrome-orb::after{
-  animation:pulse calc(3.4s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:pulse 3.4s ease-in-out infinite;
 }
 
 .text-shimmer{
@@ -557,7 +555,7 @@ body[data-theme="void"]{
   background-size:250% 100%;
   -webkit-background-clip:text;
   background-clip:text;
-  animation:shimmer-text calc(5.8s / max(.25,var(--motion))) ease-in-out infinite;
+  animation:shimmer-text 5.8s ease-in-out infinite;
 }
 
 .border-beam{
@@ -582,7 +580,7 @@ body[data-theme="void"]{
   -webkit-mask-composite:xor;
   mask-composite:exclude;
   filter:drop-shadow(0 0 8px color-mix(in srgb,var(--accent2) 28%,transparent));
-  animation:beam-spin calc(8s / max(.25,var(--motion))) linear infinite;
+  animation:beam-spin 8s linear infinite;
 }
 .border-beam-soft{
   position:absolute;
@@ -605,6 +603,53 @@ body[data-theme="void"]{
   .border-beam{filter:drop-shadow(0 0 5px color-mix(in srgb,var(--accent2) 22%,transparent))}
 }
 
+
+/* Animation reliability pass */
+.scene,
+.scene::before,
+.scene::after,
+.chrome-orb,
+.wave-field::before,
+.wave-field::after,
+.login-card,
+.login-card::before,
+.cta,
+.cta::after,
+.limelight-effect .limelight-head,
+.limelight-effect .limelight-head::after,
+.text-shimmer,
+.border-beam{
+  will-change:transform,opacity,filter,background-position;
+}
+
+.motion-proof{
+  position:absolute;
+  z-index:1;
+  left:-28%;
+  top:31%;
+  width:42%;
+  height:2px;
+  pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--accent2),#fff,var(--accent),transparent);
+  box-shadow:0 0 12px var(--accent2),0 0 28px color-mix(in srgb,var(--accent) 45%,transparent);
+  opacity:.7;
+  transform:rotate(18deg);
+  animation:motion-proof-cross 5.5s linear infinite;
+}
+.motion-proof.two{
+  top:67%;
+  animation-duration:8s;
+  animation-delay:-3s;
+  opacity:.42;
+  transform:rotate(13deg) scaleX(.72);
+}
+@keyframes motion-proof-cross{
+  0%{translate:-12vw -8vh;opacity:0}
+  12%{opacity:.7}
+  75%{opacity:.7}
+  100%{translate:150vw 52vh;opacity:0}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -615,6 +660,8 @@ body[data-theme="void"]{
   </div>
   <div class="gridfx"></div>
   <div class="wave-field" aria-hidden="true"></div>
+  <div class="motion-proof" aria-hidden="true"></div>
+  <div class="motion-proof two" aria-hidden="true"></div>
   <div class="chrome-orb" aria-hidden="true"></div>
 
   <header class="topbar">
@@ -704,11 +751,29 @@ body[data-theme="void"]{
   const motion = document.getElementById('motion');
   const blur = document.getElementById('blur');
 
+  const baseDurations = new Map();
+  const captureAnimationDurations = () => {
+    document.querySelectorAll('*').forEach(el => {
+      const cs = getComputedStyle(el);
+      if (cs.animationName && cs.animationName !== 'none') {
+        const first = parseFloat(cs.animationDuration);
+        if (Number.isFinite(first) && first > 0) baseDurations.set(el, first);
+      }
+    });
+  };
+
   const apply = () => {
     document.body.dataset.theme = theme.value;
     root.style.setProperty('--depth', depth.value);
     root.style.setProperty('--motion', motion.value);
     root.style.setProperty('--blur', blur.value + 'px');
+
+    const speed = Math.max(.2, parseFloat(motion.value) || 1);
+    if (!baseDurations.size) captureAnimationDurations();
+    baseDurations.forEach((seconds, el) => {
+      el.style.animationDuration = Math.max(.35, seconds / speed) + 's';
+      el.style.animationPlayState = 'running';
+    });
   };
 
   [theme,depth,motion,blur].forEach(el => el.addEventListener('input', apply));
@@ -727,7 +792,14 @@ body[data-theme="void"]{
     document.body.classList.toggle('lab-hidden');
   });
 
-  apply();
+  requestAnimationFrame(() => {
+    captureAnimationDurations();
+    apply();
+    document.querySelectorAll('*').forEach(el => {
+      const cs = getComputedStyle(el);
+      if (cs.animationName && cs.animationName !== 'none') el.style.animationPlayState = 'running';
+    });
+  });
 
   // Canvas shader-inspired streak field. Pure client-side visual only.
   const canvas = document.getElementById('shaderCanvas');
