@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#05060a">
-<title>Cat Empire — Login Visual Lab 09</title>
+<title>Cat Empire — Login Visual Lab 10</title>
 <style>
 :root{
   --bg:#05060a;
@@ -2009,68 +2009,338 @@ h1{
   .border-beam{filter:none!important;animation-duration:10s!important}
 }
 
+
+/* LAB 10 — Liquid Aurora / Silk Flow */
+.loom-ambient,.loom-stage,.loom-scan,
+.holo-ambient,.spectral-sweep,.holo-stage,.holo-card-sheen,
+.vortex-core,.vortex-rings,.warp-field,
+.collision-aura,.collision-field,.impact-floor,
+.nebula-field,.halo-field,.meteor-field,
+.mobile-energy,.prism-mesh,.ray-stage,.glass-orbit{display:none!important}
+
+.topbar,.shell{position:relative;z-index:5}
+
+.scene{
+  background:
+    radial-gradient(circle at 71% 31%,rgba(59,145,255,.10),transparent 26rem),
+    radial-gradient(circle at 18% 73%,rgba(116,70,255,.075),transparent 28rem),
+    radial-gradient(circle at 56% 85%,rgba(47,233,195,.04),transparent 24rem),
+    linear-gradient(180deg,#020307 0%,#060912 49%,#020307 100%)!important;
+}
+
+.liquid-ambient{
+  position:absolute;
+  inset:-10%;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 18% 35%,rgba(122,83,255,.18),transparent 24%),
+    radial-gradient(ellipse at 70% 33%,rgba(52,197,255,.15),transparent 26%),
+    radial-gradient(ellipse at 62% 75%,rgba(62,238,199,.07),transparent 21%);
+  filter:blur(34px) saturate(1.12);
+  opacity:.82;
+  animation:liquid-ambient-drift 14s ease-in-out infinite alternate;
+  will-change:transform,opacity;
+}
+@keyframes liquid-ambient-drift{
+  0%{transform:translate3d(-2%,1%,0) scale(1);opacity:.66}
+  50%{transform:translate3d(3%,-2%,0) scale(1.055);opacity:.94}
+  100%{transform:translate3d(1%,3%,0) scale(1.02);opacity:.76}
+}
+
+.silk-stage{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  overflow:hidden;
+}
+.silk-svg{
+  position:absolute;
+  inset:-4%;
+  width:108%;
+  height:108%;
+  transform:translate3d(var(--silk-x,0px),var(--silk-y,0px),0) scale(1.03);
+  transition:transform .35s ease-out;
+  overflow:visible;
+}
+.silk-bloom path{
+  fill:none;
+  stroke-width:64;
+  stroke-linecap:round;
+  opacity:.10;
+  filter:blur(24px);
+}
+.silk-bloom path:nth-child(1){stroke:#755eff}
+.silk-bloom path:nth-child(2){stroke:#54d7ff}
+.silk-bloom path:nth-child(3){stroke:#57f0cc}
+
+.sr{
+  fill:none;
+  stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+  transform-box:view-box;
+  transform-origin:center;
+  will-change:transform,opacity;
+}
+.sra{
+  stroke:url(#silkA);
+  stroke-width:19;
+  opacity:.72;
+  animation:silk-drift-a 10s ease-in-out infinite alternate;
+}
+.srb{
+  stroke:url(#silkB);
+  stroke-width:13;
+  opacity:.58;
+  animation:silk-drift-b 13s ease-in-out infinite alternate;
+}
+.src{
+  stroke:url(#silkC);
+  stroke-width:10;
+  opacity:.42;
+  animation:silk-drift-c 16s ease-in-out infinite alternate;
+}
+@keyframes silk-drift-a{
+  from{transform:translate3d(-12px,4px,0) scaleY(.98)}
+  to{transform:translate3d(18px,-13px,0) scaleY(1.035)}
+}
+@keyframes silk-drift-b{
+  from{transform:translate3d(13px,-8px,0) scaleY(1.02)}
+  to{transform:translate3d(-16px,12px,0) scaleY(.975)}
+}
+@keyframes silk-drift-c{
+  from{transform:translate3d(-8px,9px,0) scaleY(.985)}
+  to{transform:translate3d(15px,-7px,0) scaleY(1.025)}
+}
+
+.sp{
+  fill:none;
+  stroke:#fff;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-dasharray:46 920;
+  opacity:0;
+  vector-effect:non-scaling-stroke;
+  animation:silk-specular 8s linear infinite;
+}
+.spb{animation-delay:-2.6s;animation-duration:10s}
+.spc{animation-delay:-5.1s;animation-duration:12s}
+@keyframes silk-specular{
+  0%{stroke-dashoffset:980;opacity:0}
+  12%{opacity:.56}
+  68%{opacity:.42}
+  100%{stroke-dashoffset:-420;opacity:0}
+}
+
+.liquid-caustic{
+  position:absolute;
+  z-index:2;
+  width:460px;
+  height:460px;
+  left:52%;
+  top:47%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  pointer-events:none;
+  background:
+    conic-gradient(
+      from 20deg,
+      transparent 0 12%,
+      rgba(85,203,255,.055) 17%,
+      transparent 24%,
+      rgba(132,83,255,.06) 34%,
+      transparent 44%,
+      rgba(83,238,202,.045) 54%,
+      transparent 67%,
+      rgba(255,255,255,.035) 77%,
+      transparent 100%
+    );
+  -webkit-mask-image:radial-gradient(circle,rgba(0,0,0,.85),transparent 70%);
+  mask-image:radial-gradient(circle,rgba(0,0,0,.85),transparent 70%);
+  animation:liquid-caustic-spin 18s linear infinite;
+  opacity:.82;
+}
+@keyframes liquid-caustic-spin{
+  to{transform:translate(-50%,-50%) rotate(360deg)}
+}
+
+.login-card{
+  --spot-x:72%;
+  --spot-y:11%;
+  transform:none!important;
+  animation:liquid-card-breathe 7s ease-in-out infinite!important;
+  border:1px solid rgba(160,205,255,.17)!important;
+  border-radius:29px!important;
+  background:
+    radial-gradient(circle at var(--spot-x) var(--spot-y),rgba(255,255,255,.055),transparent 24%),
+    linear-gradient(180deg,rgba(13,18,30,.92),rgba(6,9,16,.975))!important;
+  box-shadow:
+    0 42px 112px rgba(0,0,0,.60),
+    0 0 46px rgba(63,136,255,.045),
+    inset 0 1px rgba(255,255,255,.075),
+    inset 0 -1px rgba(65,189,255,.03)!important;
+  backdrop-filter:blur(11px) saturate(1.1);
+  overflow:hidden;
+}
+.login-card::before{display:none!important}
+.login-card::after{
+  background:
+    radial-gradient(circle at var(--spot-x) var(--spot-y),rgba(92,215,255,.035),transparent 27%),
+    linear-gradient(180deg,rgba(15,20,34,.94),rgba(6,9,16,.985))!important;
+}
+@keyframes liquid-card-breathe{
+  0%,100%{box-shadow:0 42px 112px rgba(0,0,0,.60),0 0 30px rgba(63,136,255,.035),inset 0 1px rgba(255,255,255,.075)}
+  50%{box-shadow:0 46px 120px rgba(0,0,0,.63),0 0 54px rgba(49,183,255,.08),inset 0 1px rgba(255,255,255,.09)}
+}
+
+.liquid-card-refraction{
+  position:absolute;
+  z-index:4;
+  inset:-38% -55%;
+  pointer-events:none;
+  background:
+    linear-gradient(
+      108deg,
+      transparent 0 38%,
+      rgba(98,93,255,.00) 42%,
+      rgba(95,211,255,.105) 47%,
+      rgba(255,255,255,.14) 50%,
+      rgba(96,238,200,.075) 53%,
+      rgba(139,85,255,.07) 57%,
+      transparent 63% 100%
+    );
+  transform:translate3d(-44%,0,0) rotate(3deg);
+  animation:liquid-card-refraction 8.5s ease-in-out infinite;
+  opacity:.66;
+  will-change:transform,opacity;
+}
+@keyframes liquid-card-refraction{
+  0%,12%{transform:translate3d(-44%,0,0) rotate(3deg);opacity:0}
+  24%{opacity:.66}
+  70%{opacity:.52}
+  100%{transform:translate3d(44%,0,0) rotate(3deg);opacity:0}
+}
+
+.border-beam{
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0 68%,
+      rgba(91,210,255,.34) 74%,
+      rgba(255,255,255,.78) 79%,
+      rgba(108,91,255,.31) 83%,
+      rgba(85,235,201,.20) 86%,
+      transparent 91% 100%
+    )!important;
+  animation:beam-spin 11s linear infinite!important;
+  filter:drop-shadow(0 0 3px rgba(73,196,255,.10))!important;
+}
+.border-beam-soft{
+  box-shadow:inset 0 0 28px rgba(69,142,255,.018)!important;
+}
+.text-shimmer{animation-duration:7.4s!important}
+
+h1{
+  background:linear-gradient(180deg,#ffffff 0%,#eef5ff 56%,#ccd7e9 100%)!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  color:transparent!important;
+  text-shadow:0 28px 72px rgba(0,0,0,.42)!important;
+}
+
+@media(max-width:700px){
+  .liquid-ambient{
+    inset:-4%;
+    filter:blur(23px) saturate(1.08);
+    animation-duration:9.5s!important;
+  }
+  .silk-svg{
+    width:142%;
+    height:112%;
+    left:-27%;
+    top:-3%;
+    transform:scale(1.015)!important;
+    transition:none!important;
+  }
+  .silk-bloom path{display:none}
+  .sra{stroke-width:14;opacity:.68;animation-duration:8s!important}
+  .srb{stroke-width:9;opacity:.48;animation-duration:10s!important}
+  .src{stroke-width:7;opacity:.34;animation-duration:12s!important}
+  .sp{stroke-width:1.5;filter:none;animation-duration:10s!important}
+  .spc{display:none}
+  .liquid-caustic{
+    width:250px;height:250px;
+    left:72%;top:34%;
+    opacity:.55;
+    animation-duration:15s!important;
+  }
+  .login-card{
+    backdrop-filter:none!important;
+    animation:liquid-card-breathe 5.8s ease-in-out infinite!important;
+    border-radius:23px!important;
+  }
+  .liquid-card-refraction{
+    opacity:.50;
+    animation-duration:7s!important;
+  }
+  .border-beam{filter:none!important;animation-duration:10s!important}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
 <div class="scene">
-  <div class="loom-ambient" aria-hidden="true"></div>
-  <div class="loom-stage" aria-hidden="true">
-    <svg class="loom-svg" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid slice">
+  <div class="liquid-ambient" aria-hidden="true"></div>
+  <div class="silk-stage" aria-hidden="true">
+    <svg class="silk-svg" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid slice">
       <defs>
-        <linearGradient id="loomLine" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#6e62ff" stop-opacity=".18"/>
-          <stop offset=".5" stop-color="#67ddff" stop-opacity=".48"/>
-          <stop offset="1" stop-color="#78ffd2" stop-opacity=".12"/>
+        <linearGradient id="silkA" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#735dff" stop-opacity=".10"/>
+          <stop offset=".28" stop-color="#896cff" stop-opacity=".70"/>
+          <stop offset=".58" stop-color="#62d9ff" stop-opacity=".82"/>
+          <stop offset=".82" stop-color="#63f0cb" stop-opacity=".34"/>
+          <stop offset="1" stop-color="#ffffff" stop-opacity=".04"/>
         </linearGradient>
-        <radialGradient id="loomNode">
-          <stop offset="0" stop-color="#ffffff"/>
-          <stop offset=".28" stop-color="#8be7ff"/>
-          <stop offset="1" stop-color="#5b74ff" stop-opacity=".15"/>
-        </radialGradient>
-        <filter id="loomGlow" x="-80%" y="-80%" width="260%" height="260%">
-          <feGaussianBlur stdDeviation="3.2" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
+        <linearGradient id="silkB" x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ff78d1" stop-opacity=".05"/>
+          <stop offset=".24" stop-color="#7a74ff" stop-opacity=".34"/>
+          <stop offset=".56" stop-color="#4edaff" stop-opacity=".74"/>
+          <stop offset=".86" stop-color="#ffffff" stop-opacity=".10"/>
+        </linearGradient>
+        <linearGradient id="silkC" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stop-color="#64f3ca" stop-opacity=".06"/>
+          <stop offset=".36" stop-color="#5bc8ff" stop-opacity=".38"/>
+          <stop offset=".72" stop-color="#8f6dff" stop-opacity=".62"/>
+          <stop offset="1" stop-color="#ffffff" stop-opacity=".05"/>
+        </linearGradient>
       </defs>
 
-      <g class="loom-back">
-        <path d="M40 164 L224 92 L392 188 L584 102 L760 176 L968 82 L1160 164"/>
-        <path d="M72 330 L224 92 M72 330 L322 392 M392 188 L322 392 M392 188 L560 342"/>
-        <path d="M584 102 L560 342 M584 102 L760 176 M760 176 L820 376 M968 82 L820 376"/>
-        <path d="M322 392 L514 526 L560 342 L820 376 L996 536 L1160 368"/>
-        <path d="M514 526 L706 650 L820 376 M706 650 L996 536 M996 536 L1160 668"/>
+      <g class="silk-bloom">
+        <path d="M-130 510 C90 250 250 665 470 390 S830 90 1330 340"/>
+        <path d="M-150 270 C120 470 250 90 520 255 S890 610 1320 420"/>
+        <path d="M-120 650 C190 390 390 760 650 505 S980 210 1320 195"/>
       </g>
-
-      <g class="loom-flow">
-        <path class="flow f1" d="M40 164 L224 92 L392 188 L584 102 L760 176 L968 82 L1160 164"/>
-        <path class="flow f2" d="M72 330 L322 392 L514 526 L706 650 L996 536 L1160 368"/>
-        <path class="flow f3" d="M224 92 L392 188 L560 342 L820 376 L996 536"/>
+      <g class="silk-ribbons">
+        <path class="sr sra" d="M-130 510 C90 250 250 665 470 390 S830 90 1330 340"/>
+        <path class="sr srb" d="M-150 270 C120 470 250 90 520 255 S890 610 1320 420"/>
+        <path class="sr src" d="M-120 650 C190 390 390 760 650 505 S980 210 1320 195"/>
       </g>
-
-      <g class="loom-nodes">
-        <circle class="n n1" cx="224" cy="92" r="5"/><circle class="n n2" cx="392" cy="188" r="4"/>
-        <circle class="n n3" cx="584" cy="102" r="6"/><circle class="n n4" cx="760" cy="176" r="4"/>
-        <circle class="n n5" cx="968" cy="82" r="5"/><circle class="n n6" cx="72" cy="330" r="4"/>
-        <circle class="n n7" cx="322" cy="392" r="6"/><circle class="n n8" cx="560" cy="342" r="5"/>
-        <circle class="n n9" cx="820" cy="376" r="7"/><circle class="n n10" cx="1160" cy="368" r="4"/>
-        <circle class="n n11" cx="514" cy="526" r="5"/><circle class="n n12" cx="706" cy="650" r="5"/>
-        <circle class="n n13" cx="996" cy="536" r="6"/><circle class="n n14" cx="1160" cy="668" r="4"/>
-      </g>
-
-      <g class="loom-rings">
-        <circle cx="820" cy="376" r="42"/><circle cx="820" cy="376" r="80"/>
-        <circle cx="322" cy="392" r="32"/><circle cx="584" cy="102" r="28"/>
+      <g class="silk-specular">
+        <path class="sp spa" d="M-130 510 C90 250 250 665 470 390 S830 90 1330 340"/>
+        <path class="sp spb" d="M-150 270 C120 470 250 90 520 255 S890 610 1320 420"/>
+        <path class="sp spc" d="M-120 650 C190 390 390 760 650 505 S980 210 1320 195"/>
       </g>
     </svg>
   </div>
-  <div class="loom-scan" aria-hidden="true"></div>
+  <div class="liquid-caustic" aria-hidden="true"></div>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Voltar ao Cat Empire">
       <img src="/logo.svg" alt="">
       <span>Cat Empire</span>
     </a>
-    <div class="lab-badge">Login Visual Lab 09 · Digital Loom</div>
+    <div class="lab-badge">Login Visual Lab 10 · Liquid Aurora</div>
   </header>
 
   <main class="shell">
@@ -2086,6 +2356,7 @@ h1{
     </section>
 
     <section class="login-card" aria-label="Preview do login">
+      <div class="liquid-card-refraction" aria-hidden="true"></div>
       <div class="border-beam" aria-hidden="true"></div>
       <div class="border-beam-soft" aria-hidden="true"></div>
       <div class="limelight-effect" aria-hidden="true"><div class="limelight-head"></div></div>
@@ -2107,7 +2378,7 @@ h1{
 <aside class="lab" id="lab">
   <div class="lab-head">
     <div>
-      <div class="lab-title">Visual Lab 09</div>
+      <div class="lab-title">Visual Lab 10</div>
       <small>Teste sem afetar o login real</small>
     </div>
     <button class="lab-toggle" id="hideLab" type="button">Ocultar</button>
@@ -2152,7 +2423,7 @@ h1{
   const motion=document.getElementById('motion');
   const blur=document.getElementById('blur');
   const card=document.querySelector('.login-card');
-  const loom=document.querySelector('.loom-svg');
+  const silk=document.querySelector('.silk-svg');
 
   const baseDurations=new Map();
   const capture=()=>{
@@ -2172,7 +2443,7 @@ h1{
     const speed=Math.max(.35,parseFloat(motion.value)||1);
     if(!baseDurations.size)capture();
     baseDurations.forEach((d,el)=>{
-      el.style.animationDuration=Math.max(.65,d/speed)+'s';
+      el.style.animationDuration=Math.max(.7,d/speed)+'s';
       el.style.animationPlayState='running';
     });
   };
@@ -2181,29 +2452,29 @@ h1{
   document.querySelectorAll('[data-preset]').forEach(btn=>btn.addEventListener('click',()=>{
     const p=btn.dataset.preset;
     if(p==='soft'){depth.value='.7';motion.value='.55';blur.value='24'}
-    if(p==='deep'){depth.value='1.35';motion.value='.8';blur.value='19'}
-    if(p==='motion'){depth.value='1';motion.value='1.25';blur.value='17'}
+    if(p==='deep'){depth.value='1.35';motion.value='.78';blur.value='19'}
+    if(p==='motion'){depth.value='1';motion.value='1.22';blur.value='17'}
     apply();
   }));
   document.getElementById('hideLab').addEventListener('click',()=>document.body.classList.toggle('lab-hidden'));
 
   if(matchMedia('(pointer:fine)').matches){
-    let raf=0,cx=70,cy=10,lx=0,ly=0;
+    let raf=0,cx=72,cy=11,sx=0,sy=0;
     const paint=()=>{
       raf=0;
       if(card){
         card.style.setProperty('--spot-x',cx+'%');
         card.style.setProperty('--spot-y',cy+'%');
       }
-      if(loom){
-        loom.style.setProperty('--loom-x',lx+'px');
-        loom.style.setProperty('--loom-y',ly+'px');
+      if(silk){
+        silk.style.setProperty('--silk-x',sx+'px');
+        silk.style.setProperty('--silk-y',sy+'px');
       }
     };
     addEventListener('pointermove',e=>{
       const nx=e.clientX/innerWidth-.5;
       const ny=e.clientY/innerHeight-.5;
-      lx=nx*10;ly=ny*7;
+      sx=nx*12; sy=ny*8;
       if(card){
         const r=card.getBoundingClientRect();
         cx=Math.max(0,Math.min(100,((e.clientX-r.left)/r.width)*100));
