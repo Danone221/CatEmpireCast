@@ -1551,12 +1551,31 @@ body[data-theme="void"]{
       const w=Math.max(innerWidth,360);
       const h=Math.max(innerHeight,520);
 
-      // Allow the blob to partially leave the viewport so it really travels edge-to-edge.
-      tx=rand(-margin,w-s+margin);
-      ty=rand(72-margin,h-s+margin);
+      // Random destination, but biased to the opposite side so the blob actually
+      // crosses the full viewport instead of wandering around one local area.
+      const leftNow=x+s*.5 < w*.5;
+      const topNow=y+s*.5 < h*.5;
+      const crossX=Math.random()<.78;
+      const crossY=Math.random()<.55;
+
+      if(crossX){
+        tx=leftNow
+          ? rand(w*.58,w-s+margin)
+          : rand(-margin,w*.34);
+      }else{
+        tx=rand(-margin,w-s+margin);
+      }
+
+      if(crossY){
+        ty=topNow
+          ? rand(h*.52,h-s+margin)
+          : rand(72-margin,h*.40);
+      }else{
+        ty=rand(72-margin,h-s+margin);
+      }
 
       const speed=Math.max(.55,parseFloat(motion?.value||1));
-      retargetAt=now+rand(2200,4600)/speed;
+      retargetAt=now+rand(1250,2450)/speed;
     };
 
     const closedSmoothPath=(pts)=>{
@@ -1588,9 +1607,11 @@ body[data-theme="void"]{
         // Velocity adds directional elongation like fluid inertia.
         const motionAngle=Math.atan2(vy,vx);
         const directional=Math.cos(a-motionAngle);
-        const inertia=directional*speedNorm*.14;
+        const sideWave=Math.sin(a*2.0+t*.00136+i*.27)*(.035+speedNorm*.055);
+        const inertia=directional*speedNorm*.30;
+        const trailing=-Math.cos(a-motionAngle)*speedNorm*.10;
 
-        const r=base*(1+wave1+wave2+wave3+inertia);
+        const r=base*(1+wave1+wave2+wave3+sideWave+inertia+trailing);
         pts.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);
       }
       return closedSmoothPath(pts);
@@ -1614,15 +1635,15 @@ body[data-theme="void"]{
       const speedCtl=Math.max(.55,parseFloat(motion?.value||1));
 
       // Spring + damping gives continuous inertia instead of point-to-point transitions.
-      const ax=(tx-x)*.00175*speedCtl;
-      const ay=(ty-y)*.00175*speedCtl;
+      const ax=(tx-x)*.00315*speedCtl;
+      const ay=(ty-y)*.00315*speedCtl;
 
       // Low-amplitude wandering force prevents straight mechanical paths.
       const wanderX=Math.sin(now*.00083)*.055 + Math.sin(now*.00147+1.7)*.028;
       const wanderY=Math.cos(now*.00071+2.1)*.050 + Math.sin(now*.00119)*.025;
 
-      vx=(vx+(ax+wanderX)*step)*Math.pow(.972,step);
-      vy=(vy+(ay+wanderY)*step)*Math.pow(.972,step);
+      vx=(vx+(ax+wanderX)*step)*Math.pow(.982,step);
+      vy=(vy+(ay+wanderY)*step)*Math.pow(.982,step);
 
       // Keep speed alive so it never appears stopped.
       const vmag=Math.hypot(vx,vy);
@@ -1631,7 +1652,7 @@ body[data-theme="void"]{
         vy+=Math.sin(now*.0013)*.22;
       }
 
-      const maxV=7.2*speedCtl;
+      const maxV=13.5*speedCtl;
       const mag=Math.hypot(vx,vy);
       if(mag>maxV){
         vx=vx/mag*maxV;
@@ -1653,8 +1674,8 @@ body[data-theme="void"]{
 
       const sp=clamp(Math.hypot(vx,vy)/Math.max(1,maxV),0,1);
       const ang=Math.atan2(vy,vx)*180/Math.PI;
-      const stretchX=1+sp*.24;
-      const stretchY=1-sp*.12;
+      const stretchX=1+sp*.42;
+      const stretchY=1-sp*.20;
 
       liquid.style.setProperty('--liq-x',x.toFixed(2)+'px');
       liquid.style.setProperty('--liq-y',y.toFixed(2)+'px');
