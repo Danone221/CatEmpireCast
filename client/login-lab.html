@@ -378,108 +378,8 @@ body[data-theme="void"]{
   68%{transform:translateX(-50%) translateY(3px) rotate(-9deg) scale(.992)}
 }
 
-.limelight-wrap{
-  position:fixed;
-  left:50%;
-  bottom:18px;
-  z-index:40;
-  transform:translateX(-50%);
-  width:min(560px,calc(100vw - 26px));
-  pointer-events:none;
-}
-.limelight-nav{
-  --nav-index:2;
-  --nav-count:5;
-  position:relative;
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  align-items:stretch;
-  min-height:76px;
-  padding:5px 8px;
-  border:1px solid rgba(255,255,255,.085);
-  border-radius:22px;
-  background:
-    linear-gradient(180deg,rgba(19,20,25,.86),rgba(10,11,15,.90));
-  backdrop-filter:blur(20px) saturate(125%);
-  box-shadow:
-    0 22px 55px rgba(0,0,0,.46),
-    inset 0 1px rgba(255,255,255,.035);
-  overflow:hidden;
-  pointer-events:auto;
-}
-.limelight-beam{
-  position:absolute;
-  top:0;
-  left:0;
-  width:calc(100% / var(--nav-count));
-  height:100%;
-  transform:translateX(calc(var(--nav-index) * 100%));
-  transition:transform .36s cubic-bezier(.2,.75,.2,1);
-  pointer-events:none;
-}
-.limelight-beam::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  top:-1px;
-  width:52%;
-  height:5px;
-  transform:translateX(-50%);
-  border-radius:0 0 8px 8px;
-  background:#fff;
-  box-shadow:0 0 10px rgba(255,255,255,.98),0 0 18px color-mix(in srgb,var(--accent2) 52%,white);
-}
-.limelight-beam::after{
-  content:"";
-  position:absolute;
-  left:50%;
-  top:3px;
-  width:82%;
-  height:82%;
-  transform:translateX(-50%);
-  clip-path:polygon(34% 0,66% 0,100% 100%,0 100%);
-  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,.06) 44%,transparent 92%);
-  filter:blur(2px);
-}
-.limelight-item{
-  position:relative;
-  z-index:2;
-  display:grid;
-  place-items:center;
-  gap:2px;
-  padding:11px 6px 9px;
-  border:0;
-  border-radius:14px;
-  background:transparent;
-  color:#666a73;
-  transition:color .22s ease,transform .22s ease,background .22s ease;
-}
-.limelight-item:hover{color:#b8bbc2;background:rgba(255,255,255,.025)}
-.limelight-item.active{
-  color:#fff;
-  transform:translateY(-1px);
-}
-.limelight-item svg{
-  width:25px;
-  height:25px;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:1.9;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-.limelight-label{
-  font-size:8px;
-  font-weight:750;
-  letter-spacing:.04em;
-  opacity:0;
-  transform:translateY(2px);
-  transition:.18s ease;
-}
-.limelight-item.active .limelight-label{opacity:.72;transform:none}
-
 .lab{
-  bottom:108px;
+  bottom:16px;
 }
 
 @media(max-width:860px){
@@ -489,8 +389,7 @@ body[data-theme="void"]{
     width:260px;
     opacity:calc(.20 + (.22 * var(--depth)));
   }
-  .limelight-wrap{bottom:12px}
-  .lab{margin-bottom:104px}
+  .lab{margin-bottom:16px}
 }
 @media(max-width:560px){
   .chrome-orb{
@@ -498,10 +397,6 @@ body[data-theme="void"]{
     left:82%;
     width:210px;
   }
-  .limelight-nav{min-height:68px;border-radius:19px}
-  .limelight-item{padding:9px 4px 7px}
-  .limelight-item svg{width:22px;height:22px}
-  .limelight-label{display:none}
 }
 
 </style>
@@ -550,31 +445,6 @@ body[data-theme="void"]{
   </main>
 </div>
 
-<nav class="limelight-wrap" aria-label="Navegação visual de teste">
-  <div class="limelight-nav" id="limelightNav">
-    <div class="limelight-beam" aria-hidden="true"></div>
-    <button class="limelight-item" type="button" data-index="0" aria-label="Home">
-      <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21h-6v-6H9v6H3z"/></svg>
-      <span class="limelight-label">Home</span>
-    </button>
-    <button class="limelight-item" type="button" data-index="1" aria-label="Salvos">
-      <svg viewBox="0 0 24 24"><path d="M6 4h12v17l-6-4-6 4z"/></svg>
-      <span class="limelight-label">Salvos</span>
-    </button>
-    <button class="limelight-item active" type="button" data-index="2" aria-label="Adicionar">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>
-      <span class="limelight-label">Criar</span>
-    </button>
-    <button class="limelight-item" type="button" data-index="3" aria-label="Perfil">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 20v-2.5A6.5 6.5 0 0 1 12 11a6.5 6.5 0 0 1 6.5 6.5V20"/></svg>
-      <span class="limelight-label">Perfil</span>
-    </button>
-    <button class="limelight-item" type="button" data-index="4" aria-label="Configurações">
-      <svg viewBox="0 0 24 24"><path d="M10 3h4l.7 2.5 2 .8 2.3-1.1 2 3.4-1.9 1.7.2 2.2 2 1.5-2 3.5-2.5-.8-1.8 1.1-.5 2.6h-4l-.6-2.5-1.9-.9-2.4 1-2-3.4 1.9-1.8-.1-2.1-2-1.5 2-3.5 2.5.8 1.8-1z"/><circle cx="12" cy="12" r="2.5"/></svg>
-      <span class="limelight-label">Ajustes</span>
-    </button>
-  </div>
-</nav>
 
 <aside class="lab" id="lab">
   <div class="lab-head">
@@ -648,16 +518,6 @@ body[data-theme="void"]{
   });
 
   apply();
-
-  // Limelight navigation preview
-  const nav = document.getElementById('limelightNav');
-  nav?.querySelectorAll('.limelight-item').forEach(item => {
-    item.addEventListener('click', () => {
-      nav.style.setProperty('--nav-index', item.dataset.index);
-      nav.querySelectorAll('.limelight-item').forEach(x => x.classList.remove('active'));
-      item.classList.add('active');
-    });
-  });
 
   // Canvas shader-inspired streak field. Pure client-side visual only.
   const canvas = document.getElementById('shaderCanvas');
