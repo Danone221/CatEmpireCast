@@ -1637,6 +1637,46 @@ body[data-theme="void"]{
   line-height:1;
 }
 
+
+/* V1 mobile hard containment */
+@media(max-width:560px){
+  .shell{
+    padding-left:16px!important;
+    padding-right:16px!important;
+  }
+
+  .preview,
+  h1,
+  .subtitle{
+    width:calc(100vw - 32px)!important;
+    max-width:calc(100vw - 32px)!important;
+  }
+
+  .feature-row{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    width:calc(100vw - 32px)!important;
+    max-width:calc(100vw - 32px)!important;
+    gap:7px!important;
+  }
+
+  .feature-row span{
+    flex:1 1 0!important;
+    width:0!important;
+    min-width:0!important;
+    max-width:none!important;
+    padding:8px 1px!important;
+    font-size:8px!important;
+    letter-spacing:.065em!important;
+  }
+
+  .login-card{
+    width:calc(100vw - 32px)!important;
+    max-width:calc(100vw - 32px)!important;
+    align-self:center!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
