@@ -1507,6 +1507,79 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 mobile composition hotfix */
+@media(max-width:860px){
+  .shell,
+  .preview,
+  .login-card,
+  .feature-row,
+  .feature-row span,
+  .field,
+  .field input,
+  .cta,
+  .discord{
+    box-sizing:border-box!important;
+    min-width:0!important;
+  }
+
+  .shell{
+    width:100%!important;
+    max-width:100%!important;
+  }
+
+  .preview{
+    overflow:visible!important;
+  }
+
+  h1{
+    max-width:none!important;
+    width:100%!important;
+    font-size:clamp(42px,11vw,52px)!important;
+    line-height:.96!important;
+  }
+
+  .subtitle{
+    width:100%!important;
+    max-width:100%!important;
+    overflow:visible!important;
+  }
+
+  .feature-row{
+    overflow:hidden!important;
+  }
+
+  #liquidMetalReactRoot{
+    top:clamp(322px,40svh,385px)!important;
+    width:min(78vw,340px)!important;
+    height:clamp(158px,21svh,190px)!important;
+    opacity:.72!important;
+    border-radius:52% 48% 58% 42% / 42% 58% 44% 56%!important;
+    transform:translateX(-50%) rotate(-7deg) translateZ(0)!important;
+  }
+
+  #liquidMetalReactRoot canvas{
+    filter:saturate(.78) brightness(.66) contrast(.96)!important;
+  }
+
+  .login-card{
+    max-width:100%!important;
+    overflow:hidden!important;
+  }
+}
+
+@media(max-width:430px){
+  #liquidMetalReactRoot{
+    top:332px!important;
+    width:76vw!important;
+    height:164px!important;
+  }
+
+  .login-card{
+    margin-top:76px!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
