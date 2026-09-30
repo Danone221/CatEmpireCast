@@ -1618,6 +1618,25 @@ body[data-theme="void"]{
   }
 }
 
+
+/* Discord animated icon */
+.discord{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:10px!important;
+}
+.discord-icon{
+  width:21px;
+  height:21px;
+  flex:0 0 auto;
+  color:currentColor;
+}
+.discord span{
+  display:inline-block;
+  line-height:1;
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -1664,7 +1683,27 @@ body[data-theme="void"]{
       </div>
       <button class="cta" type="button">Continuar</button>
       <div class="sep">ou</div>
-      <button class="discord" type="button">Entrar com Discord</button>
+      <button class="discord" type="button">
+        <svg class="discord-icon" width="21" height="21" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+            <path stroke-dasharray="32" d="M12 6h2l1 -2c0 0 2.5 0.5 4 1.5c3.53 2.35 3 9.5 3 10.5c-1.33 2.17 -5.5 3.5 -5.5 3.5l-1 -2M12 6h-2l-0.97 -2c0 0 -2.5 0.5 -4 1.5c-3.53 2.35 -3 9.5 -3 10.5c1.33 2.17 5.5 3.5 5.5 3.5l1 -2">
+              <animate fill="freeze" attributeName="stroke-dashoffset" dur="0.6s" values="32;0"/>
+            </path>
+            <path stroke-dasharray="16" stroke-dashoffset="16" d="M5.5 16c5 2.5 8 2.5 13 0">
+              <animate fill="freeze" attributeName="stroke-dashoffset" begin="0.7s" dur="0.5s" to="0"/>
+            </path>
+          </g>
+          <g fill="currentColor">
+            <circle cx="9" cy="12" r="0">
+              <animate fill="freeze" attributeName="r" begin="1.3s" dur="0.2s" to="1.5"/>
+            </circle>
+            <circle cx="15" cy="12" r="0">
+              <animate fill="freeze" attributeName="r" begin="1.5s" dur="0.2s" to="1.5"/>
+            </circle>
+          </g>
+        </svg>
+        <span>Entrar com Discord</span>
+      </button>
       <div class="note">Modo visual — nenhum dado é enviado.</div>
     </section>
   </main>
