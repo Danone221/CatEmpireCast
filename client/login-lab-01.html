@@ -3361,6 +3361,30 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 final polish fixes */
+.login-form-pane .uiv-primary{
+  gap:0!important;
+}
+.login-form-pane .uiv-primary-svg{
+  display:none!important;
+}
+
+/* Release entrance-animation transforms after reveal so desktop hover tilt works again. */
+.scene.login-ready .login-visual-pane,
+.scene.login-ready .login-form-pane{
+  animation:none!important;
+}
+
+@media(max-width:860px){
+  #liquidMetalReactRoot{
+    opacity:.94!important;
+  }
+  #liquidMetalReactRoot canvas{
+    filter:saturate(.96) contrast(1.06)!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -3425,9 +3449,6 @@ body[data-theme="void"]{
 
         <div class="uiv-primary-wrap">
           <button class="cta uiv-primary" type="button" aria-label="Continuar">
-            <svg class="uiv-primary-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"></path>
-            </svg>
             <span class="uiv-primary-texts">
               <span class="uiv-primary-text uiv-primary-text-1">
                 <span>C</span><span>o</span><span>n</span><span>t</span><span>i</span><span>n</span><span>u</span><span>a</span><span>r</span>
@@ -3645,6 +3666,9 @@ body[data-theme="void"]{
 
 
 
+
+  const scene = document.querySelector('.scene');
+  setTimeout(() => scene?.classList.add('login-ready'), 1350);
 
   // Cursor-reactive card lighting and tilt.
   if (matchMedia('(pointer:fine)').matches) {
