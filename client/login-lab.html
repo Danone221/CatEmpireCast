@@ -849,6 +849,39 @@ body[data-theme="void"]{
   .login-card{animation-duration:7.6s!important}
 }
 
+
+/* V1 roaming orb */
+@keyframes orb-screen-roam{
+  0%{transform:translateX(-50%) translate3d(-26vw,-14vh,0) rotate(-8deg) scale(.96)}
+  18%{transform:translateX(-50%) translate3d(12vw,-22vh,0) rotate(-2deg) scale(1.04)}
+  36%{transform:translateX(-50%) translate3d(28vw,-4vh,0) rotate(-10deg) scale(.99)}
+  54%{transform:translateX(-50%) translate3d(10vw,16vh,0) rotate(-4deg) scale(1.03)}
+  72%{transform:translateX(-50%) translate3d(-20vw,18vh,0) rotate(-11deg) scale(1.06)}
+  100%{transform:translateX(-50%) translate3d(-30vw,-10vh,0) rotate(-6deg) scale(1)}
+}
+@keyframes orb-screen-roam-mobile{
+  0%{transform:translateX(-50%) translate3d(-16vw,-10vh,0) rotate(-8deg) scale(.96)}
+  25%{transform:translateX(-50%) translate3d(10vw,-14vh,0) rotate(-3deg) scale(1.03)}
+  50%{transform:translateX(-50%) translate3d(16vw,6vh,0) rotate(-9deg) scale(1)}
+  75%{transform:translateX(-50%) translate3d(-8vw,12vh,0) rotate(-5deg) scale(1.04)}
+  100%{transform:translateX(-50%) translate3d(-18vw,-8vh,0) rotate(-7deg) scale(1)}
+}
+
+.chrome-orb{
+  left:50%!important;
+  top:50%!important;
+  animation:orb-screen-roam 16s ease-in-out infinite!important;
+  will-change:transform!important;
+}
+
+@media(max-width:860px){
+  .chrome-orb{
+    left:50%!important;
+    top:44%!important;
+    animation:orb-screen-roam-mobile 14s ease-in-out infinite!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
