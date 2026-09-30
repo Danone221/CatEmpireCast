@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#05060a">
+<title>Cat Empire — Login Visual Lab</title>
+<style>
+:root{
+  --bg:#05060a;
+  --bg2:#0a0d16;
+  --panel:#111522;
+  --panel2:#171c2b;
+  --line:rgba(255,255,255,.10);
+  --text:#f7f8fb;
+  --muted:#8f98aa;
+  --accent:#8b5cf6;
+  --accent2:#36d9ff;
+  --accent3:#4ee3a8;
+  --danger:#ff6c7a;
+  --depth:1;
+  --motion:1;
+  --blur:22px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{overflow-x:hidden}
+button,input,select{font:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+
+@keyframes driftA{
+  0%,100%{transform:translate3d(-5%,-3%,0) scale(1)}
+  50%{transform:translate3d(8%,5%,0) scale(1.12)}
+}
+@keyframes driftB{
+  0%,100%{transform:translate3d(7%,4%,0) scale(1.08)}
+  50%{transform:translate3d(-7%,-5%,0) scale(.96)}
+}
+@keyframes floatCard{
+  0%,100%{transform:translateY(0) rotateX(0) rotateY(0)}
+  35%{transform:translateY(calc(-7px * var(--motion))) rotateX(calc(.6deg * var(--motion))) rotateY(calc(-.6deg * var(--motion)))}
+  70%{transform:translateY(calc(-3px * var(--motion))) rotateX(calc(-.3deg * var(--motion))) rotateY(calc(.45deg * var(--motion)))}
+}
+@keyframes shine{
+  0%,18%{transform:translateX(-150%) skewX(-20deg);opacity:0}
+  38%{opacity:.8}
+  62%,100%{transform:translateX(185%) skewX(-20deg);opacity:0}
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent3) 24%,transparent)}
+  50%{box-shadow:0 0 0 8px transparent}
+}
+@keyframes borderFlow{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes reveal{
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.scene{
+  min-height:100dvh;
+  position:relative;
+  isolation:isolate;
+  background:
+    radial-gradient(circle at 16% 12%,color-mix(in srgb,var(--accent) 18%,transparent),transparent 29rem),
+    radial-gradient(circle at 85% 18%,color-mix(in srgb,var(--accent2) 15%,transparent),transparent 30rem),
+    linear-gradient(180deg,var(--bg),var(--bg2) 54%,var(--bg));
+  overflow:hidden;
+}
+.scene::before,.scene::after{
+  content:"";
+  position:absolute;
+  z-index:-2;
+  pointer-events:none;
+  width:48vw;height:48vw;
+  border-radius:50%;
+  filter:blur(calc(var(--blur) * 4));
+  opacity:calc(.18 + (.12 * var(--depth)));
+}
+.scene::before{
+  top:-22vw;left:-16vw;
+  background:radial-gradient(circle,var(--accent),transparent 66%);
+  animation:driftA calc(15s / max(.25,var(--motion))) ease-in-out infinite;
+}
+.scene::after{
+  right:-18vw;bottom:-24vw;
+  background:radial-gradient(circle,var(--accent2),transparent 67%);
+  animation:driftB calc(18s / max(.25,var(--motion))) ease-in-out infinite;
+}
+
+.gridfx{
+  position:absolute;left:-10%;right:-10%;bottom:-28%;height:48%;
+  z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(color-mix(in srgb,var(--accent) 14%,transparent) 1px,transparent 1px),
+    linear-gradient(90deg,color-mix(in srgb,var(--accent) 14%,transparent) 1px,transparent 1px);
+  background-size:48px 48px;
+  transform:perspective(780px) rotateX(66deg) scale(1.2);
+  transform-origin:bottom center;
+  -webkit-mask-image:linear-gradient(to top,#000,transparent 76%);
+  mask-image:linear-gradient(to top,#000,transparent 76%);
+  opacity:calc(.08 + (.08 * var(--depth)));
+}
+
+.topbar{
+  height:70px;
+  display:flex;align-items:center;gap:16px;
+  padding:0 max(20px,calc((100vw - 1180px)/2));
+  border-bottom:1px solid var(--line);
+  background:color-mix(in srgb,var(--bg) 72%,transparent);
+  backdrop-filter:blur(18px) saturate(140%);
+}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);font-weight:800}
+.brand img{
+  width:34px;height:34px;padding:5px;border-radius:11px;
+  border:1px solid var(--line);
+  background:color-mix(in srgb,var(--panel) 88%,transparent);
+  box-shadow:0 0 calc(30px * var(--depth)) color-mix(in srgb,var(--accent) 30%,transparent);
+}
+.lab-badge{
+  margin-left:auto;padding:8px 12px;border:1px solid var(--line);border-radius:999px;
+  color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  background:rgba(255,255,255,.03)
+}
+
+.shell{
+  width:min(1180px,100%);
+  margin:auto;
+  padding:72px 22px 84px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 380px;
+  gap:60px;
+  align-items:center;
+}
+.preview{min-width:0}
+.kicker{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 12px;border:1px solid var(--line);border-radius:999px;
+  color:var(--muted);background:rgba(255,255,255,.035);
+  font-size:10px;font-weight:850;letter-spacing:.14em;text-transform:uppercase;
+  animation:reveal .5s ease-out both;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent3);animation:pulse 2.4s ease-in-out infinite}
+h1{
+  margin:22px 0 14px;
+  max-width:720px;
+  font-size:clamp(48px,7.2vw,96px);
+  line-height:.9;
+  letter-spacing:-.055em;
+  font-weight:900;
+  background:linear-gradient(180deg,#fff,#d9deeb);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 28px 70px rgba(0,0,0,.35);
+  animation:reveal .6s .06s ease-out both;
+}
+.subtitle{
+  max-width:600px;margin:0;
+  color:var(--muted);font-size:15px;line-height:1.7;
+  animation:reveal .6s .12s ease-out both;
+}
+.feature-row{
+  display:flex;gap:9px;flex-wrap:wrap;margin-top:24px;
+  animation:reveal .6s .18s ease-out both;
+}
+.feature-row span{
+  padding:9px 12px;border:1px solid var(--line);border-radius:999px;
+  background:rgba(255,255,255,.025);color:#aeb5c5;font-size:10px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;
+}
+
+.login-card{
+  position:relative;
+  isolation:isolate;
+  padding:26px;
+  border:1px solid color-mix(in srgb,var(--accent) 34%,var(--line));
+  border-radius:28px;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--panel) 96%,black),color-mix(in srgb,var(--bg2) 97%,black)) padding-box,
+    linear-gradient(135deg,var(--accent),transparent 42%,var(--accent2) 72%,var(--accent3)) border-box;
+  box-shadow:
+    0 calc(34px * var(--depth)) calc(90px * var(--depth)) rgba(0,0,0,.52),
+    0 0 calc(64px * var(--depth)) color-mix(in srgb,var(--accent) 14%,transparent),
+    inset 0 1px rgba(255,255,255,.06);
+  overflow:hidden;
+  animation:floatCard calc(8s / max(.25,var(--motion))) ease-in-out infinite;
+}
+.login-card::before{
+  content:"";
+  position:absolute;inset:-70%;z-index:-2;
+  background:conic-gradient(from 10deg,transparent 0 14%,color-mix(in srgb,var(--accent) 30%,transparent) 19%,transparent 29% 51%,color-mix(in srgb,var(--accent2) 23%,transparent) 59%,transparent 69% 83%,color-mix(in srgb,var(--accent3) 18%,transparent) 89%,transparent 96%);
+  animation:borderFlow calc(14s / max(.25,var(--motion))) linear infinite;
+}
+.login-card::after{
+  content:"";position:absolute;inset:1px;z-index:-1;border-radius:27px;
+  background:
+    radial-gradient(circle at 86% 0%,color-mix(in srgb,var(--accent2) 15%,transparent),transparent 31%),
+    radial-gradient(circle at 4% 100%,color-mix(in srgb,var(--accent) 15%,transparent),transparent 35%),
+    linear-gradient(180deg,var(--panel),var(--bg2));
+}
+.card-title{font-size:18px;font-weight:850;margin-bottom:6px}
+.card-sub{font-size:12px;color:var(--muted);margin-bottom:18px;line-height:1.55}
+.field{display:grid;gap:7px;margin-bottom:12px}
+.field label{font-size:10px;color:#bcc3d1;font-weight:850;letter-spacing:.11em;text-transform:uppercase}
+.field input{
+  min-height:48px;padding:0 13px;border:1px solid var(--line);border-radius:12px;
+  background:rgba(3,5,10,.62);color:var(--text);outline:none;
+  box-shadow:inset 0 2px 9px rgba(0,0,0,.28);
+}
+.field input:focus{
+  border-color:color-mix(in srgb,var(--accent) 72%,white 8%);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 13%,transparent),0 0 28px color-mix(in srgb,var(--accent) 11%,transparent),inset 0 2px 8px rgba(0,0,0,.25)
+}
+.cta{
+  position:relative;overflow:hidden;
+  width:100%;min-height:48px;border:0;border-radius:12px;
+  background:linear-gradient(110deg,var(--accent),#6766ff 43%,var(--accent2));
+  background-size:180% 180%;
+  color:#fff;font-size:11px;font-weight:900;letter-spacing:.11em;text-transform:uppercase;
+  box-shadow:0 14px 34px color-mix(in srgb,var(--accent) 30%,transparent);
+  animation:borderFlow calc(6s / max(.25,var(--motion))) ease infinite;
+}
+.cta::after{
+  content:"";position:absolute;top:-45%;left:-40%;width:32%;height:190%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);
+  animation:shine calc(4.6s / max(.25,var(--motion))) ease-in-out infinite;
+}
+.cta:hover{transform:translateY(-2px);filter:brightness(1.08)}
+.sep{display:flex;align-items:center;gap:10px;margin:15px 0;color:#697286;font-size:9px;text-transform:uppercase;letter-spacing:.16em}
+.sep::before,.sep::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+.discord{
+  width:100%;min-height:46px;border:1px solid #6673ff;border-radius:12px;
+  background:linear-gradient(135deg,#5965e8,#7583ff);color:white;font-weight:800;font-size:12px;
+  box-shadow:0 12px 28px rgba(88,101,242,.22)
+}
+.note{margin-top:12px;color:#747d90;font-size:10px;line-height:1.5;text-align:center}
+
+.lab{
+  position:fixed;z-index:20;right:16px;bottom:16px;
+  width:min(330px,calc(100vw - 32px));
+  padding:14px;border:1px solid var(--line);border-radius:18px;
+  background:rgba(9,11,18,.82);backdrop-filter:blur(20px) saturate(130%);
+  box-shadow:0 18px 55px rgba(0,0,0,.35)
+}
+.lab-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.lab-title{font-size:12px;font-weight:850}
+.lab small{color:var(--muted)}
+.lab-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lab select,.lab input[type=range]{
+  width:100%;
+}
+.lab select{
+  min-height:38px;padding:0 10px;border:1px solid var(--line);border-radius:10px;
+  background:#0c1018;color:var(--text)
+}
+.control{padding:9px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.025)}
+.control label{display:block;color:#9ca5b8;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;margin-bottom:7px}
+.preset-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.preset{
+  flex:1;min-width:70px;min-height:34px;border:1px solid var(--line);border-radius:9px;
+  background:rgba(255,255,255,.03);color:#c6ccda;font-size:10px;font-weight:750
+}
+.preset:hover{background:rgba(255,255,255,.07)}
+.lab-toggle{
+  border:1px solid var(--line);border-radius:9px;background:rgba(255,255,255,.03);
+  color:#c5ccdb;padding:7px 9px;font-size:10px;font-weight:800
+}
+
+body.lab-hidden .lab{display:none}
+
+body[data-theme="aurora"]{
+  --bg:#05060a;--bg2:#0a0d16;--panel:#111522;--accent:#8b5cf6;--accent2:#36d9ff;--accent3:#4ee3a8;
+}
+body[data-theme="ocean"]{
+  --bg:#041015;--bg2:#071b26;--panel:#0c202c;--accent:#2979ff;--accent2:#36e0ff;--accent3:#54f0b7;
+}
+body[data-theme="ember"]{
+  --bg:#0d0708;--bg2:#170b0d;--panel:#211116;--accent:#ff5c7a;--accent2:#ff9850;--accent3:#ffd45e;
+}
+body[data-theme="void"]{
+  --bg:#030305;--bg2:#08080d;--panel:#0f1017;--accent:#ffffff;--accent2:#737bff;--accent3:#a878ff;
+}
+
+@media(max-width:860px){
+  .shell{grid-template-columns:1fr;gap:36px;padding-top:56px}
+  .login-card{max-width:560px;width:100%;justify-self:center;animation:reveal .6s .2s ease-out both}
+  .lab{position:relative;right:auto;bottom:auto;margin:0 16px 16px;width:auto}
+}
+@media(max-width:560px){
+  .topbar{height:62px;padding:0 14px}
+  .lab-badge{font-size:9px;padding:7px 9px}
+  .shell{padding:44px 16px 34px}
+  h1{font-size:47px}
+  .subtitle{font-size:14px}
+  .login-card{padding:18px;border-radius:22px}
+  .login-card::after{border-radius:21px}
+  .lab-grid{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body data-theme="aurora">
+<div class="scene">
+  <div class="gridfx"></div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Voltar ao Cat Empire">
+      <img src="/logo.svg" alt="">
+      <span>Cat Empire</span>
+    </a>
+    <div class="lab-badge">Login Visual Lab</div>
+  </header>
+
+  <main class="shell">
+    <section class="preview">
+      <div class="kicker"><span class="dot"></span> Protótipo isolado</div>
+      <h1>Entre na sua comunidade.</h1>
+      <p class="subtitle">Esta página não faz login real. Ela existe só para testar profundidade, cores, animações, contraste e composição antes de levar o visual para a tela oficial.</p>
+      <div class="feature-row">
+        <span>Transmissões</span>
+        <span>Comunidades</span>
+        <span>Mensagens</span>
+      </div>
+    </section>
+
+    <section class="login-card" aria-label="Preview do login">
+      <div class="card-title">Bem-vindo de volta</div>
+      <div class="card-sub">Escolha um nome para visualizar a experiência de entrada.</div>
+      <div class="field">
+        <label for="name">Seu nome</label>
+        <input id="name" placeholder="DanoneDev" autocomplete="off">
+      </div>
+      <button class="cta" type="button">Continuar</button>
+      <div class="sep">ou</div>
+      <button class="discord" type="button">Entrar com Discord</button>
+      <div class="note">Modo visual — nenhum dado é enviado.</div>
+    </section>
+  </main>
+</div>
+
+<aside class="lab" id="lab">
+  <div class="lab-head">
+    <div>
+      <div class="lab-title">Visual Lab</div>
+      <small>Teste sem afetar o login real</small>
+    </div>
+    <button class="lab-toggle" id="hideLab" type="button">Ocultar</button>
+  </div>
+
+  <div class="lab-grid">
+    <div class="control">
+      <label for="theme">Tema</label>
+      <select id="theme">
+        <option value="aurora">Aurora Roxa</option>
+        <option value="ocean">Ocean Azul</option>
+        <option value="ember">Ember Quente</option>
+        <option value="void">Void Mono</option>
+      </select>
+    </div>
+    <div class="control">
+      <label for="depth">Profundidade</label>
+      <input id="depth" type="range" min="0" max="2" step=".1" value="1">
+    </div>
+    <div class="control">
+      <label for="motion">Animação</label>
+      <input id="motion" type="range" min=".2" max="2" step=".1" value="1">
+    </div>
+    <div class="control">
+      <label for="blur">Blur</label>
+      <input id="blur" type="range" min="8" max="38" step="1" value="22">
+    </div>
+  </div>
+
+  <div class="preset-row">
+    <button class="preset" data-preset="soft" type="button">Soft</button>
+    <button class="preset" data-preset="deep" type="button">Deep</button>
+    <button class="preset" data-preset="motion" type="button">Motion</button>
+  </div>
+</aside>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const theme = document.getElementById('theme');
+  const depth = document.getElementById('depth');
+  const motion = document.getElementById('motion');
+  const blur = document.getElementById('blur');
+
+  const apply = () => {
+    document.body.dataset.theme = theme.value;
+    root.style.setProperty('--depth', depth.value);
+    root.style.setProperty('--motion', motion.value);
+    root.style.setProperty('--blur', blur.value + 'px');
+  };
+
+  [theme,depth,motion,blur].forEach(el => el.addEventListener('input', apply));
+
+  document.querySelectorAll('[data-preset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = btn.dataset.preset;
+      if (p === 'soft') { depth.value = '.65'; motion.value = '.55'; blur.value = '28'; }
+      if (p === 'deep') { depth.value = '1.75'; motion.value = '.8'; blur.value = '24'; }
+      if (p === 'motion') { depth.value = '1.25'; motion.value = '1.7'; blur.value = '20'; }
+      apply();
+    });
+  });
+
+  document.getElementById('hideLab').addEventListener('click', () => {
+    document.body.classList.toggle('lab-hidden');
+  });
+
+  apply();
+})();
+</script>
+</body>
+</html>
