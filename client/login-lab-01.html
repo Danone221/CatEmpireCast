@@ -2927,6 +2927,440 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 login reveal + title shine + interactive cards + Cat Empire footer */
+#liquidMetalReactRoot{
+  position:fixed!important;
+  inset:0!important;
+  z-index:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  opacity:1!important;
+  pointer-events:none!important;
+  overflow:hidden!important;
+}
+#liquidMetalReactRoot > *,
+#liquidMetalReactRoot canvas{
+  width:100%!important;
+  height:100%!important;
+  display:block!important;
+  filter:saturate(1.03) contrast(1.04)!important;
+}
+
+.topbar,.shell,.cat-footer{position:relative;z-index:5}
+
+.preview h1{
+  color:transparent!important;
+  background:
+    linear-gradient(
+      108deg,
+      #f7f8fb 0%,
+      #f7f8fb 34%,
+      #9fffd9 43%,
+      #ffffff 49%,
+      #91cfff 55%,
+      #f7f8fb 64%,
+      #f7f8fb 100%
+    )!important;
+  background-size:240% 100%!important;
+  background-position:135% 0!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  animation:hero-title-shine 4.8s linear infinite!important;
+  filter:drop-shadow(0 10px 24px rgba(0,0,0,.25));
+}
+@keyframes hero-title-shine{
+  0%{background-position:135% 0}
+  100%{background-position:-135% 0}
+}
+
+/* Remove sparkle glyph from primary button while preserving the Uiverse text effect. */
+.fx-primary-btn{
+  gap:0!important;
+}
+.fx-primary-icon{
+  display:none!important;
+}
+.fx-primary-copy{
+  min-width:7.8em!important;
+}
+
+/* Login entrance inspired by the supplied video: shell resolves first, then both panels. */
+.login-glass-card{
+  transform-origin:center!important;
+  animation:login-shell-reveal 1.05s cubic-bezier(.16,1,.3,1) both!important;
+}
+.login-visual-pane{
+  animation:login-visual-reveal .9s cubic-bezier(.16,1,.3,1) .16s both!important;
+}
+.login-form-pane{
+  animation:login-form-reveal .92s cubic-bezier(.16,1,.3,1) .28s both!important;
+}
+.login-form-pane .card-title{animation:login-item-in .64s ease .48s both}
+.login-form-pane .card-sub{animation:login-item-in .64s ease .56s both}
+.login-form-pane .field{animation:login-item-in .64s ease .64s both}
+.login-form-pane .fx-primary-btn{animation:login-item-in .64s ease .72s both}
+.login-form-pane .sep{animation:login-item-in .64s ease .80s both}
+.login-form-pane .fx-discord-btn{animation:login-item-in .64s ease .88s both}
+.login-form-pane .note{animation:login-item-in .64s ease .96s both}
+
+@keyframes login-shell-reveal{
+  0%{opacity:0;transform:translateY(28px) scale(.945);filter:blur(12px)}
+  55%{opacity:1;transform:translateY(-2px) scale(1.008);filter:blur(0)}
+  100%{opacity:1;transform:none;filter:none}
+}
+@keyframes login-visual-reveal{
+  0%{opacity:0;transform:translateX(-26px) scale(.96)}
+  100%{opacity:1;transform:none}
+}
+@keyframes login-form-reveal{
+  0%{opacity:0;transform:translateX(26px) scale(.97)}
+  100%{opacity:1;transform:none}
+}
+@keyframes login-item-in{
+  0%{opacity:0;transform:translateY(12px)}
+  100%{opacity:1;transform:none}
+}
+
+/* Cursor-reactive cards. */
+.login-visual-pane,
+.login-form-pane,
+.cat-footer-card{
+  --card-x:50%;
+  --card-y:50%;
+  --tilt-x:0deg;
+  --tilt-y:0deg;
+}
+.login-visual-pane::after,
+.login-form-pane::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:20;
+  pointer-events:none;
+  border-radius:inherit;
+  background:radial-gradient(circle at var(--card-x) var(--card-y),rgba(110,255,210,.16),transparent 34%);
+  opacity:0;
+  transition:opacity .22s ease;
+}
+@media(pointer:fine){
+  .login-visual-pane,
+  .login-form-pane{
+    transition:transform .18s ease,border-color .25s ease,box-shadow .25s ease!important;
+    transform:perspective(950px) rotateX(var(--tilt-y)) rotateY(var(--tilt-x)) translateZ(0);
+    transform-style:preserve-3d;
+  }
+  .login-visual-pane:hover,
+  .login-form-pane:hover{
+    border-color:rgba(112,255,211,.30)!important;
+    box-shadow:
+      0 22px 54px rgba(0,0,0,.34),
+      0 0 34px rgba(52,255,194,.08),
+      inset 0 1px rgba(240,255,250,.08)!important;
+  }
+  .login-visual-pane:hover::after,
+  .login-form-pane:hover::after{
+    opacity:1;
+  }
+}
+
+/* Footer adapted from the supplied HoverFooter. */
+.cat-footer{
+  width:min(1180px,calc(100% - 40px));
+  margin:74px auto 28px;
+}
+.cat-footer-card{
+  position:relative;
+  overflow:hidden;
+  border-radius:28px;
+  border:1px solid rgba(255,255,255,.065);
+  background:rgba(8,10,16,.48);
+  box-shadow:
+    0 30px 90px rgba(0,0,0,.34),
+    inset 0 1px rgba(255,255,255,.035);
+  backdrop-filter:blur(12px) saturate(112%);
+  isolation:isolate;
+}
+.footer-bg-gradient{
+  position:absolute;
+  inset:0;
+  z-index:-2;
+  background:
+    radial-gradient(125% 125% at 50% 10%,rgba(15,15,17,.42) 48%,rgba(51,239,174,.08) 74%,rgba(60,162,250,.10) 100%);
+}
+.footer-grid{
+  position:relative;
+  z-index:3;
+  display:grid;
+  grid-template-columns:1.35fr repeat(3,1fr);
+  gap:52px;
+  padding:48px 52px 34px;
+}
+.footer-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#fff;
+  text-decoration:none;
+  font-size:22px;
+  font-weight:850;
+}
+.footer-brand img{
+  width:34px;
+  height:34px;
+  padding:5px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.025);
+}
+.footer-brand-col p{
+  max-width:280px;
+  margin:15px 0 0;
+  color:rgba(213,220,233,.55);
+  font-size:12px;
+  line-height:1.65;
+}
+.footer-col{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:10px;
+}
+.footer-col h4{
+  margin:0 0 8px;
+  color:#f5f7fb;
+  font-size:13px;
+  font-weight:750;
+}
+.footer-col a,
+.footer-contact-row{
+  color:rgba(211,218,231,.54);
+  font-size:11px;
+  line-height:1.45;
+  text-decoration:none;
+  transition:color .2s ease,transform .2s ease;
+}
+.footer-col a:hover{
+  color:#75f7ca;
+  transform:translateX(2px);
+}
+.footer-live{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+.footer-live span{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#55ffc9;
+  box-shadow:0 0 8px rgba(85,255,201,.75);
+  animation:footer-pulse 1.8s ease-in-out infinite;
+}
+.footer-contact-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.footer-mini-icon{
+  color:#52eeb8;
+  font-size:9px;
+}
+.footer-divider{
+  position:relative;
+  z-index:3;
+  height:1px;
+  margin:0 52px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.10),transparent);
+}
+.footer-bottom{
+  position:relative;
+  z-index:4;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:18px 52px 24px;
+}
+.footer-bottom p{
+  margin:0;
+  color:rgba(211,218,231,.42);
+  font-size:10px;
+}
+.footer-socials{
+  display:flex;
+  gap:10px;
+}
+.footer-social{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(129,140,248,.18);
+  background:rgba(5,8,15,.44);
+  transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease;
+}
+.footer-social svg{
+  width:16px;
+  height:16px;
+  fill:#818cf8;
+}
+.footer-social:hover{
+  transform:translateY(-2px) scale(1.06);
+  border-color:rgba(129,140,248,.48);
+  box-shadow:0 10px 26px rgba(79,70,229,.15);
+}
+.footer-wordmark{
+  position:relative;
+  z-index:2;
+  height:250px;
+  margin:-34px 0 -58px;
+  opacity:.88;
+}
+.footer-hover-svg{
+  width:100%;
+  height:100%;
+  display:block;
+  cursor:pointer;
+  user-select:none;
+}
+.footer-hover-svg text{
+  font-family:Inter,Arial,sans-serif;
+  font-size:124px;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+.footer-text-outline{
+  fill:transparent;
+  stroke:rgba(194,211,236,.06);
+  stroke-width:1.4;
+  opacity:.75;
+}
+.footer-text-draw{
+  fill:transparent;
+  stroke:rgba(82,238,184,.20);
+  stroke-width:1.2;
+  stroke-dasharray:1800;
+  stroke-dashoffset:1800;
+  animation:footer-draw 5s ease-in-out forwards;
+}
+.footer-text-reveal{
+  fill:transparent;
+  stroke:url(#footerTextGradient);
+  stroke-width:1.7;
+  opacity:0;
+  transition:opacity .2s ease;
+}
+.footer-hover-svg:hover .footer-text-reveal{opacity:1}
+.footer-hover-svg:hover .footer-text-outline{opacity:.32}
+
+@keyframes footer-draw{to{stroke-dashoffset:0}}
+@keyframes footer-pulse{50%{opacity:.28;transform:scale(.7)}}
+
+@media(max-width:860px){
+  #liquidMetalReactRoot{
+    position:fixed!important;
+    inset:0!important;
+    width:100vw!important;
+    height:100dvh!important;
+    opacity:1!important;
+  }
+
+  .login-visual-pane,
+  .login-form-pane{
+    transform:none!important;
+  }
+  .login-visual-pane::after,
+  .login-form-pane::after{
+    display:none!important;
+  }
+
+  .login-glass-card{
+    animation:login-shell-reveal .92s cubic-bezier(.16,1,.3,1) both!important;
+  }
+  .login-visual-pane{
+    animation:login-mobile-top .72s cubic-bezier(.16,1,.3,1) .14s both!important;
+  }
+  .login-form-pane{
+    animation:login-mobile-bottom .78s cubic-bezier(.16,1,.3,1) .24s both!important;
+  }
+  @keyframes login-mobile-top{
+    from{opacity:0;transform:translateY(-16px) scale(.97)}
+    to{opacity:1;transform:none}
+  }
+  @keyframes login-mobile-bottom{
+    from{opacity:0;transform:translateY(18px) scale(.97)}
+    to{opacity:1;transform:none}
+  }
+
+  .cat-footer{
+    width:calc(100% - 28px);
+    margin:50px auto 18px;
+  }
+  .cat-footer-card{
+    border-radius:22px;
+    backdrop-filter:blur(8px) saturate(108%);
+  }
+  .footer-grid{
+    grid-template-columns:1fr 1fr;
+    gap:28px 20px;
+    padding:30px 22px 22px;
+  }
+  .footer-brand-col{
+    grid-column:1/-1;
+  }
+  .footer-brand-col p{
+    max-width:100%;
+  }
+  .footer-contact{
+    grid-column:1/-1;
+  }
+  .footer-divider{
+    margin:0 22px;
+  }
+  .footer-bottom{
+    padding:16px 22px 20px;
+  }
+  .footer-wordmark{
+    height:130px;
+    margin:-12px 0 -24px;
+  }
+  .footer-hover-svg text{
+    font-size:106px;
+  }
+}
+
+@media(max-width:520px){
+  .footer-grid{
+    grid-template-columns:1fr 1fr;
+    gap:24px 18px;
+  }
+  .footer-bottom{
+    align-items:flex-start;
+    gap:14px;
+    flex-direction:column;
+  }
+  .footer-wordmark{
+    height:105px;
+    margin:-8px 0 -18px;
+  }
+  .footer-hover-svg text{
+    font-size:92px;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .preview h1,
+  .login-glass-card,
+  .login-visual-pane,
+  .login-form-pane,
+  .login-form-pane > *,
+  .footer-text-draw{
+    animation:none!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -3021,6 +3455,84 @@ body[data-theme="void"]{
       </div>
     </section>
   </main>
+
+  <footer class="cat-footer" aria-label="Rodapé Cat Empire">
+    <div class="cat-footer-card">
+      <div class="footer-grid">
+        <section class="footer-brand-col">
+          <a class="footer-brand" href="/" aria-label="Cat Empire">
+            <img src="/logo.svg" alt="">
+            <span>Cat Empire</span>
+          </a>
+          <p>Comunidades, transmissões e mensagens reunidas em uma experiência feita para o Cat Empire.</p>
+        </section>
+
+        <nav class="footer-col" aria-label="Explorar">
+          <h4>Explorar</h4>
+          <a href="/">Início</a>
+          <a href="/server.html">Comunidades</a>
+          <a href="/dms.html">Mensagens</a>
+        </nav>
+
+        <nav class="footer-col" aria-label="Acesso">
+          <h4>Acesso</h4>
+          <a href="/invite.html">Convites</a>
+          <a href="/login-lab.html">Entrar</a>
+          <a href="/server.html" class="footer-live">Ao vivo <span></span></a>
+        </nav>
+
+        <section class="footer-col footer-contact">
+          <h4>Cat Empire</h4>
+          <div class="footer-contact-row">
+            <span class="footer-mini-icon" aria-hidden="true">◆</span>
+            <span>Comunidade online</span>
+          </div>
+          <div class="footer-contact-row">
+            <span class="footer-mini-icon" aria-hidden="true">●</span>
+            <span>Experiência web</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="footer-divider"></div>
+
+      <div class="footer-bottom">
+        <div class="footer-socials">
+          <a href="/login-lab.html" class="footer-social footer-discord-social" aria-label="Discord">
+            <svg viewBox="0 0 640 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M524.531 69.836a1.5 1.5 0 0 0-.764-.7A485.065 485.065 0 0 0 404.081 32.03a1.816 1.816 0 0 0-1.923.91 337.461 337.461 0 0 0-14.9 30.6 447.848 447.848 0 0 0-134.426 0 309.541 309.541 0 0 0-15.135-30.6 1.89 1.89 0 0 0-1.924-.91 483.689 483.689 0 0 0-119.688 37.107 1.712 1.712 0 0 0-.788.676C39.068 183.651 18.186 294.69 28.43 404.354a2.016 2.016 0 0 0 .765 1.375 487.666 487.666 0 0 0 146.825 74.189 1.9 1.9 0 0 0 2.063-.676A348.2 348.2 0 0 0 208.12 430.4a1.86 1.86 0 0 0-1.019-2.588 321.173 321.173 0 0 1-45.868-21.853 1.885 1.885 0 0 1-.185-3.126 251.047 251.047 0 0 0 9.109-7.137 1.819 1.819 0 0 1 1.9-.256c96.229 43.917 200.41 43.917 295.5 0a1.812 1.812 0 0 1 1.924.233 234.533 234.533 0 0 0 9.132 7.16 1.884 1.884 0 0 1-.162 3.126 301.407 301.407 0 0 1-45.89 21.83 1.875 1.875 0 0 0-1 2.611 391.055 391.055 0 0 0 30.014 48.815 1.864 1.864 0 0 0 2.063.7A486.048 486.048 0 0 0 610.7 405.729a1.882 1.882 0 0 0 .765-1.352c12.264-126.783-20.532-236.912-86.934-334.541zM222.491 337.58c-28.972 0-52.844-26.587-52.844-59.239s23.409-59.241 52.844-59.241c29.665 0 53.306 26.82 52.843 59.239 0 32.654-23.41 59.241-52.843 59.241zm195.38 0c-28.971 0-52.843-26.587-52.843-59.239s23.409-59.241 52.843-59.241c29.667 0 53.307 26.82 52.844 59.239 0 32.654-23.177 59.241-52.844 59.241z"></path>
+            </svg>
+          </a>
+        </div>
+        <p>© 2026 Cat Empire. Todos os direitos reservados.</p>
+      </div>
+
+      <div class="footer-wordmark" aria-hidden="true">
+        <svg class="footer-hover-svg" viewBox="0 0 1000 220" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="footerTextGradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#33efae"/>
+              <stop offset="38%" stop-color="#80eeb4"/>
+              <stop offset="70%" stop-color="#3ca2fa"/>
+              <stop offset="100%" stop-color="#8b5cf6"/>
+            </linearGradient>
+            <radialGradient id="footerReveal" gradientUnits="objectBoundingBox" cx="50%" cy="50%" r="24%">
+              <stop offset="0%" stop-color="white"/>
+              <stop offset="100%" stop-color="black"/>
+            </radialGradient>
+            <mask id="footerTextMask">
+              <rect width="100%" height="100%" fill="url(#footerReveal)"/>
+            </mask>
+          </defs>
+          <text class="footer-text-outline" x="50%" y="53%" text-anchor="middle" dominant-baseline="middle">CAT EMPIRE</text>
+          <text class="footer-text-draw" x="50%" y="53%" text-anchor="middle" dominant-baseline="middle">CAT EMPIRE</text>
+          <text class="footer-text-reveal" x="50%" y="53%" text-anchor="middle" dominant-baseline="middle" mask="url(#footerTextMask)">CAT EMPIRE</text>
+        </svg>
+      </div>
+      <div class="footer-bg-gradient" aria-hidden="true"></div>
+    </div>
+  </footer>
+
 </div>
 
 
@@ -3132,6 +3644,46 @@ body[data-theme="void"]{
 
 
 
+
+
+  // Cursor-reactive card lighting and tilt.
+  if (matchMedia('(pointer:fine)').matches) {
+    document.querySelectorAll('.login-visual-pane,.login-form-pane').forEach(card => {
+      let raf = 0;
+      card.addEventListener('pointermove', e => {
+        if (raf) return;
+        raf = requestAnimationFrame(() => {
+          raf = 0;
+          const r = card.getBoundingClientRect();
+          const px = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+          const py = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+          card.style.setProperty('--card-x', (px * 100).toFixed(1) + '%');
+          card.style.setProperty('--card-y', (py * 100).toFixed(1) + '%');
+          card.style.setProperty('--tilt-x', ((px - .5) * 5).toFixed(2) + 'deg');
+          card.style.setProperty('--tilt-y', ((.5 - py) * 4).toFixed(2) + 'deg');
+        });
+      }, { passive:true });
+      card.addEventListener('pointerleave', () => {
+        card.style.setProperty('--card-x','50%');
+        card.style.setProperty('--card-y','50%');
+        card.style.setProperty('--tilt-x','0deg');
+        card.style.setProperty('--tilt-y','0deg');
+      });
+    });
+  }
+
+  // Footer text hover reveal follows the pointer, mirroring the supplied component behavior.
+  const footerSvg = document.querySelector('.footer-hover-svg');
+  const footerReveal = document.getElementById('footerReveal');
+  if (footerSvg && footerReveal) {
+    footerSvg.addEventListener('pointermove', e => {
+      const r = footerSvg.getBoundingClientRect();
+      const x = Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100));
+      const y = Math.max(0, Math.min(100, ((e.clientY - r.top) / r.height) * 100));
+      footerReveal.setAttribute('cx', x.toFixed(1) + '%');
+      footerReveal.setAttribute('cy', y.toFixed(1) + '%');
+    }, { passive:true });
+  }
 
 })();
 </script>
