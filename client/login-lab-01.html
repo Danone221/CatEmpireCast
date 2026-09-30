@@ -2801,6 +2801,132 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 mobile layout polish — split cards, more background visibility --- */
+@media(max-width:860px){
+  h1{
+    width:100%!important;
+    max-width:100%!important;
+    font-size:clamp(39px,10.2vw,47px)!important;
+    line-height:.96!important;
+    overflow:visible!important;
+    word-break:normal!important;
+  }
+
+  .preview{
+    overflow:visible!important;
+  }
+
+  .subtitle{
+    width:100%!important;
+    max-width:34rem!important;
+  }
+
+  .login-glass-card{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:12px!important;
+    width:min(calc(100vw - 32px),480px)!important;
+    margin:24px auto 0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    backdrop-filter:none!important;
+    overflow:visible!important;
+  }
+
+  .login-glass-card::before,
+  .login-glass-card::after{
+    display:none!important;
+  }
+
+  .login-visual-pane{
+    height:92px!important;
+    min-height:92px!important;
+    border:1px solid rgba(112,255,211,.16)!important;
+    border-radius:20px!important;
+    background:
+      radial-gradient(circle at 50% 62%,rgba(23,255,177,.12),transparent 40%),
+      linear-gradient(180deg,rgba(4,29,23,.48),rgba(4,17,18,.40))!important;
+    box-shadow:
+      0 14px 34px rgba(0,0,0,.24),
+      inset 0 1px rgba(214,255,242,.045)!important;
+    backdrop-filter:blur(6px) saturate(108%)!important;
+  }
+
+  .login-beam{
+    height:90px!important;
+    width:112px!important;
+    opacity:.38!important;
+  }
+
+  .login-lamp{
+    transform:translateX(-50%) scale(.56)!important;
+  }
+
+  .login-mascot{
+    top:69%!important;
+    width:43px!important;
+    height:43px!important;
+  }
+
+  .login-mascot img{
+    width:27px!important;
+    height:27px!important;
+  }
+
+  .orbit-a{width:65px!important;height:28px!important}
+  .orbit-b{width:50px!important;height:63px!important}
+
+  .login-form-pane{
+    padding:18px!important;
+    border:1px solid rgba(112,255,211,.15)!important;
+    border-radius:20px!important;
+    background:
+      linear-gradient(145deg,rgba(4,24,20,.56),rgba(6,15,20,.66))!important;
+    box-shadow:
+      0 16px 42px rgba(0,0,0,.28),
+      inset 0 1px rgba(220,255,244,.045)!important;
+    backdrop-filter:blur(7px) saturate(110%)!important;
+  }
+
+  .login-form-pane .card-title{
+    font-size:19px!important;
+    margin-bottom:5px!important;
+  }
+
+  .login-form-pane .card-sub{
+    margin-bottom:14px!important;
+    font-size:10px!important;
+  }
+
+  .feature-row{
+    width:100%!important;
+    max-width:100%!important;
+  }
+
+  .feature-row span{
+    font-size:7.5px!important;
+    letter-spacing:.055em!important;
+  }
+}
+
+@media(max-width:430px){
+  h1{
+    font-size:40px!important;
+  }
+
+  .login-glass-card{
+    width:calc(100vw - 28px)!important;
+  }
+
+  .login-form-pane{
+    padding:16px!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
