@@ -1144,6 +1144,77 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 true liquid physics --------------------------------------------- */
+.chrome-orb{display:none!important}
+
+.liquid-physics{
+  position:absolute;
+  left:0;
+  top:0;
+  z-index:1;
+  width:clamp(250px,28vw,410px);
+  aspect-ratio:1/1;
+  pointer-events:none;
+  transform:translate3d(var(--liq-x,18vw),var(--liq-y,18vh),0)
+            rotate(var(--liq-angle,0deg))
+            scaleX(var(--liq-stretch-x,1))
+            scaleY(var(--liq-stretch-y,1));
+  transform-origin:50% 50%;
+  will-change:transform;
+  opacity:.88;
+}
+
+.liquid-blob-svg{
+  width:100%;
+  height:100%;
+  overflow:visible;
+  display:block;
+}
+
+.liquid-shape{
+  transform-origin:200px 200px;
+}
+
+.liquid-shadow{
+  fill:#000;
+  opacity:.25;
+  transform:translate(6px,16px) scale(.98);
+}
+
+.liquid-body{
+  fill:url(#liquidBody);
+  stroke:url(#liquidEdge);
+  stroke-width:1.4;
+  vector-effect:non-scaling-stroke;
+}
+
+.liquid-highlight{
+  fill:url(#liquidGlow);
+  opacity:.48;
+  transform-origin:center;
+  transform:translate(var(--liq-hi-x,0px),var(--liq-hi-y,0px))
+            scale(var(--liq-hi-scale,1));
+}
+
+.liquid-core{
+  fill:#fff;
+  opacity:.86;
+  transform-origin:center;
+  transform:translate(var(--liq-core-x,0px),var(--liq-core-y,0px))
+            scale(var(--liq-core-scale,1));
+  filter:drop-shadow(0 0 6px rgba(255,255,255,.58))
+         drop-shadow(0 0 12px rgba(255,126,75,.35));
+}
+
+@media(max-width:860px){
+  .liquid-physics{
+    width:clamp(190px,46vw,280px);
+    opacity:.78;
+  }
+  .liquid-core{filter:drop-shadow(0 0 5px rgba(255,255,255,.48))}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -1156,7 +1227,33 @@ body[data-theme="void"]{
   <div class="wave-field" aria-hidden="true"></div>
   <div class="motion-proof" aria-hidden="true"></div>
   <div class="motion-proof two" aria-hidden="true"></div>
-  <div class="chrome-orb" aria-hidden="true"></div>
+  <div class="liquid-physics" aria-hidden="true">
+    <svg class="liquid-blob-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <radialGradient id="liquidBody" cx="34%" cy="27%" r="76%">
+          <stop offset="0" stop-color="#f6fbff" stop-opacity=".54"/>
+          <stop offset=".18" stop-color="#9ecbff" stop-opacity=".26"/>
+          <stop offset=".48" stop-color="#184d73" stop-opacity=".40"/>
+          <stop offset=".76" stop-color="#141b45" stop-opacity=".62"/>
+          <stop offset="1" stop-color="#070a16" stop-opacity=".86"/>
+        </radialGradient>
+        <linearGradient id="liquidEdge" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#a5efff" stop-opacity=".42"/>
+          <stop offset=".48" stop-color="#7480ff" stop-opacity=".18"/>
+          <stop offset="1" stop-color="#875dff" stop-opacity=".25"/>
+        </linearGradient>
+        <radialGradient id="liquidGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stop-color="#ffffff" stop-opacity=".95"/>
+          <stop offset=".32" stop-color="#9fe8ff" stop-opacity=".42"/>
+          <stop offset="1" stop-color="#6a72ff" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <path class="liquid-shape liquid-shadow" d=""></path>
+      <path class="liquid-shape liquid-body" d=""></path>
+      <ellipse class="liquid-highlight" cx="142" cy="118" rx="62" ry="44"></ellipse>
+      <circle class="liquid-core" cx="286" cy="132" r="15"></circle>
+    </svg>
+  </div>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Voltar ao Cat Empire">
@@ -1414,6 +1511,174 @@ body[data-theme="void"]{
     document.addEventListener('visibilitychange',()=>{
       if(!document.hidden)chooseTarget(performance.now());
     });
+  }
+
+
+  /* True liquid blob: continuous spring motion + continuously deforming SVG contour. */
+  const liquid = document.querySelector('.liquid-physics');
+  const liquidSvg = liquid?.querySelector('.liquid-blob-svg');
+  const liquidBody = liquid?.querySelector('.liquid-body');
+  const liquidShadow = liquid?.querySelector('.liquid-shadow');
+
+  if(liquid && liquidSvg && liquidBody && liquidShadow){
+    const rand=(a,b)=>Math.random()*(b-a)+a;
+    const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+    const POINTS=14;
+    const phases=Array.from({length:POINTS},()=>rand(0,Math.PI*2));
+    const phase2=Array.from({length:POINTS},()=>rand(0,Math.PI*2));
+    const rates=Array.from({length:POINTS},()=>rand(.72,1.24));
+
+    let x=innerWidth*.18;
+    let y=innerHeight*.25;
+    let vx=1.5;
+    let vy=.7;
+    let tx=innerWidth*.72;
+    let ty=innerHeight*.62;
+    let retargetAt=0;
+    let last=performance.now();
+    let acc=0;
+    let raf=0;
+
+    const blobSize=()=>{
+      const r=liquid.getBoundingClientRect();
+      return Math.max(180,r.width||300);
+    };
+
+    const chooseTarget=(now)=>{
+      const s=blobSize();
+      const margin=s*.18;
+      const w=Math.max(innerWidth,360);
+      const h=Math.max(innerHeight,520);
+
+      // Allow the blob to partially leave the viewport so it really travels edge-to-edge.
+      tx=rand(-margin,w-s+margin);
+      ty=rand(72-margin,h-s+margin);
+
+      const speed=Math.max(.55,parseFloat(motion?.value||1));
+      retargetAt=now+rand(2200,4600)/speed;
+    };
+
+    const closedSmoothPath=(pts)=>{
+      const n=pts.length;
+      if(n<3)return "";
+      const mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+      const start=mid(pts[n-1],pts[0]);
+      let d=`M ${start[0].toFixed(2)} ${start[1].toFixed(2)}`;
+      for(let i=0;i<n;i++){
+        const p=pts[i];
+        const next=pts[(i+1)%n];
+        const m=mid(p,next);
+        d+=` Q ${p[0].toFixed(2)} ${p[1].toFixed(2)} ${m[0].toFixed(2)} ${m[1].toFixed(2)}`;
+      }
+      return d+" Z";
+    };
+
+    const makeLiquidPath=(t,speedNorm)=>{
+      const pts=[];
+      const cx=200, cy=200;
+      const base=128;
+
+      for(let i=0;i<POINTS;i++){
+        const a=(Math.PI*2*i)/POINTS;
+        const wave1=Math.sin(t*.0010*rates[i]+phases[i])*.15;
+        const wave2=Math.sin(t*.00173+phase2[i]+i*.83)*.075;
+        const wave3=Math.sin(t*.00061+i*1.37)*.045;
+
+        // Velocity adds directional elongation like fluid inertia.
+        const motionAngle=Math.atan2(vy,vx);
+        const directional=Math.cos(a-motionAngle);
+        const inertia=directional*speedNorm*.14;
+
+        const r=base*(1+wave1+wave2+wave3+inertia);
+        pts.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);
+      }
+      return closedSmoothPath(pts);
+    };
+
+    const frame=(now)=>{
+      raf=requestAnimationFrame(frame);
+      if(document.hidden){last=now;return}
+
+      const dt=Math.min(48,now-last);
+      last=now;
+      acc+=dt;
+
+      // ~30fps visual update.
+      if(acc<32)return;
+      const step=acc/16.667;
+      acc=0;
+
+      if(now>=retargetAt || Math.hypot(tx-x,ty-y)<60) chooseTarget(now);
+
+      const speedCtl=Math.max(.55,parseFloat(motion?.value||1));
+
+      // Spring + damping gives continuous inertia instead of point-to-point transitions.
+      const ax=(tx-x)*.00175*speedCtl;
+      const ay=(ty-y)*.00175*speedCtl;
+
+      // Low-amplitude wandering force prevents straight mechanical paths.
+      const wanderX=Math.sin(now*.00083)*.055 + Math.sin(now*.00147+1.7)*.028;
+      const wanderY=Math.cos(now*.00071+2.1)*.050 + Math.sin(now*.00119)*.025;
+
+      vx=(vx+(ax+wanderX)*step)*Math.pow(.972,step);
+      vy=(vy+(ay+wanderY)*step)*Math.pow(.972,step);
+
+      // Keep speed alive so it never appears stopped.
+      const vmag=Math.hypot(vx,vy);
+      if(vmag<.55){
+        vx+=Math.cos(now*.0011)*.22;
+        vy+=Math.sin(now*.0013)*.22;
+      }
+
+      const maxV=7.2*speedCtl;
+      const mag=Math.hypot(vx,vy);
+      if(mag>maxV){
+        vx=vx/mag*maxV;
+        vy=vy/mag*maxV;
+      }
+
+      x+=vx*step;
+      y+=vy*step;
+
+      const size=blobSize();
+      const minX=-size*.22, maxX=innerWidth-size*.78;
+      const minY=58-size*.18, maxY=innerHeight-size*.78;
+
+      // Soft edge bounce if random target carries it too far.
+      if(x<minX){x=minX;vx=Math.abs(vx)*.72;chooseTarget(now)}
+      if(x>maxX){x=maxX;vx=-Math.abs(vx)*.72;chooseTarget(now)}
+      if(y<minY){y=minY;vy=Math.abs(vy)*.72;chooseTarget(now)}
+      if(y>maxY){y=maxY;vy=-Math.abs(vy)*.72;chooseTarget(now)}
+
+      const sp=clamp(Math.hypot(vx,vy)/Math.max(1,maxV),0,1);
+      const ang=Math.atan2(vy,vx)*180/Math.PI;
+      const stretchX=1+sp*.24;
+      const stretchY=1-sp*.12;
+
+      liquid.style.setProperty('--liq-x',x.toFixed(2)+'px');
+      liquid.style.setProperty('--liq-y',y.toFixed(2)+'px');
+      liquid.style.setProperty('--liq-angle',ang.toFixed(2)+'deg');
+      liquid.style.setProperty('--liq-stretch-x',stretchX.toFixed(3));
+      liquid.style.setProperty('--liq-stretch-y',stretchY.toFixed(3));
+
+      const d=makeLiquidPath(now,sp);
+      liquidBody.setAttribute('d',d);
+      liquidShadow.setAttribute('d',d);
+
+      liquid.style.setProperty('--liq-hi-x',(Math.sin(now*.00105)*16-vx*2.1).toFixed(2)+'px');
+      liquid.style.setProperty('--liq-hi-y',(Math.cos(now*.00093)*12-vy*1.7).toFixed(2)+'px');
+      liquid.style.setProperty('--liq-hi-scale',(1+Math.sin(now*.00121)*.10).toFixed(3));
+      liquid.style.setProperty('--liq-core-x',(-vx*3.1+Math.sin(now*.0014)*8).toFixed(2)+'px');
+      liquid.style.setProperty('--liq-core-y',(-vy*2.7+Math.cos(now*.0011)*7).toFixed(2)+'px');
+      liquid.style.setProperty('--liq-core-scale',(0.88+sp*.28+Math.sin(now*.0016)*.05).toFixed(3));
+    };
+
+    chooseTarget(performance.now());
+    raf=requestAnimationFrame(frame);
+
+    addEventListener('resize',()=>chooseTarget(performance.now()),{passive:true});
+    motion?.addEventListener('input',()=>chooseTarget(performance.now()));
   }
 
 })();
