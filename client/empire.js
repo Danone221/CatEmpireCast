@@ -42,6 +42,15 @@
       document.body.classList.remove('show-workspace-members');
       el('membersSidebar')?.classList.remove('mobile-open');
       el('sidebarOverlay')?.classList.remove('open');
+      if (matchMedia('(max-width:860px)').matches) {
+        document.body.classList.remove('watch-chat-hidden');
+        const open = document.body.classList.toggle('mobile-chat-open');
+        el('watchChatToggle').setAttribute('aria-pressed',String(open));
+        el('workspaceMembers').setAttribute('aria-pressed','false');
+        if (open) requestAnimationFrame(() => el('messageInput')?.focus());
+        return;
+      }
+      document.body.classList.remove('mobile-chat-open');
       const hidden = document.body.classList.toggle('watch-chat-hidden');
       el('watchChatToggle').setAttribute('aria-pressed',String(!hidden));
       el('workspaceMembers').setAttribute('aria-pressed','false');
