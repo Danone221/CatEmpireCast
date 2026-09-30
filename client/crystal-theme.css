@@ -696,3 +696,67 @@ a{color:inherit}
   .channels-sidebar{width:min(82vw,270px)!important}
   .modal-box{border-radius:14px!important}
 }
+
+
+/* Final Crystal alignment ------------------------------------------------ */
+.landing-page .hero{
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:0!important;
+}
+.landing-page .crystal-kicker{
+  background:transparent!important;
+  border-color:transparent!important;
+  padding:0!important;
+  color:#71717a!important;
+}
+.landing-page .hero h1{
+  font-size:30px!important;
+  line-height:1.18!important;
+  letter-spacing:-.03em!important;
+}
+.landing-page .hero .intro{
+  max-width:470px!important;
+  margin-top:10px!important;
+  font-size:13px!important;
+  color:#8b8b94!important;
+}
+.landing-page .auth{
+  margin-top:28px!important;
+}
+.landing-page .form-card{
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.landing-page .form-card label{
+  color:#a1a1aa!important;
+  font-size:12px!important;
+}
+.landing-page .entry-features{
+  margin-top:26px!important;
+  padding-top:17px;
+  border-top:1px solid #27272a;
+}
+.landing-page .landing-main{
+  width:min(100%,620px)!important;
+  padding-top:96px!important;
+}
+.landing-page .landing-topbar{
+  padding-left:max(18px,calc((100vw - 1152px)/2))!important;
+  padding-right:max(18px,calc((100vw - 1152px)/2))!important;
+}
+.landing-page .landing-nav{
+  margin-left:auto;
+}
+.landing-page .active-pill{
+  margin-left:10px;
+}
+@media(max-width:640px){
+  .landing-page .landing-main{padding-top:64px!important}
+  .landing-page .hero h1{font-size:27px!important}
+}
