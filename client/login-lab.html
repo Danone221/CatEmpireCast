@@ -1105,6 +1105,45 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 continuous amorphous blob -------------------------------------- */
+.chrome-orb{
+  transition:none!important;
+  border-radius:var(--blob-radius,32% 68% 27% 73% / 61% 29% 71% 39%)!important;
+  transform:
+    translateX(-50%)
+    translate3d(var(--blob-x,0px),var(--blob-y,0px),0)
+    rotate(var(--blob-rot,0deg))
+    skew(var(--blob-skew-x,0deg),var(--blob-skew-y,0deg))
+    scaleX(var(--blob-sx,1))
+    scaleY(var(--blob-sy,1))!important;
+  transform-origin:50% 50%!important;
+  will-change:transform,border-radius!important;
+}
+.chrome-orb::before{
+  transition:none!important;
+  border-radius:var(--blob-sheen-radius,64% 36% 58% 42% / 33% 67% 38% 62%)!important;
+  transform:
+    translate3d(var(--blob-sheen-x,0%),var(--blob-sheen-y,0%),0)
+    rotate(var(--blob-sheen-rot,0deg))
+    scaleX(var(--blob-sheen-sx,1))
+    scaleY(var(--blob-sheen-sy,1))!important;
+  opacity:var(--blob-sheen-opacity,.64)!important;
+}
+.chrome-orb::after{
+  transition:none!important;
+  transform:
+    translate3d(var(--blob-core-x,0px),var(--blob-core-y,0px),0)
+    scale(var(--blob-core-scale,1))!important;
+  opacity:var(--blob-core-opacity,.9)!important;
+}
+
+@media(max-width:860px){
+  .chrome-orb{
+    width:clamp(175px,40vw,250px)!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -1260,75 +1299,120 @@ body[data-theme="void"]{
   // A compositor-friendly CSS streak layer now provides the same ambient motion.
 
 
-  /* Random liquid orb: new target, new shape and new highlights every cycle. */
-  const randomOrb = document.querySelector('.chrome-orb');
-  let randomOrbTimer = null;
 
-  const orbRand = (min,max) => Math.random() * (max-min) + min;
 
-  const orbRadius = () => {
-    const h = Array.from({length:4},()=>Math.round(orbRand(36,64)));
-    const v = Array.from({length:4},()=>Math.round(orbRand(35,65)));
-    return `${h[0]}% ${h[1]}% ${h[2]}% ${h[3]}% / ${v[0]}% ${v[1]}% ${v[2]}% ${v[3]}%`;
-  };
+  /* Continuous random liquid blob: smooth pursuit, no stops or fixed loop. */
+  const liquidBlob = document.querySelector('.chrome-orb');
 
-  const orbRanges = () => {
-    const mobile = innerWidth <= 860;
-    return {
-      xMin: mobile ? -innerWidth*.17 : -innerWidth*.28,
-      xMax: mobile ?  innerWidth*.17 :  innerWidth*.28,
-      yMin: mobile ? -innerHeight*.11 : -innerHeight*.21,
-      yMax: mobile ?  innerHeight*.13 :  innerHeight*.19,
-      durMin: mobile ? 1450 : 1650,
-      durMax: mobile ? 2600 : 3300,
-      pauseMin: mobile ? 180 : 120,
-      pauseMax: mobile ? 650 : 850
+  if(liquidBlob){
+    const rand=(a,b)=>Math.random()*(b-a)+a;
+    const lerp=(a,b,t)=>a+(b-a)*t;
+
+    let state={
+      x:0,y:0,rot:0,sx:1,sy:1,skx:0,sky:0,
+      radius:[32,68,27,73,61,29,71,39],
+      sheenRadius:[64,36,58,42,33,67,38,62],
+      sheenX:0,sheenY:0,sheenRot:0,sheenSx:1,sheenSy:1,sheenOpacity:.64,
+      coreX:0,coreY:0,coreScale:1,coreOpacity:.9
     };
-  };
+    let target={...state,radius:[...state.radius],sheenRadius:[...state.sheenRadius]};
+    let nextTargetAt=0;
+    let lastPaint=0;
+    let blobFrame=0;
 
-  const randomizeOrb = () => {
-    if(!randomOrb || document.hidden) return;
+    const randomRadius=()=>{
+      // Wider range intentionally creates obvious lobes instead of a near-circle.
+      const h=[rand(24,76),rand(24,76),rand(24,76),rand(24,76)];
+      const v=[rand(22,78),rand(22,78),rand(22,78),rand(22,78)];
+      return [...h,...v];
+    };
 
-    const r = orbRanges();
-    const speed = Math.max(.55, parseFloat(motion?.value || 1));
-    const dur = orbRand(r.durMin,r.durMax) / speed;
-    const pause = orbRand(r.pauseMin,r.pauseMax) / speed;
+    const chooseTarget=(now)=>{
+      const mobile=innerWidth<=860;
+      const speed=Math.max(.55,parseFloat(motion?.value||1));
 
-    randomOrb.style.setProperty('--orb-dur', Math.round(dur)+'ms');
-    randomOrb.style.setProperty('--orb-x', orbRand(r.xMin,r.xMax).toFixed(1)+'px');
-    randomOrb.style.setProperty('--orb-y', orbRand(r.yMin,r.yMax).toFixed(1)+'px');
-    randomOrb.style.setProperty('--orb-rot', orbRand(-19,19).toFixed(1)+'deg');
-    randomOrb.style.setProperty('--orb-scale', orbRand(.90,1.10).toFixed(3));
-    randomOrb.style.setProperty('--orb-radius', orbRadius());
+      target={
+        x:rand(mobile?-innerWidth*.17:-innerWidth*.30,mobile?innerWidth*.17:innerWidth*.30),
+        y:rand(mobile?-innerHeight*.10:-innerHeight*.22,mobile?innerHeight*.12:innerHeight*.20),
+        rot:rand(-24,24),
+        sx:rand(.72,1.30),
+        sy:rand(.70,1.34),
+        skx:rand(-10,10),
+        sky:rand(-7,7),
+        radius:randomRadius(),
+        sheenRadius:randomRadius(),
+        sheenX:rand(-10,10),
+        sheenY:rand(-9,9),
+        sheenRot:rand(-220,220),
+        sheenSx:rand(.84,1.18),
+        sheenSy:rand(.82,1.20),
+        sheenOpacity:rand(.42,.86),
+        coreX:rand(-15,15),
+        coreY:rand(-14,14),
+        coreScale:rand(.72,1.30),
+        coreOpacity:rand(.68,1)
+      };
 
-    randomOrb.style.setProperty('--sheen-radius', orbRadius());
-    randomOrb.style.setProperty('--sheen-x', orbRand(-7,7).toFixed(1)+'%');
-    randomOrb.style.setProperty('--sheen-y', orbRand(-6,6).toFixed(1)+'%');
-    randomOrb.style.setProperty('--sheen-rot', orbRand(-180,180).toFixed(1)+'deg');
-    randomOrb.style.setProperty('--sheen-scale', orbRand(.94,1.08).toFixed(3));
-    randomOrb.style.setProperty('--sheen-opacity', orbRand(.46,.84).toFixed(2));
+      // New target arrives before the previous one can fully settle.
+      nextTargetAt=now+rand(720,1350)/speed;
+    };
 
-    randomOrb.style.setProperty('--core-x', orbRand(-10,10).toFixed(1)+'px');
-    randomOrb.style.setProperty('--core-y', orbRand(-10,10).toFixed(1)+'px');
-    randomOrb.style.setProperty('--core-scale', orbRand(.78,1.22).toFixed(3));
-    randomOrb.style.setProperty('--core-opacity', orbRand(.72,1).toFixed(2));
+    const radiusString=(r)=>
+      r.slice(0,4).map(v=>v.toFixed(1)+'%').join(' ')+' / '+
+      r.slice(4,8).map(v=>v.toFixed(1)+'%').join(' ');
 
-    clearTimeout(randomOrbTimer);
-    randomOrbTimer=setTimeout(randomizeOrb,dur+pause);
-  };
+    const paintBlob=(now)=>{
+      blobFrame=requestAnimationFrame(paintBlob);
+      if(document.hidden)return;
 
-  const restartRandomOrb = () => {
-    clearTimeout(randomOrbTimer);
-    if(!document.hidden) randomizeOrb();
-  };
+      // ~30fps keeps the single blob fluid while staying light on PC.
+      if(now-lastPaint<32)return;
+      const dt=Math.min(50,now-lastPaint||32);
+      lastPaint=now;
 
-  if(randomOrb){
-    requestAnimationFrame(randomizeOrb);
-    addEventListener('resize',restartRandomOrb,{passive:true});
-    motion?.addEventListener('input',restartRandomOrb);
+      if(now>=nextTargetAt)chooseTarget(now);
+
+      const speed=Math.max(.55,parseFloat(motion?.value||1));
+      const k=1-Math.pow(.90,dt/16.67*speed);
+
+      for(const key of ['x','y','rot','sx','sy','skx','sky','sheenX','sheenY','sheenRot','sheenSx','sheenSy','sheenOpacity','coreX','coreY','coreScale','coreOpacity']){
+        state[key]=lerp(state[key],target[key],k);
+      }
+      for(let i=0;i<8;i++){
+        state.radius[i]=lerp(state.radius[i],target.radius[i],k);
+        state.sheenRadius[i]=lerp(state.sheenRadius[i],target.sheenRadius[i],k*.92);
+      }
+
+      liquidBlob.style.setProperty('--blob-x',state.x.toFixed(2)+'px');
+      liquidBlob.style.setProperty('--blob-y',state.y.toFixed(2)+'px');
+      liquidBlob.style.setProperty('--blob-rot',state.rot.toFixed(2)+'deg');
+      liquidBlob.style.setProperty('--blob-sx',state.sx.toFixed(4));
+      liquidBlob.style.setProperty('--blob-sy',state.sy.toFixed(4));
+      liquidBlob.style.setProperty('--blob-skew-x',state.skx.toFixed(2)+'deg');
+      liquidBlob.style.setProperty('--blob-skew-y',state.sky.toFixed(2)+'deg');
+      liquidBlob.style.setProperty('--blob-radius',radiusString(state.radius));
+
+      liquidBlob.style.setProperty('--blob-sheen-radius',radiusString(state.sheenRadius));
+      liquidBlob.style.setProperty('--blob-sheen-x',state.sheenX.toFixed(2)+'%');
+      liquidBlob.style.setProperty('--blob-sheen-y',state.sheenY.toFixed(2)+'%');
+      liquidBlob.style.setProperty('--blob-sheen-rot',state.sheenRot.toFixed(2)+'deg');
+      liquidBlob.style.setProperty('--blob-sheen-sx',state.sheenSx.toFixed(4));
+      liquidBlob.style.setProperty('--blob-sheen-sy',state.sheenSy.toFixed(4));
+      liquidBlob.style.setProperty('--blob-sheen-opacity',state.sheenOpacity.toFixed(3));
+
+      liquidBlob.style.setProperty('--blob-core-x',state.coreX.toFixed(2)+'px');
+      liquidBlob.style.setProperty('--blob-core-y',state.coreY.toFixed(2)+'px');
+      liquidBlob.style.setProperty('--blob-core-scale',state.coreScale.toFixed(3));
+      liquidBlob.style.setProperty('--blob-core-opacity',state.coreOpacity.toFixed(3));
+    };
+
+    chooseTarget(performance.now());
+    blobFrame=requestAnimationFrame(paintBlob);
+
+    addEventListener('resize',()=>chooseTarget(performance.now()),{passive:true});
+    motion?.addEventListener('input',()=>chooseTarget(performance.now()));
     document.addEventListener('visibilitychange',()=>{
-      if(document.hidden) clearTimeout(randomOrbTimer);
-      else randomizeOrb();
+      if(!document.hidden)chooseTarget(performance.now());
     });
   }
 
