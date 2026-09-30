@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#05060a">
-<title>Cat Empire — Login Visual Lab 06</title>
+<title>Cat Empire — Login Visual Lab 07</title>
 <style>
 :root{
   --bg:#05060a;
@@ -1294,27 +1294,199 @@ h1{
   .border-beam{filter:none!important;animation-duration:7.5s!important}
 }
 
+
+/* LAB 07 — Vortex / Warp tunnel */
+.collision-aura,.collision-field,.impact-floor,
+.nebula-field,.halo-field,.meteor-field,
+.mobile-energy,.prism-mesh,.ray-stage,.glass-orbit{display:none!important}
+.topbar,.shell{position:relative;z-index:4}
+
+.scene{
+  background:
+    radial-gradient(circle at 53% 48%,rgba(47,92,255,.11),transparent 22rem),
+    radial-gradient(circle at 20% 18%,rgba(116,65,255,.08),transparent 24rem),
+    linear-gradient(180deg,#020307 0%,#050713 52%,#020307 100%)!important;
+}
+
+.vortex-core{
+  position:absolute;
+  z-index:0;
+  left:52%;
+  top:49%;
+  width:190px;
+  height:190px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  pointer-events:none;
+  background:
+    radial-gradient(circle,#03050a 0 24%,rgba(8,12,24,.94) 25% 39%,rgba(57,106,255,.14) 44%,rgba(79,214,255,.08) 58%,transparent 70%);
+  box-shadow:
+    0 0 38px rgba(77,169,255,.09),
+    0 0 92px rgba(95,72,255,.09);
+  animation:vortex-core-pulse 5.6s ease-in-out infinite;
+}
+@keyframes vortex-core-pulse{
+  0%,100%{transform:translate(-50%,-50%) scale(.94);opacity:.72}
+  50%{transform:translate(-50%,-50%) scale(1.08);opacity:1}
+}
+
+.vortex-rings{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  overflow:hidden;
+}
+.vr{
+  position:absolute;
+  left:52%;
+  top:49%;
+  border-radius:50%;
+  border:1px solid rgba(112,194,255,.14);
+  transform:translate(-50%,-50%) rotate(0deg);
+  box-shadow:inset 0 0 26px rgba(92,81,255,.025),0 0 18px rgba(47,186,255,.025);
+  animation:vortex-spin 10s linear infinite;
+  will-change:transform,opacity;
+}
+.vr::before,.vr::after{
+  content:"";
+  position:absolute;
+  width:9px;height:9px;border-radius:50%;
+  background:#9eeaff;
+  box-shadow:0 0 9px rgba(101,221,255,.8),0 0 16px rgba(116,79,255,.28);
+}
+.vr::before{left:7%;top:18%}
+.vr::after{right:11%;bottom:14%}
+.vr1{width:260px;height:180px;animation-duration:7.5s;opacity:.72}
+.vr2{width:390px;height:250px;animation-duration:10s;animation-direction:reverse;opacity:.52}
+.vr3{width:540px;height:330px;animation-duration:13s;opacity:.40}
+.vr4{width:700px;height:430px;animation-duration:16s;animation-direction:reverse;opacity:.30}
+.vr5{width:860px;height:530px;animation-duration:20s;opacity:.22}
+.vr6{width:1040px;height:640px;animation-duration:24s;animation-direction:reverse;opacity:.16}
+@keyframes vortex-spin{
+  to{transform:translate(-50%,-50%) rotate(360deg)}
+}
+
+.warp-field{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  overflow:hidden;
+}
+.ws{
+  position:absolute;
+  left:52%;
+  top:49%;
+  width:2px;
+  height:170px;
+  transform-origin:50% 100%;
+  background:linear-gradient(180deg,transparent,rgba(113,205,255,.12),#79dcff,#fff);
+  opacity:0;
+  animation:warp-pull 5.5s linear infinite;
+  will-change:transform,opacity;
+}
+.w1{--a:12deg;animation-delay:-.4s}
+.w2{--a:58deg;animation-delay:-2.7s;animation-duration:6.8s}
+.w3{--a:104deg;animation-delay:-4.9s;animation-duration:7.4s}
+.w4{--a:150deg;animation-delay:-1.8s;animation-duration:8.1s}
+.w5{--a:202deg;animation-delay:-5.2s;animation-duration:6.3s}
+.w6{--a:246deg;animation-delay:-3.1s;animation-duration:7.7s}
+.w7{--a:294deg;animation-delay:-6.4s;animation-duration:9.1s}
+.w8{--a:334deg;animation-delay:-7.3s;animation-duration:8.7s}
+@keyframes warp-pull{
+  0%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-62vh) scaleY(.35);opacity:0}
+  12%{opacity:.68}
+  72%{opacity:.52}
+  100%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-8vh) scaleY(1.25);opacity:0}
+}
+
+.login-card{
+  --spot-x:74%;
+  --spot-y:13%;
+  transform:none!important;
+  animation:vortex-card-pulse 5.8s ease-in-out infinite!important;
+  border-color:rgba(104,144,255,.23)!important;
+  background:
+    radial-gradient(circle at var(--spot-x) var(--spot-y),rgba(81,208,255,.072),transparent 29%),
+    linear-gradient(180deg,rgba(12,16,29,.95),rgba(5,8,15,.985))!important;
+  box-shadow:
+    0 38px 100px rgba(0,0,0,.60),
+    0 0 44px rgba(83,84,255,.065),
+    inset 0 1px rgba(255,255,255,.055)!important;
+}
+.login-card::before{display:none!important}
+.login-card::after{
+  background:
+    radial-gradient(circle at var(--spot-x) var(--spot-y),rgba(74,206,255,.05),transparent 31%),
+    linear-gradient(180deg,rgba(16,20,34,.97),rgba(7,9,16,.99))!important;
+}
+@keyframes vortex-card-pulse{
+  0%,100%{box-shadow:0 38px 100px rgba(0,0,0,.60),0 0 28px rgba(83,84,255,.05),inset 0 1px rgba(255,255,255,.055)}
+  50%{box-shadow:0 42px 108px rgba(0,0,0,.63),0 0 52px rgba(53,173,255,.11),inset 0 1px rgba(255,255,255,.075)}
+}
+
+.border-beam{
+  animation:beam-spin 9s linear infinite!important;
+  filter:drop-shadow(0 0 4px rgba(70,192,255,.15))!important;
+}
+.text-shimmer{animation-duration:6.2s!important}
+
+@media(max-width:700px){
+  .scene{
+    background:
+      radial-gradient(circle at 68% 36%,rgba(52,94,255,.13),transparent 17rem),
+      linear-gradient(180deg,#020307 0%,#050713 55%,#020307 100%)!important;
+  }
+  .vortex-core{
+    left:72%;
+    top:36%;
+    width:130px;height:130px;
+    animation-duration:4.8s!important;
+  }
+  .vr{left:72%;top:36%}
+  .vr1{width:180px;height:125px;animation-duration:6.5s!important}
+  .vr2{width:260px;height:175px;animation-duration:8.5s!important}
+  .vr3{width:350px;height:230px;animation-duration:11s!important}
+  .vr4{width:460px;height:300px;animation-duration:14s!important}
+  .vr5,.vr6{display:none}
+  .vr::before,.vr::after{width:6px;height:6px;box-shadow:0 0 6px rgba(101,221,255,.75)}
+  .ws{left:72%;top:36%;height:112px}
+  .w1,.w2,.w3,.w4{display:block}
+  .w5,.w6,.w7,.w8{display:none}
+  @keyframes warp-pull{
+    0%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-48vh) scaleY(.3);opacity:0}
+    14%{opacity:.72}
+    70%{opacity:.54}
+    100%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-6vh) scaleY(1.15);opacity:0}
+  }
+  .login-card{
+    animation:vortex-card-pulse 4.8s ease-in-out infinite!important;
+    backdrop-filter:none!important;
+  }
+  .border-beam{filter:none!important;animation-duration:8s!important}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
 <div class="scene">
-  <div class="collision-aura" aria-hidden="true"></div>
-  <div class="collision-field" aria-hidden="true">
-    <span class="drop d1"><i></i><b></b></span>
-    <span class="drop d2"><i></i><b></b></span>
-    <span class="drop d3"><i></i><b></b></span>
-    <span class="drop d4"><i></i><b></b></span>
-    <span class="drop d5"><i></i><b></b></span>
-    <span class="drop d6"><i></i><b></b></span>
+  <div class="vortex-core" aria-hidden="true"></div>
+  <div class="vortex-rings" aria-hidden="true">
+    <i class="vr vr1"></i><i class="vr vr2"></i><i class="vr vr3"></i>
+    <i class="vr vr4"></i><i class="vr vr5"></i><i class="vr vr6"></i>
   </div>
-  <div class="impact-floor" aria-hidden="true"></div>
+  <div class="warp-field" aria-hidden="true">
+    <b class="ws w1"></b><b class="ws w2"></b><b class="ws w3"></b><b class="ws w4"></b>
+    <b class="ws w5"></b><b class="ws w6"></b><b class="ws w7"></b><b class="ws w8"></b>
+  </div>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Voltar ao Cat Empire">
       <img src="/logo.svg" alt="">
       <span>Cat Empire</span>
     </a>
-    <div class="lab-badge">Login Visual Lab 06 · Beam Collision</div>
+    <div class="lab-badge">Login Visual Lab 07 · Vortex Warp</div>
   </header>
 
   <main class="shell">
@@ -1351,7 +1523,7 @@ h1{
 <aside class="lab" id="lab">
   <div class="lab-head">
     <div>
-      <div class="lab-title">Visual Lab 06</div>
+      <div class="lab-title">Visual Lab 07</div>
       <small>Teste sem afetar o login real</small>
     </div>
     <button class="lab-toggle" id="hideLab" type="button">Ocultar</button>
@@ -1424,14 +1596,14 @@ h1{
   document.querySelectorAll('[data-preset]').forEach(btn=>btn.addEventListener('click',()=>{
     const p=btn.dataset.preset;
     if(p==='soft'){depth.value='.65';motion.value='.55';blur.value='26'}
-    if(p==='deep'){depth.value='1.45';motion.value='.8';blur.value='20'}
+    if(p==='deep'){depth.value='1.5';motion.value='.8';blur.value='20'}
     if(p==='motion'){depth.value='1';motion.value='1.35';blur.value='17'}
     apply();
   }));
   document.getElementById('hideLab').addEventListener('click',()=>document.body.classList.toggle('lab-hidden'));
 
   if(card&&matchMedia('(pointer:fine)').matches){
-    let raf=0,x=72,y=12;
+    let raf=0,x=74,y=13;
     const paint=()=>{
       raf=0;
       card.style.setProperty('--spot-x',x+'%');
@@ -1444,7 +1616,7 @@ h1{
       if(!raf)raf=requestAnimationFrame(paint);
     },{passive:true});
     card.addEventListener('pointerleave',()=>{
-      x=72;y=12;
+      x=74;y=13;
       if(!raf)raf=requestAnimationFrame(paint);
     },{passive:true});
   }
