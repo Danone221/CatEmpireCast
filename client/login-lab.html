@@ -1274,6 +1274,239 @@ body[data-theme="void"]{
   z-index:20;
 }
 
+
+/* V1 mobile composition — compact + lighter -------------------------- */
+@media(max-width:860px){
+  html,body{
+    background:#05070c!important;
+  }
+
+  .scene{
+    min-height:100svh!important;
+    overflow:hidden!important;
+    background:
+      radial-gradient(circle at 18% 18%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 34rem),
+      radial-gradient(circle at 86% 58%,color-mix(in srgb,var(--accent2) 8%,transparent),transparent 28rem),
+      linear-gradient(180deg,#080a11 0%,#05070c 54%,#03050a 100%)!important;
+  }
+
+  .scene::before{
+    opacity:.24!important;
+    filter:blur(24px)!important;
+  }
+
+  .scene::after{
+    opacity:.16!important;
+  }
+
+  /* On mobile the shader becomes a contained visual object instead of the whole background. */
+  #liquidMetalReactRoot{
+    inset:auto!important;
+    left:50%!important;
+    top:clamp(300px,38svh,390px)!important;
+    width:min(88vw,430px)!important;
+    height:clamp(190px,26svh,255px)!important;
+    transform:translateX(-50%) rotate(-5deg) translateZ(0)!important;
+    transform-origin:center!important;
+    border-radius:46% 54% 39% 61% / 56% 42% 58% 44%!important;
+    overflow:hidden!important;
+    opacity:.78!important;
+    box-shadow:
+      0 24px 64px rgba(0,0,0,.34),
+      0 0 0 1px rgba(178,204,255,.07)!important;
+    -webkit-mask-image:radial-gradient(ellipse at 50% 50%,#000 56%,rgba(0,0,0,.92) 72%,transparent 100%)!important;
+    mask-image:radial-gradient(ellipse at 50% 50%,#000 56%,rgba(0,0,0,.92) 72%,transparent 100%)!important;
+  }
+
+  #liquidMetalReactRoot canvas{
+    filter:saturate(.82) brightness(.72) contrast(.97)!important;
+  }
+
+  .topbar{
+    min-height:66px!important;
+    padding:12px 18px!important;
+    background:rgba(5,7,12,.92)!important;
+    backdrop-filter:none!important;
+    border-bottom:1px solid rgba(255,255,255,.055)!important;
+  }
+
+  .brand{
+    gap:10px!important;
+  }
+
+  .brand img{
+    width:36px!important;
+    height:36px!important;
+  }
+
+  .brand span{
+    font-size:16px!important;
+  }
+
+  .lab-badge{
+    display:none!important;
+  }
+
+  .shell{
+    min-height:auto!important;
+    width:100%!important;
+    max-width:680px!important;
+    margin:0 auto!important;
+    padding:42px 18px 44px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:flex-start!important;
+    gap:34px!important;
+  }
+
+  .preview{
+    width:100%!important;
+    max-width:none!important;
+    padding:0!important;
+  }
+
+  .kicker{
+    margin-bottom:22px!important;
+    transform:none!important;
+  }
+
+  h1{
+    max-width:8.5ch!important;
+    margin:0 0 20px!important;
+    font-size:clamp(43px,12.5vw,62px)!important;
+    line-height:.94!important;
+    letter-spacing:-.045em!important;
+  }
+
+  .subtitle{
+    max-width:38rem!important;
+    margin:0!important;
+    font-size:14px!important;
+    line-height:1.62!important;
+    opacity:.72!important;
+  }
+
+  .feature-row{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:8px!important;
+    margin-top:20px!important;
+  }
+
+  .feature-row span{
+    min-width:0!important;
+    padding:9px 6px!important;
+    font-size:9px!important;
+    letter-spacing:.11em!important;
+    text-align:center!important;
+    animation:none!important;
+  }
+
+  .login-card{
+    width:100%!important;
+    max-width:none!important;
+    margin-top:108px!important;
+    padding:24px 22px 22px!important;
+    border-radius:25px!important;
+    backdrop-filter:none!important;
+    animation:none!important;
+    background:
+      radial-gradient(circle at 82% 2%,rgba(69,183,255,.06),transparent 30%),
+      linear-gradient(180deg,rgba(9,14,25,.97),rgba(5,8,15,.99))!important;
+    box-shadow:
+      0 20px 46px rgba(0,0,0,.42),
+      0 0 0 1px rgba(120,164,255,.06),
+      inset 0 1px rgba(255,255,255,.05)!important;
+  }
+
+  .card-title{
+    font-size:22px!important;
+    margin-bottom:6px!important;
+  }
+
+  .card-sub{
+    font-size:13px!important;
+    line-height:1.5!important;
+    margin-bottom:20px!important;
+  }
+
+  .field{
+    margin-bottom:14px!important;
+  }
+
+  .field label{
+    margin-bottom:8px!important;
+  }
+
+  .field input{
+    min-height:54px!important;
+    padding:0 16px!important;
+    border-radius:14px!important;
+    font-size:16px!important;
+  }
+
+  .cta,
+  .discord{
+    min-height:54px!important;
+    border-radius:14px!important;
+  }
+
+  .sep{
+    margin:12px 0!important;
+  }
+
+  .note{
+    margin-top:14px!important;
+    font-size:11px!important;
+  }
+
+  /* mobile performance budget */
+  .border-beam{
+    animation-duration:14s!important;
+    filter:none!important;
+  }
+
+  .border-beam-soft,
+  .limelight-effect .limelight-head::after,
+  .cta::after{
+    display:none!important;
+  }
+
+  .limelight-effect .limelight-head{
+    animation-duration:12s!important;
+    box-shadow:0 0 7px rgba(255,255,255,.55)!important;
+  }
+
+  .text-shimmer{
+    animation:none!important;
+  }
+
+  .lab{
+    display:none!important;
+  }
+}
+
+@media(max-width:430px){
+  #liquidMetalReactRoot{
+    top:clamp(285px,37svh,360px)!important;
+    width:86vw!important;
+    height:205px!important;
+  }
+
+  .shell{
+    padding-left:16px!important;
+    padding-right:16px!important;
+    gap:30px!important;
+  }
+
+  .login-card{
+    margin-top:96px!important;
+    padding:22px 18px 20px!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
