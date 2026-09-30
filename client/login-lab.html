@@ -399,6 +399,62 @@ body[data-theme="void"]{
   }
 }
 
+
+/* 21st.dev Limelight animation — decorative only, no navigation */
+@keyframes limelight-scan{
+  0%{left:8%;opacity:.25}
+  12%{opacity:1}
+  50%{left:72%;opacity:1}
+  88%{opacity:.9}
+  100%{left:8%;opacity:.25}
+}
+@keyframes limelight-breathe{
+  0%,100%{filter:blur(0);transform:translateX(-50%) scaleX(.92)}
+  50%{filter:blur(.35px);transform:translateX(-50%) scaleX(1.08)}
+}
+.limelight-effect{
+  position:absolute;
+  z-index:4;
+  inset:0;
+  pointer-events:none;
+  overflow:hidden;
+  border-radius:inherit;
+}
+.limelight-effect .limelight-head{
+  position:absolute;
+  top:-1px;
+  left:8%;
+  width:62px;
+  height:5px;
+  transform:translateX(-50%);
+  border-radius:0 0 8px 8px;
+  background:#fff;
+  box-shadow:
+    0 0 8px rgba(255,255,255,.96),
+    0 0 16px color-mix(in srgb,var(--accent2) 60%,white),
+    0 0 28px color-mix(in srgb,var(--accent) 38%,transparent);
+  animation:limelight-scan calc(8s / max(.25,var(--motion))) ease-in-out infinite;
+}
+.limelight-effect .limelight-head::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:4px;
+  width:150px;
+  height:145px;
+  transform:translateX(-50%);
+  clip-path:polygon(40% 0,60% 0,100% 100%,0 100%);
+  background:linear-gradient(
+    180deg,
+    rgba(255,255,255,.24),
+    color-mix(in srgb,var(--accent2) 13%,transparent) 42%,
+    transparent 88%
+  );
+  filter:blur(2px);
+  opacity:.62;
+  animation:limelight-breathe 2.8s ease-in-out infinite;
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -431,6 +487,7 @@ body[data-theme="void"]{
     </section>
 
     <section class="login-card" aria-label="Preview do login">
+      <div class="limelight-effect" aria-hidden="true"><div class="limelight-head"></div></div>
       <div class="card-title">Bem-vindo de volta</div>
       <div class="card-sub">Escolha um nome para visualizar a experiência de entrada.</div>
       <div class="field">
