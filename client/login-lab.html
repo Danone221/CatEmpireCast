@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#05060a">
-<title>Cat Empire — Login Visual Lab 05</title>
+<title>Cat Empire — Login Visual Lab 06</title>
 <style>
 :root{
   --bg:#05060a;
@@ -1085,24 +1085,236 @@ h1{
   .border-beam{filter:none!important;animation-duration:8s!important}
 }
 
+
+/* LAB 06 — Background Beams With Collision + Perspective Grid */
+.nebula-field,.halo-field,.meteor-field,.mobile-energy,.prism-mesh,.ray-stage,.glass-orbit{display:none!important}
+.topbar,.shell{position:relative;z-index:4}
+
+.scene{
+  background:
+    radial-gradient(circle at 50% 83%,rgba(42,189,255,.10),transparent 25rem),
+    radial-gradient(circle at 18% 22%,rgba(110,60,255,.08),transparent 24rem),
+    linear-gradient(180deg,#020307 0%,#050811 56%,#020408 100%)!important;
+}
+
+.collision-aura{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 50% 78%,rgba(57,190,255,.13),transparent 28%),
+    radial-gradient(ellipse at 33% 84%,rgba(112,70,255,.10),transparent 25%),
+    radial-gradient(ellipse at 72% 82%,rgba(53,235,193,.055),transparent 22%);
+  animation:collision-aura-pulse 5.8s ease-in-out infinite;
+  will-change:opacity,transform;
+}
+@keyframes collision-aura-pulse{
+  0%,100%{opacity:.54;transform:scale(1)}
+  50%{opacity:.94;transform:scale(1.035)}
+}
+
+.collision-field{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  overflow:hidden;
+  pointer-events:none;
+}
+.drop{
+  --x:50%;
+  --dur:6s;
+  --delay:0s;
+  position:absolute;
+  inset:0 auto 0 var(--x);
+  width:1px;
+  animation:none;
+}
+.drop i{
+  position:absolute;
+  left:0;
+  top:-180px;
+  width:2px;
+  height:150px;
+  border-radius:999px;
+  background:linear-gradient(180deg,transparent 0%,rgba(110,96,255,.10) 18%,#74dfff 70%,#ffffff 100%);
+  box-shadow:0 0 8px rgba(85,215,255,.58),0 0 18px rgba(100,83,255,.18);
+  opacity:0;
+  animation:collision-drop var(--dur) linear infinite;
+  animation-delay:var(--delay);
+  will-change:transform,opacity;
+}
+.drop b{
+  position:absolute;
+  left:1px;
+  top:76%;
+  width:12px;
+  height:12px;
+  margin:-6px 0 0 -6px;
+  border:1px solid rgba(166,235,255,.82);
+  border-radius:50%;
+  box-shadow:0 0 12px rgba(72,210,255,.52),0 0 28px rgba(104,73,255,.24);
+  opacity:0;
+  animation:collision-impact var(--dur) linear infinite;
+  animation-delay:var(--delay);
+  will-change:transform,opacity;
+}
+.drop b::after{
+  content:"";
+  position:absolute;
+  inset:50% auto auto 50%;
+  width:58px;
+  height:2px;
+  transform:translate(-50%,-50%);
+  background:linear-gradient(90deg,transparent,#7fe3ff,#fff,#9b7bff,transparent);
+  box-shadow:0 0 10px rgba(80,205,255,.42);
+  opacity:.75;
+}
+.d1{--x:12%;--dur:5.6s;--delay:-1.4s}
+.d2{--x:29%;--dur:7.2s;--delay:-5.1s}
+.d3{--x:46%;--dur:6.4s;--delay:-3.2s}
+.d4{--x:63%;--dur:8.3s;--delay:-6.6s}
+.d5{--x:78%;--dur:6.9s;--delay:-2.1s}
+.d6{--x:91%;--dur:9.1s;--delay:-7.5s}
+
+@keyframes collision-drop{
+  0%{transform:translate3d(0,-24vh,0);opacity:0}
+  8%{opacity:.86}
+  70%{opacity:.92}
+  78%{transform:translate3d(0,calc(76vh + 150px),0);opacity:1}
+  79%,100%{transform:translate3d(0,calc(76vh + 150px),0);opacity:0}
+}
+@keyframes collision-impact{
+  0%,73%{transform:scale(.15);opacity:0}
+  77%{transform:scale(.35);opacity:.95}
+  82%{transform:scale(4.2);opacity:.42}
+  89%,100%{transform:scale(7.8);opacity:0}
+}
+
+.impact-floor{
+  position:absolute;
+  z-index:1;
+  left:-18%;
+  right:-18%;
+  top:69%;
+  height:48%;
+  pointer-events:none;
+  transform:perspective(720px) rotateX(64deg) scale(1.08);
+  transform-origin:top center;
+  background-image:
+    linear-gradient(rgba(79,195,255,.10) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(105,83,255,.085) 1px,transparent 1px);
+  background-size:54px 38px;
+  -webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.92),transparent 74%);
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.92),transparent 74%);
+  opacity:.58;
+  animation:floor-flow 7s linear infinite;
+  will-change:background-position,opacity;
+}
+@keyframes floor-flow{
+  0%{background-position:0 0;opacity:.46}
+  50%{opacity:.68}
+  100%{background-position:0 38px;opacity:.46}
+}
+
+.login-card{
+  --spot-x:72%;
+  --spot-y:12%;
+  transform:none!important;
+  animation:collision-card-pulse 5.4s ease-in-out infinite!important;
+  border-color:rgba(93,170,255,.23)!important;
+  background:
+    radial-gradient(circle at var(--spot-x) var(--spot-y),rgba(75,210,255,.075),transparent 28%),
+    linear-gradient(180deg,rgba(11,16,27,.95),rgba(5,8,14,.98))!important;
+  box-shadow:
+    0 36px 98px rgba(0,0,0,.59),
+    0 0 44px rgba(46,171,255,.06),
+    inset 0 1px rgba(255,255,255,.055)!important;
+}
+.login-card::before{display:none!important}
+.login-card::after{
+  background:
+    radial-gradient(circle at var(--spot-x) var(--spot-y),rgba(79,210,255,.05),transparent 31%),
+    linear-gradient(180deg,rgba(15,20,32,.97),rgba(6,9,16,.99))!important;
+}
+@keyframes collision-card-pulse{
+  0%,100%{box-shadow:0 36px 98px rgba(0,0,0,.59),0 0 32px rgba(46,171,255,.045),inset 0 1px rgba(255,255,255,.055)}
+  50%{box-shadow:0 41px 106px rgba(0,0,0,.62),0 0 56px rgba(72,119,255,.11),inset 0 1px rgba(255,255,255,.075)}
+}
+
+.border-beam{
+  animation:beam-spin 8.5s linear infinite!important;
+  filter:drop-shadow(0 0 4px rgba(72,201,255,.16))!important;
+}
+.text-shimmer{animation-duration:6s!important}
+
+@media(max-width:700px){
+  .scene{
+    background:
+      radial-gradient(circle at 50% 80%,rgba(41,191,255,.12),transparent 20rem),
+      radial-gradient(circle at 20% 20%,rgba(110,64,255,.08),transparent 18rem),
+      linear-gradient(180deg,#020307 0%,#050811 58%,#020408 100%)!important;
+  }
+  .collision-aura{animation-duration:4.8s!important}
+  .drop i{
+    height:118px;
+    box-shadow:0 0 5px rgba(85,215,255,.55);
+  }
+  .drop b{
+    top:72%;
+    width:10px;height:10px;
+    margin:-5px 0 0 -5px;
+    box-shadow:0 0 9px rgba(72,210,255,.50);
+  }
+  .drop b::after{width:40px;box-shadow:none}
+  .d1{--x:14%;--dur:5.2s}
+  .d2{--x:37%;--dur:6.3s}
+  .d3{--x:62%;--dur:5.8s}
+  .d4{--x:84%;--dur:7.1s}
+  .d5,.d6{display:none}
+  @keyframes collision-drop{
+    0%{transform:translate3d(0,-18vh,0);opacity:0}
+    9%{opacity:.92}
+    66%{opacity:.92}
+    75%{transform:translate3d(0,calc(72vh + 118px),0);opacity:1}
+    76%,100%{transform:translate3d(0,calc(72vh + 118px),0);opacity:0}
+  }
+  .impact-floor{
+    top:66%;
+    height:42%;
+    background-size:46px 34px;
+    transform:perspective(620px) rotateX(65deg) scale(1.08);
+    animation-duration:6s!important;
+    opacity:.52;
+  }
+  .login-card{
+    animation:collision-card-pulse 4.8s ease-in-out infinite!important;
+    backdrop-filter:none!important;
+  }
+  .border-beam{filter:none!important;animation-duration:7.5s!important}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
 <div class="scene">
-  <div class="nebula-field" aria-hidden="true"></div>
-  <div class="halo-field" aria-hidden="true"><i></i><i></i></div>
-  <div class="meteor-field" aria-hidden="true">
-    <i class="meteor m1"></i><i class="meteor m2"></i><i class="meteor m3"></i>
-    <i class="meteor m4"></i><i class="meteor m5"></i><i class="meteor m6"></i>
-    <i class="meteor m7"></i><i class="meteor m8"></i>
+  <div class="collision-aura" aria-hidden="true"></div>
+  <div class="collision-field" aria-hidden="true">
+    <span class="drop d1"><i></i><b></b></span>
+    <span class="drop d2"><i></i><b></b></span>
+    <span class="drop d3"><i></i><b></b></span>
+    <span class="drop d4"><i></i><b></b></span>
+    <span class="drop d5"><i></i><b></b></span>
+    <span class="drop d6"><i></i><b></b></span>
   </div>
+  <div class="impact-floor" aria-hidden="true"></div>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Voltar ao Cat Empire">
       <img src="/logo.svg" alt="">
       <span>Cat Empire</span>
     </a>
-    <div class="lab-badge">Login Visual Lab 05 · Nebula Meteors</div>
+    <div class="lab-badge">Login Visual Lab 06 · Beam Collision</div>
   </header>
 
   <main class="shell">
@@ -1139,7 +1351,7 @@ h1{
 <aside class="lab" id="lab">
   <div class="lab-head">
     <div>
-      <div class="lab-title">Visual Lab 05</div>
+      <div class="lab-title">Visual Lab 06</div>
       <small>Teste sem afetar o login real</small>
     </div>
     <button class="lab-toggle" id="hideLab" type="button">Ocultar</button>
@@ -1200,10 +1412,10 @@ h1{
     root.style.setProperty('--depth',depth.value);
     root.style.setProperty('--motion',motion.value);
     root.style.setProperty('--blur',blur.value+'px');
-    const speed=Math.max(.25,parseFloat(motion.value)||1);
+    const speed=Math.max(.3,parseFloat(motion.value)||1);
     if(!baseDurations.size)capture();
     baseDurations.forEach((d,el)=>{
-      el.style.animationDuration=Math.max(.5,d/speed)+'s';
+      el.style.animationDuration=Math.max(.55,d/speed)+'s';
       el.style.animationPlayState='running';
     });
   };
@@ -1211,15 +1423,15 @@ h1{
   [theme,depth,motion,blur].forEach(el=>el.addEventListener('input',apply));
   document.querySelectorAll('[data-preset]').forEach(btn=>btn.addEventListener('click',()=>{
     const p=btn.dataset.preset;
-    if(p==='soft'){depth.value='.65';motion.value='.55';blur.value='28'}
-    if(p==='deep'){depth.value='1.5';motion.value='.8';blur.value='22'}
-    if(p==='motion'){depth.value='1';motion.value='1.45';blur.value='18'}
+    if(p==='soft'){depth.value='.65';motion.value='.55';blur.value='26'}
+    if(p==='deep'){depth.value='1.45';motion.value='.8';blur.value='20'}
+    if(p==='motion'){depth.value='1';motion.value='1.35';blur.value='17'}
     apply();
   }));
   document.getElementById('hideLab').addEventListener('click',()=>document.body.classList.toggle('lab-hidden'));
 
   if(card&&matchMedia('(pointer:fine)').matches){
-    let raf=0,x=78,y=14;
+    let raf=0,x=72,y=12;
     const paint=()=>{
       raf=0;
       card.style.setProperty('--spot-x',x+'%');
@@ -1232,7 +1444,7 @@ h1{
       if(!raf)raf=requestAnimationFrame(paint);
     },{passive:true});
     card.addEventListener('pointerleave',()=>{
-      x=78;y=14;
+      x=72;y=12;
       if(!raf)raf=requestAnimationFrame(paint);
     },{passive:true});
   }
