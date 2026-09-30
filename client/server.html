@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/empire.css?v=20260914-ui2">
 <link rel="stylesheet" href="/community-test-theme.css?v=20260930b">
 <link rel="stylesheet" href="/server-real-theme.css?v=20260930-real1">
+<link rel="stylesheet" href="/profile-card-v1.css?v=20260930-v1">
 </head>
 <body class="room-page discord-page">
 
@@ -71,10 +72,91 @@
   </div>
 </div>
 <div class="modal" id="editProfileModal"><div class="modal-box profile-modal-box"><div class="type-toggle" style="margin-bottom:14px"><button type="button" class="type-opt active" id="userTabProfileBtn">👤 Meu Perfil</button><button type="button" class="type-opt" id="userTabAccountBtn">⚙️ Minha Conta</button></div><div id="userPaneProfile"><div class="profile-banner banner-edit-wrap" id="editProfileBanner"><div class="banner-btn-group"><button type="button" class="banner-upload-btn" id="editProfileBannerBtn">📷 Imagem</button><button type="button" class="banner-clear-btn" id="removeProfileBannerBtn">🎨 Cor Padrão</button></div></div><div class="profile-avatar-row"><div class="avatar-edit-wrap profile-avatar-big" id="editAvatarWrap"><img id="editAvatarPreview" src="/logo.svg" alt=""><span class="avatar-edit-label">TROCAR<br>FOTO</span></div></div><h2 style="font-size:11px">Personalizar Perfil</h2><label class="kv-label" style="display:block;margin-bottom:6px">NOME DE EXIBIÇÃO</label><input id="editDisplayName" placeholder="Nome de exibição" maxlength="32"><label class="kv-label" style="display:block;margin-bottom:6px">SOBRE MIM (BIO)</label><textarea id="editBio" class="bio-input" placeholder="Fale um pouco sobre você…" maxlength="190"></textarea><div class="char-counter"><span id="editBioCount">0</span>/190</div><label class="kv-label" style="display:block;margin-bottom:6px">COR DO BANNER</label><div class="color-picker-layout" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px"><div class="color-swatches" id="editColorSwatches" style="margin-bottom:0;flex:1 1 100%;width:100%"></div><input type="color" id="editCustomColorInput" class="custom-color-input" title="Cor personalizada"></div><input type="file" id="avatarFileInput" accept="image/*" hidden><input type="file" id="profileBannerFileInput" accept="image/*" hidden><div class="modal-actions profile-settings-actions"><button class="btn" id="cancelEditProfileBtn">Cancelar</button><button class="btn btn-primary" id="saveEditProfileBtn">Salvar Alterações</button></div></div><div id="userPaneAccount" hidden><h2 style="font-size:11px;margin-bottom:14px">Configurações da Conta</h2><div class="kv-row"><span class="kv-label">USUÁRIO</span><span class="kv-value" id="accountUsername">—</span></div><div class="kv-row"><span class="kv-label">ID DA CONTA</span><span class="kv-value" id="accountUserId">—</span><button type="button" class="btn kv-copy" id="copyUserIdBtn">Copiar</button></div><div class="danger-zone-box" style="margin-top:20px"><h4>DESCONECTAR</h4><p class="modal-hint">Sair da sua conta atual neste navegador.</p><button type="button" class="btn" id="accountLogoutBtn">🔴 Sair da Conta</button></div><div class="modal-actions"><button class="btn" id="closeAccountTabBtn">Fechar</button></div></div></div></div>
-<div class="modal profile-sheet-modal" id="viewProfileModal"><div class="modal-box profile-modal-box profile-sheet"><div class="profile-sheet-handle" aria-hidden="true"></div><button type="button" class="profile-sheet-more" data-profile-menu-trigger aria-label="Mais opções" aria-expanded="false">•••</button><div class="profile-sheet-menu" hidden><button type="button" data-profile-sheet-action="copy-username">Copiar nome de usuário</button><button type="button" data-profile-sheet-action="copy-id">Copiar ID do usuário</button><button type="button" data-profile-sheet-action="close">Fechar perfil</button></div><div class="profile-banner" id="viewProfileBanner"></div><div class="profile-avatar-row"><div class="profile-avatar-big"><img id="viewProfileAvatar" src="/logo.svg" alt=""></div></div><div class="profile-sheet-content"><h2 class="profile-display-name" id="viewProfileName">—</h2><div class="profile-username" id="viewProfileUsername">@—</div><div class="profile-sheet-mutual" id="viewProfileMemberContext"></div><div class="modal-actions profile-sheet-actions"><button class="btn btn-primary" id="dmFromProfileBtn">✉️ Enviar mensagem</button><button class="btn profile-close-action" id="closeViewProfileBtn" aria-label="Fechar">×</button></div><section class="profile-sheet-section"><div class="profile-sheet-label">Bio</div><div class="profile-bio" id="viewProfileBio">Sem bio.</div></section><section class="profile-sheet-section"><div class="profile-sheet-label">Membro desde</div><div class="profile-sheet-value" id="viewProfileDates">—</div></section><section class="profile-sheet-section" id="viewProfileRolesSection"><div class="profile-sheet-label">Cargos</div><div class="profile-sheet-roles" id="viewProfileRoles"></div></section></div></div></div>
+<div class="modal profile-sheet-modal profile-x-modal" id="viewProfileModal">
+  <article class="modal-box profile-modal-box profile-sheet profile-x-card" role="dialog" aria-modal="true" aria-labelledby="viewProfileName">
+    <div class="profile-x-glow" aria-hidden="true"></div>
+
+    <header class="profile-x-hero">
+      <div class="profile-banner profile-x-banner" id="viewProfileBanner"></div>
+      <div class="profile-x-hero-shade" aria-hidden="true"></div>
+      <div class="profile-x-topline">
+        <span class="profile-x-brand">CAT EMPIRE</span>
+        <span class="profile-x-member-badge"><i></i> PERFIL</span>
+      </div>
+
+      <button type="button" class="profile-sheet-more profile-x-more" data-profile-menu-trigger aria-label="Mais opções" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="profile-sheet-menu profile-x-menu" hidden>
+        <button type="button" data-profile-sheet-action="copy-username">
+          <span class="profile-x-menu-icon">＠</span><span>Copiar nome de usuário</span>
+        </button>
+        <button type="button" data-profile-sheet-action="copy-id">
+          <span class="profile-x-menu-icon">#</span><span>Copiar ID do usuário</span>
+        </button>
+        <button type="button" data-profile-sheet-action="close">
+          <span class="profile-x-menu-icon">×</span><span>Fechar perfil</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="profile-avatar-row profile-x-identity-row">
+      <div class="profile-avatar-big profile-x-avatar">
+        <span class="profile-x-avatar-ring" aria-hidden="true"></span>
+        <img id="viewProfileAvatar" src="/logo.svg" alt="">
+        <span class="profile-x-presence" aria-label="Perfil ativo"></span>
+      </div>
+
+      <div class="profile-x-identity">
+        <h2 class="profile-display-name" id="viewProfileName">—</h2>
+        <div class="profile-username" id="viewProfileUsername">@—</div>
+        <div class="profile-sheet-mutual profile-x-context" id="viewProfileMemberContext"></div>
+      </div>
+    </div>
+
+    <div class="profile-sheet-content profile-x-content">
+      <div class="modal-actions profile-sheet-actions profile-x-actions">
+        <button class="btn btn-primary profile-x-message-btn" id="dmFromProfileBtn">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 5.75A2.75 2.75 0 0 1 6.75 3h10.5A2.75 2.75 0 0 1 20 5.75v7.5A2.75 2.75 0 0 1 17.25 16H10l-4.55 3.42A.9.9 0 0 1 4 18.7V5.75Z"></path>
+          </svg>
+          <span>Enviar mensagem</span>
+        </button>
+        <button class="btn profile-close-action profile-x-close" id="closeViewProfileBtn" aria-label="Fechar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+        </button>
+      </div>
+
+      <div class="profile-x-grid">
+        <section class="profile-sheet-section profile-x-section profile-x-about">
+          <div class="profile-sheet-label profile-x-section-title">
+            <span>Sobre</span><i></i>
+          </div>
+          <div class="profile-bio" id="viewProfileBio">Sem bio.</div>
+        </section>
+
+        <section class="profile-sheet-section profile-x-section profile-x-since">
+          <div class="profile-sheet-label profile-x-section-title">
+            <span>Membro desde</span><i></i>
+          </div>
+          <div class="profile-sheet-value" id="viewProfileDates">—</div>
+        </section>
+      </div>
+
+      <section class="profile-sheet-section profile-x-section profile-x-roles-section" id="viewProfileRolesSection">
+        <div class="profile-sheet-label profile-x-section-title">
+          <span>Cargos</span><i></i>
+        </div>
+        <div class="profile-sheet-roles profile-x-roles" id="viewProfileRoles"></div>
+      </section>
+    </div>
+  </article>
+</div>
 <script src="/compat-fixes.js"></script><script src="/server-guard.js"></script><script src="/room.js?v=20260914-ui2"></script><script src="/runtime-v5.js?v=20260914-ui2"></script><script src="/message-interactions-v9.js?v=20260822"></script><script src="/mentions-v5.js?v=20260822"></script><script src="/interaction-fixes-v6.js?v=20260822"></script><script src="/save-guards-v7.js?v=20260822"></script>
 <script src="/profile-sheet-v10.js?v=20260823b"></script>
 <script src="/empire.js?v=20260914-ui2"></script>
 <script src="/server-real-ui.js?v=20260930-real1"></script>
+<script src="/profile-card-v1.js?v=20260930-v1"></script>
 </body>
 </html>
