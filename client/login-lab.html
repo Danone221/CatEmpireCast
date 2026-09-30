@@ -455,6 +455,156 @@ body[data-theme="void"]{
   animation:limelight-breathe 2.8s ease-in-out infinite;
 }
 
+
+/* Effects round 2: liquid crystal + glowy waves + border beam + shimmer */
+@keyframes liquid-crystal-morph{
+  0%,100%{
+    border-radius:48% 52% 49% 51% / 39% 41% 59% 61%;
+    filter:saturate(1.14) contrast(1.06) hue-rotate(0deg);
+    background-position:50% 50%,42% 44%,52% 60%;
+  }
+  26%{
+    border-radius:57% 43% 61% 39% / 48% 57% 43% 52%;
+    filter:saturate(1.28) contrast(1.09) hue-rotate(9deg);
+    background-position:58% 42%,48% 52%,46% 55%;
+  }
+  57%{
+    border-radius:42% 58% 44% 56% / 61% 38% 62% 39%;
+    filter:saturate(1.18) contrast(1.12) hue-rotate(-7deg);
+    background-position:46% 57%,38% 46%,58% 64%;
+  }
+  79%{
+    border-radius:53% 47% 55% 45% / 43% 62% 38% 57%;
+    filter:saturate(1.34) contrast(1.05) hue-rotate(13deg);
+    background-position:55% 47%,45% 58%,50% 52%;
+  }
+}
+@keyframes wave-drift{
+  0%{transform:translate3d(-7%,0,0) rotate(-7deg) scale(1.03)}
+  50%{transform:translate3d(6%,-2%,0) rotate(-3deg) scale(1.08)}
+  100%{transform:translate3d(-7%,0,0) rotate(-7deg) scale(1.03)}
+}
+@keyframes wave-drift-reverse{
+  0%{transform:translate3d(5%,2%,0) rotate(8deg) scale(1.08)}
+  50%{transform:translate3d(-5%,-2%,0) rotate(4deg) scale(1.02)}
+  100%{transform:translate3d(5%,2%,0) rotate(8deg) scale(1.08)}
+}
+@keyframes beam-spin{to{transform:rotate(360deg)}}
+@keyframes shimmer-text{
+  0%,12%{background-position:180% 50%}
+  55%,100%{background-position:-80% 50%}
+}
+
+.wave-field{
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  overflow:hidden;
+  opacity:calc(.36 + (.18 * var(--depth)));
+}
+.wave-field::before,
+.wave-field::after{
+  content:"";
+  position:absolute;
+  left:-18%;
+  width:136%;
+  height:42%;
+  border-radius:50%;
+  filter:blur(calc(var(--blur) * 1.35));
+  mix-blend-mode:screen;
+}
+.wave-field::before{
+  top:20%;
+  background:
+    radial-gradient(ellipse at 24% 50%,transparent 0 26%,color-mix(in srgb,var(--accent2) 22%,transparent) 39%,transparent 54%),
+    radial-gradient(ellipse at 68% 52%,transparent 0 22%,color-mix(in srgb,var(--accent) 20%,transparent) 39%,transparent 58%);
+  animation:wave-drift calc(18s / max(.25,var(--motion))) ease-in-out infinite;
+}
+.wave-field::after{
+  top:47%;
+  background:
+    radial-gradient(ellipse at 36% 50%,transparent 0 24%,color-mix(in srgb,var(--accent3) 14%,transparent) 39%,transparent 55%),
+    radial-gradient(ellipse at 78% 46%,transparent 0 25%,color-mix(in srgb,var(--accent2) 15%,transparent) 40%,transparent 57%);
+  animation:wave-drift-reverse calc(23s / max(.25,var(--motion))) ease-in-out infinite;
+}
+
+.chrome-orb{
+  background-size:135% 135%,125% 125%,135% 135%;
+  animation:
+    chrome-orb-float calc(10s / max(.25,var(--motion))) ease-in-out infinite,
+    liquid-crystal-morph calc(11s / max(.25,var(--motion))) ease-in-out infinite;
+}
+.chrome-orb::before{
+  animation:wave-drift calc(13s / max(.25,var(--motion))) ease-in-out infinite;
+}
+.chrome-orb::after{
+  animation:pulse calc(3.4s / max(.25,var(--motion))) ease-in-out infinite;
+}
+
+.text-shimmer{
+  color:transparent;
+  background:
+    linear-gradient(
+      110deg,
+      #7e8798 0%,
+      #aeb7c8 34%,
+      #ffffff 47%,
+      color-mix(in srgb,var(--accent2) 70%,white) 54%,
+      #aeb7c8 65%,
+      #7e8798 100%
+    );
+  background-size:250% 100%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  animation:shimmer-text calc(5.8s / max(.25,var(--motion))) ease-in-out infinite;
+}
+
+.border-beam{
+  position:absolute;
+  z-index:3;
+  inset:-1px;
+  border-radius:inherit;
+  pointer-events:none;
+  padding:1px;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0 68%,
+      color-mix(in srgb,var(--accent) 45%,transparent) 75%,
+      #fff 80%,
+      color-mix(in srgb,var(--accent2) 76%,white) 83%,
+      transparent 89% 100%
+    );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  filter:drop-shadow(0 0 8px color-mix(in srgb,var(--accent2) 28%,transparent));
+  animation:beam-spin calc(8s / max(.25,var(--motion))) linear infinite;
+}
+.border-beam-soft{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  border-radius:inherit;
+  box-shadow:
+    inset 0 0 26px color-mix(in srgb,var(--accent2) 5%,transparent),
+    inset 0 0 54px color-mix(in srgb,var(--accent) 4%,transparent);
+}
+
+.login-card > :not(.border-beam):not(.border-beam-soft):not(.limelight-effect){
+  position:relative;
+  z-index:5;
+}
+
+@media(max-width:560px){
+  .wave-field{opacity:.34}
+  .border-beam{filter:drop-shadow(0 0 5px color-mix(in srgb,var(--accent2) 22%,transparent))}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -464,6 +614,7 @@ body[data-theme="void"]{
     <div class="shader-vignette"></div>
   </div>
   <div class="gridfx"></div>
+  <div class="wave-field" aria-hidden="true"></div>
   <div class="chrome-orb" aria-hidden="true"></div>
 
   <header class="topbar">
@@ -476,7 +627,7 @@ body[data-theme="void"]{
 
   <main class="shell">
     <section class="preview">
-      <div class="kicker"><span class="dot"></span> Protótipo isolado</div>
+      <div class="kicker"><span class="dot"></span><span class="text-shimmer">Protótipo isolado</span></div>
       <h1>Entre na sua comunidade.</h1>
       <p class="subtitle">Esta página não faz login real. Ela existe só para testar profundidade, cores, animações, contraste e composição antes de levar o visual para a tela oficial.</p>
       <div class="feature-row">
@@ -487,6 +638,8 @@ body[data-theme="void"]{
     </section>
 
     <section class="login-card" aria-label="Preview do login">
+      <div class="border-beam" aria-hidden="true"></div>
+      <div class="border-beam-soft" aria-hidden="true"></div>
       <div class="limelight-effect" aria-hidden="true"><div class="limelight-head"></div></div>
       <div class="card-title">Bem-vindo de volta</div>
       <div class="card-sub">Escolha um nome para visualizar a experiência de entrada.</div>
