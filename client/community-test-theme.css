@@ -937,3 +937,33 @@ body>*{position:relative;z-index:1}
     scroll-behavior:auto!important;
   }
 }
+
+
+/* Narrow viewport hardening */
+@media(max-width:640px){
+  .landing-page,
+  .landing-main,
+  .landing-main .hero,
+  .hero .intro,
+  .auth,
+  .form-card{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .hero .intro{
+    width:100%!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+  .hero-visual{
+    width:100%!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    border-radius:38px;
+  }
+  .hero-orbit{width:94%!important}
+  .hero-flag{width:86%!important}
+  .hero-chip.chat{right:7%!important;top:16%!important}
+  .hero-chip.create{left:3%!important;bottom:19%!important}
+  .hero-chip.share{right:3%!important;bottom:8%!important}
+}
