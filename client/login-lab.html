@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#05060a">
-<title>Cat Empire — Login Visual Lab</title>
+<title>Cat Empire — Login Visual Lab 03</title>
 <style>
 :root{
   --bg:#05060a;
@@ -650,10 +650,66 @@ body[data-theme="void"]{
   100%{translate:150vw 52vh;opacity:0}
 }
 
+
+/* LAB 03 — Interactive Ripple + Flickering Grid + Particle Wave */
+.chrome-orb,.wave-field,.motion-proof,.gridfx,.limelight-effect{display:none!important}
+.scene{
+  background:
+    radial-gradient(circle at 50% 35%,rgba(31,85,122,.13),transparent 32rem),
+    linear-gradient(180deg,#020508,#061016 58%,#020508)!important;
+}
+.flicker-grid{
+  position:absolute;inset:0;z-index:-2;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(69,180,255,.08) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(69,180,255,.08) 1px,transparent 1px);
+  background-size:38px 38px;
+  -webkit-mask-image:radial-gradient(circle at 50% 48%,#000 8%,rgba(0,0,0,.82) 38%,transparent 78%);
+  mask-image:radial-gradient(circle at 50% 48%,#000 8%,rgba(0,0,0,.82) 38%,transparent 78%);
+  animation:grid-flicker 4.8s steps(1,end) infinite;
+}
+@keyframes grid-flicker{
+  0%,100%{opacity:.34}
+  11%{opacity:.22}
+  12%{opacity:.48}
+  28%{opacity:.31}
+  31%{opacity:.45}
+  62%{opacity:.27}
+  64%{opacity:.38}
+  87%{opacity:.29}
+}
+#particleWave{
+  position:absolute;inset:0;z-index:-1;width:100%;height:100%;
+  pointer-events:none;mix-blend-mode:screen;opacity:.88;
+}
+.ripple-layer{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.ripple{
+  position:absolute;width:22px;height:22px;border-radius:50%;
+  border:1px solid rgba(89,215,255,.52);
+  box-shadow:0 0 22px rgba(63,197,255,.14);
+  transform:translate(-50%,-50%) scale(.2);
+  opacity:.8;
+  animation:ripple-expand 2.2s cubic-bezier(.12,.58,.22,1) forwards;
+}
+@keyframes ripple-expand{
+  0%{transform:translate(-50%,-50%) scale(.25);opacity:.72}
+  68%{opacity:.24}
+  100%{transform:translate(-50%,-50%) scale(18);opacity:0}
+}
+.login-card{
+  backdrop-filter:blur(18px) saturate(125%);
+  background:linear-gradient(180deg,rgba(9,18,25,.78),rgba(5,11,16,.88))!important;
+  border-color:rgba(86,201,255,.17)!important;
+  box-shadow:0 38px 100px rgba(0,0,0,.58),0 0 60px rgba(49,173,255,.07),inset 0 1px rgba(255,255,255,.05)!important;
+}
+.cta{background:linear-gradient(110deg,#3468ff,#466eff 44%,#33d8ff)!important}
 </style>
 </head>
 <body data-theme="aurora">
 <div class="scene">
+  <div class="flicker-grid" aria-hidden="true"></div>
+  <canvas id="particleWave" aria-hidden="true"></canvas>
+  <div class="ripple-layer" id="rippleLayer" aria-hidden="true"></div>
   <div class="shader-layer" aria-hidden="true">
     <canvas id="shaderCanvas"></canvas>
     <div class="shader-vignette"></div>
@@ -669,7 +725,7 @@ body[data-theme="void"]{
       <img src="/logo.svg" alt="">
       <span>Cat Empire</span>
     </a>
-    <div class="lab-badge">Login Visual Lab</div>
+    <div class="lab-badge">Login Visual Lab 03 · Ripple Grid</div>
   </header>
 
   <main class="shell">
@@ -706,7 +762,7 @@ body[data-theme="void"]{
 <aside class="lab" id="lab">
   <div class="lab-head">
     <div>
-      <div class="lab-title">Visual Lab</div>
+      <div class="lab-title">Visual Lab 03</div>
       <small>Teste sem afetar o login real</small>
     </div>
     <button class="lab-toggle" id="hideLab" type="button">Ocultar</button>
@@ -887,8 +943,51 @@ body[data-theme="void"]{
 
   window.addEventListener('resize', resizeShader, {passive:true});
   resizeShader();
-  drawShader();
 
+  // Particle Wave
+  const pc=document.getElementById('particleWave');
+  const pctx=pc?.getContext('2d');
+  let pw=0,ph=0,pdpr=Math.min(devicePixelRatio||1,1.6),pts=[];
+  const presize=()=>{
+    if(!pc||!pctx)return;
+    pw=pc.clientWidth;ph=pc.clientHeight;
+    pc.width=Math.floor(pw*pdpr);pc.height=Math.floor(ph*pdpr);
+    pctx.setTransform(pdpr,0,0,pdpr,0,0);
+    const cols=Math.max(20,Math.floor(pw/34)), rows=Math.max(10,Math.floor(ph/48));
+    pts=[];
+    for(let y=0;y<rows;y++)for(let x=0;x<cols;x++)pts.push({
+      bx:(x+.5)*(pw/cols),by:(y+.5)*(ph/rows),
+      phase:Math.random()*Math.PI*2,size:.7+Math.random()*1.4
+    });
+  };
+  const pdraw=(time)=>{
+    if(!pctx)return;
+    pctx.clearRect(0,0,pw,ph);
+    pctx.globalCompositeOperation='lighter';
+    for(const p of pts){
+      const wave=Math.sin((p.bx*.008)+(time*.0012)+p.phase)*10;
+      const wave2=Math.cos((p.by*.011)+(time*.0008)+p.phase)*6;
+      const x=p.bx+wave2,y=p.by+wave;
+      const a=.12+.20*(.5+.5*Math.sin(time*.001+p.phase));
+      pctx.fillStyle='rgba(75,205,255,'+a+')';
+      pctx.shadowColor='rgba(69,150,255,.45)';
+      pctx.shadowBlur=8;
+      pctx.beginPath();pctx.arc(x,y,p.size,0,Math.PI*2);pctx.fill();
+    }
+    pctx.shadowBlur=0;pctx.globalCompositeOperation='source-over';
+    requestAnimationFrame(pdraw);
+  };
+  addEventListener('resize',presize,{passive:true});presize();requestAnimationFrame(pdraw);
+
+  // Interactive ripple
+  const rl=document.getElementById('rippleLayer');
+  let lastRipple=0;
+  addEventListener('pointermove',e=>{
+    const now=performance.now();if(now-lastRipple<180)return;lastRipple=now;
+    const r=document.createElement('span');r.className='ripple';
+    r.style.left=e.clientX+'px';r.style.top=e.clientY+'px';rl?.appendChild(r);
+    setTimeout(()=>r.remove(),2300);
+  },{passive:true});
 })();
 </script>
 </body>
