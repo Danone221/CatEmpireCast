@@ -1037,6 +1037,74 @@ body[data-theme="void"]{
   }
 }
 
+
+/* V1 random liquid orb ------------------------------------------------ */
+.chrome-orb,
+.chrome-orb::before,
+.chrome-orb::after{
+  animation:none!important;
+}
+
+.chrome-orb{
+  left:50%!important;
+  top:50%!important;
+  width:clamp(220px,26vw,360px)!important;
+  aspect-ratio:1/1!important;
+  overflow:hidden!important;
+
+  transform:
+    translateX(-50%)
+    translate3d(var(--orb-x,0px),var(--orb-y,0px),0)
+    rotate(var(--orb-rot,-6deg))
+    scale(var(--orb-scale,1))!important;
+
+  border-radius:var(--orb-radius,42% 58% 52% 48% / 45% 40% 60% 55%)!important;
+
+  transition:
+    transform var(--orb-dur,2200ms) cubic-bezier(.22,.75,.2,1),
+    border-radius var(--orb-dur,2200ms) cubic-bezier(.22,.75,.2,1),
+    box-shadow var(--orb-dur,2200ms) ease,
+    filter var(--orb-dur,2200ms) ease!important;
+
+  will-change:transform,border-radius!important;
+}
+
+.chrome-orb::before{
+  border-radius:var(--sheen-radius,44% 56% 48% 52% / 41% 44% 56% 59%)!important;
+  opacity:var(--sheen-opacity,.66)!important;
+  transform:
+    translate3d(var(--sheen-x,-2%),var(--sheen-y,-1%),0)
+    rotate(var(--sheen-rot,0deg))
+    scale(var(--sheen-scale,1))!important;
+
+  transition:
+    transform var(--orb-dur,2200ms) cubic-bezier(.22,.75,.2,1),
+    border-radius var(--orb-dur,2200ms) cubic-bezier(.22,.75,.2,1),
+    opacity var(--orb-dur,2200ms) ease!important;
+
+  will-change:transform,border-radius,opacity!important;
+}
+
+.chrome-orb::after{
+  opacity:var(--core-opacity,.92)!important;
+  transform:
+    translate3d(var(--core-x,0px),var(--core-y,0px),0)
+    scale(var(--core-scale,1))!important;
+
+  transition:
+    transform var(--orb-dur,2200ms) ease,
+    opacity var(--orb-dur,2200ms) ease!important;
+
+  will-change:transform,opacity!important;
+}
+
+@media(max-width:860px){
+  .chrome-orb{
+    top:44%!important;
+    width:clamp(180px,42vw,260px)!important;
+  }
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -1190,6 +1258,79 @@ body[data-theme="void"]{
 
   // V1 Lite: the old per-frame Canvas shader was removed.
   // A compositor-friendly CSS streak layer now provides the same ambient motion.
+
+
+  /* Random liquid orb: new target, new shape and new highlights every cycle. */
+  const randomOrb = document.querySelector('.chrome-orb');
+  let randomOrbTimer = null;
+
+  const orbRand = (min,max) => Math.random() * (max-min) + min;
+
+  const orbRadius = () => {
+    const h = Array.from({length:4},()=>Math.round(orbRand(36,64)));
+    const v = Array.from({length:4},()=>Math.round(orbRand(35,65)));
+    return `${h[0]}% ${h[1]}% ${h[2]}% ${h[3]}% / ${v[0]}% ${v[1]}% ${v[2]}% ${v[3]}%`;
+  };
+
+  const orbRanges = () => {
+    const mobile = innerWidth <= 860;
+    return {
+      xMin: mobile ? -innerWidth*.17 : -innerWidth*.28,
+      xMax: mobile ?  innerWidth*.17 :  innerWidth*.28,
+      yMin: mobile ? -innerHeight*.11 : -innerHeight*.21,
+      yMax: mobile ?  innerHeight*.13 :  innerHeight*.19,
+      durMin: mobile ? 1450 : 1650,
+      durMax: mobile ? 2600 : 3300,
+      pauseMin: mobile ? 180 : 120,
+      pauseMax: mobile ? 650 : 850
+    };
+  };
+
+  const randomizeOrb = () => {
+    if(!randomOrb || document.hidden) return;
+
+    const r = orbRanges();
+    const speed = Math.max(.55, parseFloat(motion?.value || 1));
+    const dur = orbRand(r.durMin,r.durMax) / speed;
+    const pause = orbRand(r.pauseMin,r.pauseMax) / speed;
+
+    randomOrb.style.setProperty('--orb-dur', Math.round(dur)+'ms');
+    randomOrb.style.setProperty('--orb-x', orbRand(r.xMin,r.xMax).toFixed(1)+'px');
+    randomOrb.style.setProperty('--orb-y', orbRand(r.yMin,r.yMax).toFixed(1)+'px');
+    randomOrb.style.setProperty('--orb-rot', orbRand(-19,19).toFixed(1)+'deg');
+    randomOrb.style.setProperty('--orb-scale', orbRand(.90,1.10).toFixed(3));
+    randomOrb.style.setProperty('--orb-radius', orbRadius());
+
+    randomOrb.style.setProperty('--sheen-radius', orbRadius());
+    randomOrb.style.setProperty('--sheen-x', orbRand(-7,7).toFixed(1)+'%');
+    randomOrb.style.setProperty('--sheen-y', orbRand(-6,6).toFixed(1)+'%');
+    randomOrb.style.setProperty('--sheen-rot', orbRand(-180,180).toFixed(1)+'deg');
+    randomOrb.style.setProperty('--sheen-scale', orbRand(.94,1.08).toFixed(3));
+    randomOrb.style.setProperty('--sheen-opacity', orbRand(.46,.84).toFixed(2));
+
+    randomOrb.style.setProperty('--core-x', orbRand(-10,10).toFixed(1)+'px');
+    randomOrb.style.setProperty('--core-y', orbRand(-10,10).toFixed(1)+'px');
+    randomOrb.style.setProperty('--core-scale', orbRand(.78,1.22).toFixed(3));
+    randomOrb.style.setProperty('--core-opacity', orbRand(.72,1).toFixed(2));
+
+    clearTimeout(randomOrbTimer);
+    randomOrbTimer=setTimeout(randomizeOrb,dur+pause);
+  };
+
+  const restartRandomOrb = () => {
+    clearTimeout(randomOrbTimer);
+    if(!document.hidden) randomizeOrb();
+  };
+
+  if(randomOrb){
+    requestAnimationFrame(randomizeOrb);
+    addEventListener('resize',restartRandomOrb,{passive:true});
+    motion?.addEventListener('input',restartRandomOrb);
+    document.addEventListener('visibilitychange',()=>{
+      if(document.hidden) clearTimeout(randomOrbTimer);
+      else randomizeOrb();
+    });
+  }
 
 })();
 </script>
