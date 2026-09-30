@@ -115,11 +115,11 @@ function MovingLiquidMetal() {
         offsetY: s.y,
         rotation: angle,
         // Slight zooming follows acceleration, like a droplet stretching in motion.
-        scale: clamp((preset.scale ?? 0.72) * (1.0 + speedNorm * 0.22), 0.34, 1.55),
-        // Faster movement produces stronger edge deformation and internal turbulence.
-        distortion: clamp((preset.distortion ?? 0.10) + speedNorm * 0.34 + Math.sin(now * 0.0015) * 0.035, 0.06, 0.62),
-        contour: clamp((preset.contour ?? 0.40) + speedNorm * 0.40 + Math.sin(now * 0.0011 + 1.7) * 0.07, 0.22, 0.92),
-        speed: clamp((preset.speed ?? 1) * (0.72 + speedNorm * 0.92), 0.35, 2.2),
+        scale: 0.44 + speedNorm * 0.10,
+        // Deformation follows velocity, but stays controlled so it reads as a 3D droplet.
+        distortion: clamp(0.085 + speedNorm * 0.20 + Math.sin(now * 0.00135) * 0.018, 0.07, 0.34),
+        contour: clamp(0.34 + speedNorm * 0.24 + Math.sin(now * 0.0010 + 1.7) * 0.035, 0.28, 0.66),
+        speed: clamp(0.68 + speedNorm * 0.50, 0.58, 1.25),
       });
     };
 
@@ -134,7 +134,10 @@ function MovingLiquidMetal() {
     shape: "metaballs",
     colorBack: "#050712",
     colorTint: preset.colorTint ?? "#ffffff",
-    softness: Math.max(0.16, preset.softness ?? 0.16),
+    softness: 0.22,
+    shiftRed: 0.045,
+    shiftBlue: 0.045,
+    repetition: Math.min(2.2, preset.repetition ?? 1.7),
     fit: "cover",
     minPixelRatio: 1,
     maxPixelCount: 1500000,
