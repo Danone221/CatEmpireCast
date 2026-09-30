@@ -1,36 +1,55 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>CAT EMPIRE</title><link rel="stylesheet" href="/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09090b">
+<title>Cat Empire — Comunidade, chat e transmissão</title>
+<link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/empire.css?v=20260914-ui2">
+<link rel="stylesheet" href="/crystal-theme.css?v=20260930">
 </head>
 <body class="landing-page">
 <header class="landing-topbar">
-  <a class="brand" href="/"><img src="/logo.svg" class="brand-logo" alt=""> <span>Cat Empire</span></a>
+  <a class="brand" href="/" aria-label="Cat Empire — início">
+    <img src="/logo.svg" class="brand-logo" alt="">
+    <span>Cat Empire</span>
+  </a>
+  <nav class="landing-nav" aria-label="Navegação principal">
+    <a href="/" class="active">Início</a>
+    <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">Comunidade</a>
+  </nav>
   <div class="active-pill"><span class="dot"></span><strong id="activeRoomsTop">—</strong> servidores</div>
 </header>
+
 <main class="landing-main">
   <section class="hero" aria-labelledby="welcomeTitle">
-    <span class="eyebrow">SEU PONTO DE AMIZADES</span>
-    <h1 id="welcomeTitle">Juntos, em qualquer tela.</h1>
-    <p class="intro">Compartilhe momentos ao vivo, converse com seus amigos e encontre sua comunidade.</p>
+    <div class="crystal-kicker"><span class="dot"></span> Cat Empire está online</div>
+    <h1 id="welcomeTitle">Entre na sua comunidade.</h1>
+    <p class="intro">Converse, participe de chamadas e compartilhe sua tela com seus amigos em um só lugar.</p>
+
     <div class="auth">
       <button class="btn" id="guestBtn" hidden>Entrar com uma conta rápida</button>
       <div class="form-card" id="guestForm">
         <label for="guestName">Como podemos chamar você?</label>
         <input id="guestName" maxlength="16" placeholder="Seu nome" autocomplete="nickname">
-        <button class="btn btn-primary" id="guestGo">INICIAR →</button>
+        <button class="btn btn-primary" id="guestGo">Continuar</button>
       </div>
       <p class="entry-note">Uma conta rápida para começar. Seu acesso fica salvo neste navegador.</p>
-      <div class="auth-divider">OU</div>
+      <div class="auth-divider">ou</div>
       <button class="btn btn-discord" id="discordBtn">Entrar com Discord</button>
       <div id="serversList" class="server-list"></div>
     </div>
-    <div class="entry-features"><span>◉ Transmissões</span><span>♧ Comunidades</span><span>↗ Mensagens</span></div>
+
+    <div class="entry-features">
+      <span>Transmissões</span>
+      <span>Comunidades</span>
+      <span>Mensagens</span>
+    </div>
   </section>
 </main>
-<p class="landing-copyright">Cat Empire · BY:DANONIN. · <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">Comunidade e suporte</a></p>
+
+<p class="landing-copyright">Cat Empire · BY:DANONIN · <a href="https://discord.gg/FdgS3V2b7e" target="_blank" rel="noopener">Suporte</a></p>
 
 <script src="/ui.js"></script>
 <script src="/app.js?v=20260914-ui2"></script>
