@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#05060a">
-<title>Cat Empire — Login Visual Lab 12</title>
+<title>Cat Empire — Login Visual Lab 13</title>
 <style>
 :root{
   --bg:#05060a;
@@ -2740,71 +2740,190 @@ h1{
   .border-beam{filter:none!important;animation-duration:10s!important}
 }
 
+
+/* LAB 13 — Retro Warp Grid */
+.orbit-ambient,.orbit-stage,.gravity-sweep,
+.mesh-ambient,.mesh-stage,.mesh-glint,
+.liquid-ambient,.silk-stage,.liquid-caustic,.liquid-card-refraction,
+.loom-ambient,.loom-stage,.loom-scan,
+.holo-ambient,.spectral-sweep,.holo-stage,.holo-card-sheen,
+.vortex-core,.vortex-rings,.warp-field,
+.collision-aura,.collision-field,.impact-floor,
+.nebula-field,.halo-field,.meteor-field,
+.mobile-energy,.prism-mesh,.ray-stage,.glass-orbit{display:none!important}
+
+.topbar,.shell{position:relative;z-index:5}
+
+.scene{
+  background:
+    radial-gradient(circle at 50% 60%,rgba(45,168,255,.10),transparent 22rem),
+    radial-gradient(circle at 18% 20%,rgba(116,68,255,.07),transparent 24rem),
+    linear-gradient(180deg,#020307 0%,#050813 58%,#020307 100%)!important;
+}
+
+.warp-ambient{
+  position:absolute;
+  inset:-8%;
+  z-index:0;
+  background:
+    radial-gradient(ellipse at 50% 62%,rgba(64,194,255,.13),transparent 24%),
+    radial-gradient(ellipse at 38% 76%,rgba(116,71,255,.10),transparent 28%);
+  filter:blur(28px);
+  animation:warp-ambient-pulse 8s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes warp-ambient-pulse{
+  0%,100%{transform:scale(1);opacity:.58}
+  50%{transform:scale(1.05);opacity:.92}
+}
+
+.horizon-glow{
+  position:absolute;
+  left:0;right:0;
+  top:57%;
+  height:2px;
+  z-index:2;
+  background:linear-gradient(90deg,transparent,rgba(85,211,255,.38),#fff,rgba(115,88,255,.35),transparent);
+  box-shadow:0 0 12px rgba(77,201,255,.35),0 0 34px rgba(101,77,255,.18);
+  opacity:.72;
+  animation:horizon-breathe 4.6s ease-in-out infinite;
+}
+@keyframes horizon-breathe{
+  0%,100%{opacity:.42;transform:scaleX(.94)}
+  50%{opacity:.92;transform:scaleX(1.02)}
+}
+
+.retro-grid{
+  position:absolute;
+  z-index:1;
+  left:-30%;
+  right:-30%;
+  top:54%;
+  height:60%;
+  transform:perspective(720px) rotateX(63deg) scale(1.16);
+  transform-origin:top center;
+  background-image:
+    linear-gradient(rgba(82,207,255,.12) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(117,88,255,.10) 1px,transparent 1px);
+  background-size:62px 42px;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.85) 40%,transparent 88%);
+  mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.85) 40%,transparent 88%);
+  opacity:.62;
+  animation:grid-warp 5.8s linear infinite;
+  pointer-events:none;
+  will-change:background-position,opacity;
+}
+@keyframes grid-warp{
+  0%{background-position:0 0;opacity:.48}
+  50%{opacity:.72}
+  100%{background-position:0 42px;opacity:.48}
+}
+
+.speed-lines{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  overflow:hidden;
+  pointer-events:none;
+}
+.sl{
+  position:absolute;
+  left:50%;
+  top:57%;
+  width:2px;
+  height:160px;
+  transform-origin:50% 100%;
+  background:linear-gradient(180deg,transparent,rgba(93,207,255,.16),#b9f2ff,#fff);
+  opacity:0;
+  animation:warp-line 6s linear infinite;
+  will-change:transform,opacity;
+}
+.s1{--a:-24deg;animation-delay:-.7s}
+.s2{--a:-11deg;animation-delay:-2.1s;animation-duration:7.2s}
+.s3{--a:8deg;animation-delay:-4.2s;animation-duration:6.8s}
+.s4{--a:21deg;animation-delay:-3.1s;animation-duration:8.3s}
+.s5{--a:34deg;animation-delay:-5.8s;animation-duration:9s}
+@keyframes warp-line{
+  0%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(8vh) scaleY(.28);opacity:0}
+  15%{opacity:.72}
+  70%{opacity:.48}
+  100%{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-68vh) scaleY(1.2);opacity:0}
+}
+
+.login-card{
+  --spot-x:72%;
+  --spot-y:10%;
+  transform:none!important;
+  animation:retro-card-breathe 6.8s ease-in-out infinite!important;
+  border:1px solid rgba(149,191,255,.16)!important;
+  border-radius:28px!important;
+  background:
+    radial-gradient(circle at var(--spot-x) var(--spot-y),rgba(87,210,255,.046),transparent 25%),
+    linear-gradient(180deg,rgba(11,17,29,.965),rgba(5,8,15,.99))!important;
+  box-shadow:
+    0 42px 112px rgba(0,0,0,.61),
+    0 0 40px rgba(53,141,255,.04),
+    inset 0 1px rgba(255,255,255,.067)!important;
+  backdrop-filter:blur(8px) saturate(1.05);
+}
+.login-card::before{display:none!important}
+.login-card::after{
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px),
+    linear-gradient(rgba(255,255,255,.010) 1px,transparent 1px),
+    linear-gradient(180deg,rgba(15,20,33,.97),rgba(5,8,15,.995))!important;
+  background-size:28px 28px,28px 28px,auto!important;
+}
+@keyframes retro-card-breathe{
+  0%,100%{box-shadow:0 42px 112px rgba(0,0,0,.61),0 0 26px rgba(53,141,255,.03),inset 0 1px rgba(255,255,255,.067)}
+  50%{box-shadow:0 46px 120px rgba(0,0,0,.64),0 0 50px rgba(58,166,255,.08),inset 0 1px rgba(255,255,255,.085)}
+}
+
+.border-beam{
+  background:conic-gradient(from 0deg,transparent 0 70%,rgba(84,209,255,.32) 76%,rgba(255,255,255,.78) 80%,rgba(108,91,255,.30) 84%,transparent 90% 100%)!important;
+  animation:beam-spin 10.8s linear infinite!important;
+  filter:drop-shadow(0 0 3px rgba(72,194,255,.10))!important;
+}
+.text-shimmer{animation-duration:7s!important}
+
+@media(max-width:700px){
+  .warp-ambient{filter:blur(20px);animation-duration:7s!important}
+  .horizon-glow{top:49%;opacity:.78}
+  .retro-grid{
+    top:48%;
+    height:54%;
+    background-size:48px 34px;
+    transform:perspective(560px) rotateX(66deg) scale(1.12);
+    animation-duration:5s!important;
+  }
+  .sl{height:110px}
+  .s1,.s2,.s3,.s4{display:block}
+  .s5{display:none}
+  .login-card{
+    backdrop-filter:none!important;
+    animation:retro-card-breathe 5.6s ease-in-out infinite!important;
+    border-radius:23px!important;
+  }
+  .border-beam{filter:none!important;animation-duration:9.5s!important}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
 <div class="scene">
-  <div class="orbit-ambient" aria-hidden="true"></div>
-  <div class="orbit-stage" aria-hidden="true">
-    <svg class="orbit-svg" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid slice">
-      <defs>
-        <radialGradient id="coreFill">
-          <stop offset="0" stop-color="#000000"/>
-          <stop offset=".50" stop-color="#01040a"/>
-          <stop offset=".72" stop-color="#122453" stop-opacity=".68"/>
-          <stop offset="1" stop-color="#52cfff" stop-opacity="0"/>
-        </radialGradient>
-        <linearGradient id="ringStroke" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stop-color="#7564ff" stop-opacity=".10"/>
-          <stop offset=".33" stop-color="#65dfff" stop-opacity=".74"/>
-          <stop offset=".52" stop-color="#ffffff" stop-opacity=".96"/>
-          <stop offset=".72" stop-color="#65f1c9" stop-opacity=".42"/>
-          <stop offset="1" stop-color="#7a62ff" stop-opacity=".10"/>
-        </linearGradient>
-        <radialGradient id="orbitDot">
-          <stop offset="0" stop-color="#ffffff"/>
-          <stop offset=".32" stop-color="#9cecff"/>
-          <stop offset="1" stop-color="#5d70ff" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-
-      <g class="orbital-system">
-        <circle class="core-halo" cx="765" cy="335" r="178"/>
-        <circle class="core-body" cx="765" cy="335" r="78"/>
-
-        <ellipse class="ring ring-a" cx="765" cy="335" rx="270" ry="92"/>
-        <ellipse class="ring ring-b" cx="765" cy="335" rx="225" ry="132"/>
-        <ellipse class="ring ring-c" cx="765" cy="335" rx="185" ry="56"/>
-
-        <path class="energy energy-a" d="M495 335 C565 250 692 226 765 243 C872 266 965 300 1035 335"/>
-        <path class="energy energy-b" d="M540 410 C650 492 884 482 990 374"/>
-
-        <g class="orbit-dots">
-          <circle class="od od1" cx="510" cy="320" r="8"/>
-          <circle class="od od2" cx="646" cy="222" r="6"/>
-          <circle class="od od3" cx="950" cy="290" r="9"/>
-          <circle class="od od4" cx="921" cy="435" r="7"/>
-          <circle class="od od5" cx="628" cy="446" r="6"/>
-          <circle class="od od6" cx="1032" cy="347" r="5"/>
-        </g>
-      </g>
-
-      <g class="starfield">
-        <circle cx="126" cy="112" r="1.6"/><circle cx="224" cy="218" r="1.1"/>
-        <circle cx="376" cy="92" r="1.4"/><circle cx="444" cy="538" r="1.2"/>
-        <circle cx="1090" cy="122" r="1.5"/><circle cx="1140" cy="482" r="1.1"/>
-        <circle cx="865" cy="664" r="1.4"/><circle cx="1015" cy="606" r="1.2"/>
-      </g>
-    </svg>
+  <div class="warp-ambient" aria-hidden="true"></div>
+  <div class="horizon-glow" aria-hidden="true"></div>
+  <div class="retro-grid" aria-hidden="true"></div>
+  <div class="speed-lines" aria-hidden="true">
+    <i class="sl s1"></i><i class="sl s2"></i><i class="sl s3"></i><i class="sl s4"></i><i class="sl s5"></i>
   </div>
-  <div class="gravity-sweep" aria-hidden="true"></div>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Voltar ao Cat Empire">
       <img src="/logo.svg" alt="">
       <span>Cat Empire</span>
     </a>
-    <div class="lab-badge">Login Visual Lab 12 · Orbital Core</div>
+    <div class="lab-badge">Login Visual Lab 13 · Retro Warp Grid</div>
   </header>
 
   <main class="shell">
@@ -2841,7 +2960,7 @@ h1{
 <aside class="lab" id="lab">
   <div class="lab-head">
     <div>
-      <div class="lab-title">Visual Lab 12</div>
+      <div class="lab-title">Visual Lab 13</div>
       <small>Teste sem afetar o login real</small>
     </div>
     <button class="lab-toggle" id="hideLab" type="button">Ocultar</button>
@@ -2886,7 +3005,6 @@ h1{
   const motion=document.getElementById('motion');
   const blur=document.getElementById('blur');
   const card=document.querySelector('.login-card');
-  const orbit=document.querySelector('.orbit-svg');
 
   const baseDurations=new Map();
   const capture=()=>{
@@ -2921,28 +3039,17 @@ h1{
   }));
   document.getElementById('hideLab').addEventListener('click',()=>document.body.classList.toggle('lab-hidden'));
 
-  if(matchMedia('(pointer:fine)').matches){
-    let raf=0,cx=72,cy=10,ox=0,oy=0;
+  if(card&&matchMedia('(pointer:fine)').matches){
+    let raf=0,cx=72,cy=10;
     const paint=()=>{
       raf=0;
-      if(card){
-        card.style.setProperty('--spot-x',cx+'%');
-        card.style.setProperty('--spot-y',cy+'%');
-      }
-      if(orbit){
-        orbit.style.setProperty('--orbit-x',ox+'px');
-        orbit.style.setProperty('--orbit-y',oy+'px');
-      }
+      card.style.setProperty('--spot-x',cx+'%');
+      card.style.setProperty('--spot-y',cy+'%');
     };
-    addEventListener('pointermove',e=>{
-      const nx=e.clientX/innerWidth-.5;
-      const ny=e.clientY/innerHeight-.5;
-      ox=nx*10; oy=ny*7;
-      if(card){
-        const r=card.getBoundingClientRect();
-        cx=Math.max(0,Math.min(100,((e.clientX-r.left)/r.width)*100));
-        cy=Math.max(0,Math.min(100,((e.clientY-r.top)/r.height)*100));
-      }
+    card.addEventListener('pointermove',e=>{
+      const r=card.getBoundingClientRect();
+      cx=Math.max(0,Math.min(100,((e.clientX-r.left)/r.width)*100));
+      cy=Math.max(0,Math.min(100,((e.clientY-r.top)/r.height)*100));
       if(!raf)raf=requestAnimationFrame(paint);
     },{passive:true});
   }
