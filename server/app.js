@@ -21,6 +21,7 @@ const dmRoutes = require('./routes/dm');
 const messagingRoutes = require('./routes/messaging');
 const stageRoutes = require('./routes/stage');
 const expansionRoutes = require('./routes/expansion');
+const db = require('./database');
 
 const app = express();
 
@@ -65,7 +66,15 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/health', async (req, res) => {
+  try {
+    await db.queryOne('SELECT 1 AS ok');
+    res.status(200).json({ status: 'ok', database: 'ok' });
+  } catch (error) {
+    console.error('❌ Health check: Postgres indisponível:', error.code || error.message);
+    res.status(503).json({ status: 'degraded', database: 'unavailable' });
+  }
+});
 
 const clientDir = path.join(__dirname, '../client');
 const htmlFiles = new Set(['/', '/index.html', '/server.html', '/dms.html', '/invite.html']);
