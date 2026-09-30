@@ -1215,6 +1215,24 @@ body[data-theme="void"]{
   .liquid-core{filter:drop-shadow(0 0 5px rgba(255,255,255,.48))}
 }
 
+
+/* V1 WebGL Liquid Metal ---------------------------------------------- */
+.liquid-physics{display:none!important}
+.liquid-metal-canvas{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  display:block;
+  opacity:.97;
+  transform:translateZ(0);
+}
+@media(max-width:860px){
+  .liquid-metal-canvas{opacity:.90}
+}
+
 </style>
 </head>
 <body data-theme="aurora">
@@ -1227,33 +1245,7 @@ body[data-theme="void"]{
   <div class="wave-field" aria-hidden="true"></div>
   <div class="motion-proof" aria-hidden="true"></div>
   <div class="motion-proof two" aria-hidden="true"></div>
-  <div class="liquid-physics" aria-hidden="true">
-    <svg class="liquid-blob-svg" viewBox="0 0 400 400" preserveAspectRatio="xMidYMid meet">
-      <defs>
-        <radialGradient id="liquidBody" cx="34%" cy="27%" r="76%">
-          <stop offset="0" stop-color="#f6fbff" stop-opacity=".54"/>
-          <stop offset=".18" stop-color="#9ecbff" stop-opacity=".26"/>
-          <stop offset=".48" stop-color="#184d73" stop-opacity=".40"/>
-          <stop offset=".76" stop-color="#141b45" stop-opacity=".62"/>
-          <stop offset="1" stop-color="#070a16" stop-opacity=".86"/>
-        </radialGradient>
-        <linearGradient id="liquidEdge" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#a5efff" stop-opacity=".42"/>
-          <stop offset=".48" stop-color="#7480ff" stop-opacity=".18"/>
-          <stop offset="1" stop-color="#875dff" stop-opacity=".25"/>
-        </linearGradient>
-        <radialGradient id="liquidGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0" stop-color="#ffffff" stop-opacity=".95"/>
-          <stop offset=".32" stop-color="#9fe8ff" stop-opacity=".42"/>
-          <stop offset="1" stop-color="#6a72ff" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <path class="liquid-shape liquid-shadow" d=""></path>
-      <path class="liquid-shape liquid-body" d=""></path>
-      <ellipse class="liquid-highlight" cx="142" cy="118" rx="62" ry="44"></ellipse>
-      <circle class="liquid-core" cx="286" cy="132" r="15"></circle>
-    </svg>
-  </div>
+  <canvas id="liquidMetalCanvas" class="liquid-metal-canvas" aria-hidden="true"></canvas>
 
   <header class="topbar">
     <a class="brand" href="/" aria-label="Voltar ao Cat Empire">
@@ -1700,6 +1692,386 @@ body[data-theme="void"]{
 
     addEventListener('resize',()=>chooseTarget(performance.now()),{passive:true});
     motion?.addEventListener('input',()=>chooseTarget(performance.now()));
+  }
+
+
+  /* 3D Liquid Metal WebGL — reflective height-field metaball surface. */
+  const metalCanvas=document.getElementById('liquidMetalCanvas');
+
+  if(metalCanvas){
+    const gl=metalCanvas.getContext('webgl',{
+      alpha:true,
+      antialias:false,
+      depth:false,
+      stencil:false,
+      premultipliedAlpha:true,
+      preserveDrawingBuffer:false,
+      powerPreference:'high-performance'
+    });
+
+    if(gl){
+      const vertexSource=`
+        attribute vec2 a_position;
+        void main(){
+          gl_Position=vec4(a_position,0.0,1.0);
+        }
+      `;
+
+      const fragmentSource=`
+        precision highp float;
+
+        uniform vec2 u_resolution;
+        uniform float u_time;
+        uniform vec2 u_center;
+        uniform vec2 u_velocity;
+        uniform float u_speed;
+        uniform float u_scale;
+        uniform vec3 u_tint;
+
+        float hash21(vec2 p){
+          p=fract(p*vec2(123.34,456.21));
+          p+=dot(p,p+45.32);
+          return fract(p.x*p.y);
+        }
+
+        float noise2(vec2 p){
+          vec2 i=floor(p);
+          vec2 f=fract(p);
+          f=f*f*(3.0-2.0*f);
+          float a=hash21(i);
+          float b=hash21(i+vec2(1.0,0.0));
+          float c=hash21(i+vec2(0.0,1.0));
+          float d=hash21(i+vec2(1.0,1.0));
+          return mix(mix(a,b,f.x),mix(c,d,f.x),f.y);
+        }
+
+        float fbm(vec2 p){
+          float v=0.0;
+          float a=.5;
+          for(int i=0;i<3;i++){
+            v+=a*noise2(p);
+            p=p*2.03+vec2(17.7,9.2);
+            a*=.5;
+          }
+          return v;
+        }
+
+        mat2 rot(float a){
+          float c=cos(a),s=sin(a);
+          return mat2(c,-s,s,c);
+        }
+
+        float ball(vec2 p,vec2 c,float r){
+          vec2 d=p-c;
+          return (r*r)/(dot(d,d)+0.012);
+        }
+
+        float fieldAt(vec2 p,float t){
+          vec2 vel=u_velocity;
+          float vlen=length(vel);
+          vec2 dir=vlen>.0001?normalize(vel):vec2(1.0,0.0);
+          float ang=atan(dir.y,dir.x);
+
+          // Stretch the field in the movement direction.
+          vec2 q=rot(-ang)*p;
+          q.x/=1.0+u_speed*.62;
+          q.y/=max(.70,1.0-u_speed*.16);
+          p=rot(ang)*q;
+
+          // Slow domain warping makes the metal surface breathe organically.
+          float n=fbm(p*3.0+vec2(t*.11,-t*.08));
+          float n2=fbm(p*4.1+vec2(-t*.07,t*.12)+4.3);
+          p+=vec2(n-.5,n2-.5)*(.065+.028*u_speed);
+
+          vec2 side=vec2(-dir.y,dir.x);
+          vec2 rear=-dir;
+
+          vec2 o1=vec2(
+            sin(t*.83+1.2)*.075,
+            cos(t*.71+.5)*.062
+          );
+          vec2 o2=side*(sin(t*1.04+2.4)*.105)+rear*.055*u_speed;
+          vec2 o3=-side*(cos(t*.91+.8)*.095)+rear*.12*u_speed;
+          vec2 o4=vec2(
+            sin(t*.58+4.0)*.12,
+            sin(t*.77+1.7)*.085
+          );
+
+          float f=0.0;
+          f+=ball(p,o1,.215);
+          f+=ball(p,o2,.170);
+          f+=ball(p,o3,.160);
+          f+=ball(p,o4,.125);
+          return f;
+        }
+
+        float heightAt(vec2 p,float t){
+          float f=fieldAt(p,t);
+          float body=max(f-1.05,0.0);
+          float h=1.0-exp(-body*.78);
+          float micro=(fbm(p*7.0+vec2(t*.10,-t*.13))-.5)*.075;
+          return max(0.0,h+micro*h);
+        }
+
+        vec3 environment(vec3 r,vec2 p,float t){
+          float horizon=smoothstep(-.42,.72,r.y);
+          vec3 dark=vec3(.008,.011,.020);
+          vec3 steel=mix(vec3(.10,.14,.22),vec3(.72,.82,.94),horizon);
+
+          // Broad studio-light strips reflected in the metal.
+          float stripA=exp(-pow((r.x+r.y*.20-.15)*5.8,2.0));
+          float stripB=exp(-pow((r.y-.58)*9.5,2.0));
+          float stripC=exp(-pow((r.x-r.y*.34+.62)*8.0,2.0));
+
+          vec3 c=mix(dark,steel,.55);
+          c+=vec3(1.0,.98,.96)*stripA*.82;
+          c+=vec3(.72,.91,1.0)*stripB*.68;
+          c+=vec3(.52,.39,1.0)*stripC*.30;
+
+          float irid=.5+.5*sin((r.x-r.y)*8.0+t*.22+p.x*2.0);
+          c+=u_tint*irid*.12;
+          return c;
+        }
+
+        void main(){
+          vec2 uv=gl_FragCoord.xy/u_resolution.xy;
+          uv.y=1.0-uv.y;
+
+          float aspect=u_resolution.x/u_resolution.y;
+          vec2 p=uv-u_center;
+          p.x*=aspect;
+          p/=u_scale;
+
+          float t=u_time;
+          float f=fieldAt(p,t);
+          float edge=smoothstep(.92,1.16,f);
+
+          if(edge<.004){
+            gl_FragColor=vec4(0.0);
+            return;
+          }
+
+          float h=heightAt(p,t);
+          float e=.0075;
+          float hx=heightAt(p+vec2(e,0.0),t);
+          float hy=heightAt(p+vec2(0.0,e),t);
+
+          vec3 N=normalize(vec3((h-hx)*5.9,(h-hy)*5.9,.115));
+          vec3 V=normalize(vec3(0.0,0.0,1.0));
+          vec3 R=reflect(-V,N);
+
+          vec3 env=environment(R,p,t);
+
+          vec3 L1=normalize(vec3(-.48,-.62,.92));
+          vec3 L2=normalize(vec3(.70,-.18,.78));
+          vec3 H1=normalize(L1+V);
+          vec3 H2=normalize(L2+V);
+
+          float spec1=pow(max(dot(N,H1),0.0),72.0);
+          float spec2=pow(max(dot(N,H2),0.0),34.0);
+          float fres=pow(1.0-max(dot(N,V),0.0),3.2);
+
+          float curvature=clamp(abs(hx+hy-2.0*h)*18.0,0.0,1.0);
+          vec3 base=mix(vec3(.018,.022,.035),env,.88);
+          base+=vec3(1.0)*spec1*1.25;
+          base+=vec3(.67,.82,1.0)*spec2*.52;
+          base+=u_tint*(.08+.14*curvature);
+          base=mix(base,vec3(.92,.96,1.0),fres*.52);
+
+          // Deep metallic center with bright rim and studio highlights.
+          float depthShade=mix(.63,1.08,smoothstep(.04,.82,h));
+          base*=depthShade;
+          float rim=smoothstep(.10,.95,fres)*edge;
+          base+=vec3(.52,.72,1.0)*rim*.14;
+
+          float alpha=edge*(.88+.10*h);
+          alpha*=smoothstep(.01,.10,h+.035);
+
+          gl_FragColor=vec4(base*alpha,alpha);
+        }
+      `;
+
+      const compile=(type,source)=>{
+        const shader=gl.createShader(type);
+        gl.shaderSource(shader,source);
+        gl.compileShader(shader);
+        if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){
+          console.warn('Liquid Metal shader:',gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null;
+        }
+        return shader;
+      };
+
+      const vs=compile(gl.VERTEX_SHADER,vertexSource);
+      const fs=compile(gl.FRAGMENT_SHADER,fragmentSource);
+
+      if(vs&&fs){
+        const program=gl.createProgram();
+        gl.attachShader(program,vs);
+        gl.attachShader(program,fs);
+        gl.linkProgram(program);
+
+        if(gl.getProgramParameter(program,gl.LINK_STATUS)){
+          gl.useProgram(program);
+
+          const buffer=gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+          gl.bufferData(
+            gl.ARRAY_BUFFER,
+            new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),
+            gl.STATIC_DRAW
+          );
+
+          const pos=gl.getAttribLocation(program,'a_position');
+          gl.enableVertexAttribArray(pos);
+          gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+
+          const U={
+            resolution:gl.getUniformLocation(program,'u_resolution'),
+            time:gl.getUniformLocation(program,'u_time'),
+            center:gl.getUniformLocation(program,'u_center'),
+            velocity:gl.getUniformLocation(program,'u_velocity'),
+            speed:gl.getUniformLocation(program,'u_speed'),
+            scale:gl.getUniformLocation(program,'u_scale'),
+            tint:gl.getUniformLocation(program,'u_tint')
+          };
+
+          let cx=.22,cy=.35;
+          let vx=.0032,vy=.0014;
+          let tx=.82,ty=.68;
+          let targetAt=0;
+          let lastPhysics=performance.now();
+          let lastRender=0;
+          let metalRaf=0;
+
+          const rand=(a,b)=>Math.random()*(b-a)+a;
+          const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+          const chooseMetalTarget=(now)=>{
+            const left=cx<.5;
+            const top=cy<.5;
+
+            // Most targets cross the viewport, but remain random.
+            if(Math.random()<.82){
+              tx=left?rand(.62,1.02):rand(-.02,.38);
+            }else{
+              tx=rand(-.03,1.03);
+            }
+
+            if(Math.random()<.62){
+              ty=top?rand(.56,.98):rand(.08,.44);
+            }else{
+              ty=rand(.08,.98);
+            }
+
+            const speed=Math.max(.55,parseFloat(motion?.value||1));
+            targetAt=now+rand(1200,2450)/speed;
+          };
+
+          const resizeMetal=()=>{
+            const mobile=innerWidth<=860;
+            const renderScale=mobile?.52:.68;
+            const w=Math.max(320,Math.round(innerWidth*renderScale));
+            const h=Math.max(360,Math.round(innerHeight*renderScale));
+            if(metalCanvas.width!==w||metalCanvas.height!==h){
+              metalCanvas.width=w;
+              metalCanvas.height=h;
+              gl.viewport(0,0,w,h);
+            }
+          };
+
+          const themeTint=()=>{
+            const t=document.body.dataset.theme;
+            if(t==='ocean') return [.10,.54,1.0];
+            if(t==='ember') return [1.0,.31,.10];
+            if(t==='void') return [.52,.56,.66];
+            return [.44,.28,1.0];
+          };
+
+          const renderMetal=(now)=>{
+            metalRaf=requestAnimationFrame(renderMetal);
+            if(document.hidden)return;
+
+            const dt=Math.min(45,now-lastPhysics||16.67);
+            lastPhysics=now;
+            const step=dt/16.667;
+            const speedCtl=Math.max(.55,parseFloat(motion?.value||1));
+
+            if(now>=targetAt||Math.hypot(tx-cx,ty-cy)<.10){
+              chooseMetalTarget(now);
+            }
+
+            const ax=(tx-cx)*.00195*speedCtl;
+            const ay=(ty-cy)*.00195*speedCtl;
+            const wanderX=Math.sin(now*.00071)*.00013+Math.sin(now*.00113+1.9)*.00007;
+            const wanderY=Math.cos(now*.00063+2.2)*.00012+Math.sin(now*.00101)*.00007;
+
+            vx=(vx+(ax+wanderX)*step)*Math.pow(.986,step);
+            vy=(vy+(ay+wanderY)*step)*Math.pow(.986,step);
+
+            const minSpeed=.0015*speedCtl;
+            let mag=Math.hypot(vx,vy);
+            if(mag<minSpeed){
+              vx+=Math.cos(now*.0012)*.0009;
+              vy+=Math.sin(now*.0011)*.0009;
+              mag=Math.hypot(vx,vy);
+            }
+
+            const maxSpeed=.0105*speedCtl;
+            if(mag>maxSpeed){
+              vx=vx/mag*maxSpeed;
+              vy=vy/mag*maxSpeed;
+              mag=maxSpeed;
+            }
+
+            cx+=vx*step;
+            cy+=vy*step;
+
+            if(cx<-.035){cx=-.035;vx=Math.abs(vx)*.78;chooseMetalTarget(now)}
+            if(cx>1.035){cx=1.035;vx=-Math.abs(vx)*.78;chooseMetalTarget(now)}
+            if(cy<.055){cy=.055;vy=Math.abs(vy)*.78;chooseMetalTarget(now)}
+            if(cy>.985){cy=.985;vy=-Math.abs(vy)*.78;chooseMetalTarget(now)}
+
+            // Shader render is capped near 30 FPS.
+            if(now-lastRender<32)return;
+            lastRender=now;
+
+            resizeMetal();
+
+            const aspect=metalCanvas.width/metalCanvas.height;
+            const vNorm=Math.hypot(vx*aspect,vy);
+            const speedNorm=clamp(vNorm/.0115,0,1);
+            const tint=themeTint();
+
+            gl.clearColor(0,0,0,0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+
+            gl.uniform2f(U.resolution,metalCanvas.width,metalCanvas.height);
+            gl.uniform1f(U.time,now*.001);
+            gl.uniform2f(U.center,cx,cy);
+            gl.uniform2f(U.velocity,vx*aspect,vy);
+            gl.uniform1f(U.speed,speedNorm);
+            gl.uniform1f(U.scale,innerWidth<=860?.205:.235);
+            gl.uniform3f(U.tint,tint[0],tint[1],tint[2]);
+
+            gl.drawArrays(gl.TRIANGLES,0,6);
+          };
+
+          resizeMetal();
+          chooseMetalTarget(performance.now());
+          metalRaf=requestAnimationFrame(renderMetal);
+
+          addEventListener('resize',()=>{
+            resizeMetal();
+            chooseMetalTarget(performance.now());
+          },{passive:true});
+          motion?.addEventListener('input',()=>chooseMetalTarget(performance.now()));
+        }else{
+          console.warn('Liquid Metal program:',gl.getProgramInfoLog(program));
+        }
+      }
+    }
   }
 
 })();
