@@ -651,6 +651,7 @@ body[data-theme="void"]{
 
 
 /* LAB 04 — Prism Rays / compositor-first performance */
+.topbar,.shell{position:relative;z-index:2}
 .shader-layer,.gridfx,.wave-field,.motion-proof,.chrome-orb,.limelight-effect{display:none!important}
 
 .scene{
@@ -664,7 +665,7 @@ body[data-theme="void"]{
 .prism-mesh{
   position:absolute;
   inset:-18%;
-  z-index:-3;
+  z-index:0;
   pointer-events:none;
   background:
     radial-gradient(circle at 22% 31%,rgba(118,82,255,.24),transparent 22%),
@@ -682,7 +683,7 @@ body[data-theme="void"]{
 .ray-stage{
   position:absolute;
   inset:0;
-  z-index:-1;
+  z-index:0;
   pointer-events:none;
   overflow:hidden;
   perspective:900px;
@@ -696,6 +697,8 @@ body[data-theme="void"]{
   opacity:.38;
   background:linear-gradient(90deg,transparent 0%,var(--accent2) 44%,#fff 56%,var(--accent) 68%,transparent 100%);
   box-shadow:0 0 11px color-mix(in srgb,var(--accent2) 36%,transparent);
+  --rot:12deg;
+  transform:translate3d(0,0,0) rotate(var(--rot));
   animation:ray-travel 9s linear infinite;
   will-change:transform,opacity;
 }
@@ -709,16 +712,16 @@ body[data-theme="void"]{
   background:linear-gradient(180deg,transparent,rgba(255,255,255,.055),transparent);
   filter:blur(8px);
 }
-.r1{top:17%;transform:rotate(16deg);animation-duration:8.5s}
-.r2{top:34%;transform:rotate(10deg);animation-duration:11s;animation-delay:-4s;opacity:.26}
-.r3{top:53%;transform:rotate(18deg);animation-duration:13s;animation-delay:-8s;opacity:.32}
-.r4{top:69%;transform:rotate(7deg);animation-duration:10s;animation-delay:-6s;opacity:.20}
-.r5{top:82%;transform:rotate(14deg);animation-duration:15s;animation-delay:-10s;opacity:.18}
+.r1{top:17%;--rot:16deg;animation-duration:8.5s}
+.r2{top:34%;--rot:10deg;animation-duration:11s;animation-delay:-4s;opacity:.34}
+.r3{top:53%;--rot:18deg;animation-duration:13s;animation-delay:-8s;opacity:.38}
+.r4{top:69%;--rot:7deg;animation-duration:10s;animation-delay:-6s;opacity:.26}
+.r5{top:82%;--rot:14deg;animation-duration:15s;animation-delay:-10s;opacity:.22}
 @keyframes ray-travel{
-  0%{translate:-20vw -12vh;opacity:0}
-  13%{opacity:.44}
-  72%{opacity:.34}
-  100%{translate:155vw 52vh;opacity:0}
+  0%{transform:translate3d(-20vw,-12vh,0) rotate(var(--rot));opacity:0}
+  13%{opacity:.62}
+  72%{opacity:.48}
+  100%{transform:translate3d(155vw,52vh,0) rotate(var(--rot));opacity:0}
 }
 
 .glass-orbit{
@@ -816,14 +819,102 @@ h1{
   .border-beam{filter:none!important;animation-duration:13s!important}
 }
 
-@media(prefers-reduced-motion:reduce){
-  .prism-mesh,.ray,.glass-orbit,.border-beam,.text-shimmer,.cta::after{animation:none!important}
+}
+
+
+/* LAB 04 mobile visibility/reliability patch */
+.mobile-energy{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  overflow:hidden;
+}
+.mobile-energy::before{
+  content:"";
+  position:absolute;
+  width:82vw;
+  height:82vw;
+  left:-28vw;
+  top:18vh;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(93,76,255,.30) 0%,rgba(52,139,255,.16) 36%,transparent 70%);
+  filter:blur(18px);
+  animation:mobile-orb-drift 7s ease-in-out infinite;
+}
+.mobile-energy::after{
+  content:"";
+  position:absolute;
+  width:94vw;
+  height:10px;
+  left:-80vw;
+  top:58%;
+  border-radius:999px;
+  background:linear-gradient(90deg,transparent,#5ed8ff,#ffffff,#8c5cff,transparent);
+  box-shadow:0 0 18px rgba(82,208,255,.66),0 0 38px rgba(120,86,255,.28);
+  transform:rotate(12deg);
+  animation:mobile-sweep 4.8s linear infinite;
+}
+@keyframes mobile-orb-drift{
+  0%,100%{transform:translate3d(0,0,0) scale(1);opacity:.70}
+  50%{transform:translate3d(34vw,-8vh,0) scale(1.14);opacity:1}
+}
+@keyframes mobile-sweep{
+  0%{transform:translate3d(0,-9vh,0) rotate(12deg);opacity:0}
+  12%{opacity:.92}
+  72%{opacity:.72}
+  100%{transform:translate3d(190vw,42vh,0) rotate(12deg);opacity:0}
+}
+@keyframes mobile-card-pulse{
+  0%,100%{box-shadow:0 28px 80px rgba(0,0,0,.54),0 0 24px rgba(92,93,255,.08),inset 0 1px rgba(255,255,255,.06)}
+  50%{box-shadow:0 34px 90px rgba(0,0,0,.60),0 0 52px rgba(71,170,255,.18),inset 0 1px rgba(255,255,255,.08)}
+}
+
+@media(max-width:700px){
+  .prism-mesh{
+    z-index:0;
+    opacity:.92!important;
+    filter:blur(26px) saturate(1.2)!important;
+    animation:prism-mesh-drift 9s ease-in-out infinite alternate!important;
+  }
+  .ray-stage{z-index:1}
+  .ray{
+    width:118vw!important;
+    height:2px!important;
+    opacity:.48!important;
+    box-shadow:0 0 9px rgba(77,202,255,.48)!important;
+  }
+  .r1{display:block!important;animation-duration:5.2s!important}
+  .r2{display:block!important;animation-duration:7.2s!important}
+  .r3{display:block!important;animation-duration:9.4s!important}
+  .r4,.r5{display:none!important}
+  .orbit-a{
+    z-index:1;
+    opacity:.62!important;
+    animation:orbit-drift-a 8s ease-in-out infinite!important;
+  }
+  .login-card{
+    position:relative;
+    z-index:3;
+    transform:none!important;
+    transition:none!important;
+    animation:mobile-card-pulse 4.8s ease-in-out infinite!important;
+  }
+  .border-beam{
+    display:block!important;
+    animation:beam-spin 7s linear infinite!important;
+    filter:none!important;
+  }
+  .text-shimmer{
+    animation:shimmer-text 4.8s ease-in-out infinite!important;
+  }
 }
 
 </style>
 </head>
 <body data-theme="aurora">
 <div class="scene">
+  <div class="mobile-energy" aria-hidden="true"></div>
   <div class="prism-mesh" aria-hidden="true"></div>
   <div class="ray-stage" aria-hidden="true">
     <i class="ray r1"></i><i class="ray r2"></i><i class="ray r3"></i><i class="ray r4"></i><i class="ray r5"></i>
