@@ -63,6 +63,12 @@ router.post('/servers/:serverId/roles', async (req, res) => {
 router.put('/servers/:serverId/roles/:roleId', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
+    const server = await queryOne('SELECT creator_id FROM servers WHERE id=$1', [req.params.serverId]);
+    const existingRole = await queryOne('SELECT id,name FROM server_roles WHERE server_id=$1 AND id=$2', [req.params.serverId, req.params.roleId]);
+    if (!server || !existingRole) return res.status(404).json({ error: 'Cargo não encontrado' });
+    if (String(existingRole.name || '').toUpperCase() === 'OWNER' && server.creator_id !== req.user.id) {
+      return res.status(403).json({ error: 'Somente o proprietário pode alterar o cargo OWNER' });
+    }
     const fields = [];
     const values = [];
     const add = (sql, value) => { values.push(value); fields.push(sql.replace('?', `$${values.length}`)); };
