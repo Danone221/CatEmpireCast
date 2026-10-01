@@ -5,6 +5,8 @@ const { query, queryOne } = require('../database');
 const User = require('../database/models/User');
 const Dm = require('../database/models/Dm');
 const { authenticate } = require('../middleware/auth');
+const config = require('../config');
+const { sanitizeAttachment } = require('../security/input');
 
 router.use(authenticate);
 
@@ -27,14 +29,12 @@ router.post('/dms/:userId/messages', async (req, res) => {
     const block = await queryOne('SELECT blocker_id FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1', [req.user.id, req.params.userId]);
     if (block) return res.status(403).json({ error: block.blocker_id === req.user.id ? 'Desbloqueie este usuário antes de enviar mensagens' : 'Você não pode enviar mensagens para este usuário' });
     const content = String(req.body.content || '').slice(0, 4000);
-    const file = req.body.file && typeof req.body.file === 'object' ? {
-      name: String(req.body.file.name || '').slice(0, 255),
-      type: String(req.body.file.type || '').slice(0, 120),
-      size: Math.max(0, Number(req.body.file.size) || 0),
-      data: typeof req.body.file.data === 'string' ? req.body.file.data : null
-    } : null;
+    const file = req.body.file ? sanitizeAttachment(
+      req.body.file,
+      Math.min(Number(config.upload.maxSize) || 8 * 1024 * 1024, 8 * 1024 * 1024),
+      config.upload.allowedTypes
+    ) : null;
     if (!content && !file) return res.status(400).json({ error: 'A mensagem está vazia' });
-    if (file?.data && file.data.length > 800000) return res.status(413).json({ error: 'Arquivo muito grande' });
 
     const message = await Dm.send({ senderId: req.user.id, recipientId: req.params.userId, content, file });
     const io = req.app.get('io');
