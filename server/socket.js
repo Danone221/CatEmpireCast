@@ -4,7 +4,7 @@ const ServerModel = require('./database/models/Server');
 const User = require('./database/models/User');
 const Dm = require('./database/models/Dm');
 const config = require('./config');
-const { configuredOrigins, verifyAccessToken } = require('./security');
+const { configuredOrigins, sessionTokenFromCookieHeader, verifyAccessToken } = require('./security');
 const { sanitizeAttachment, cleanMessageText } = require('./input-security');
 
 function setupSocket(server) {
@@ -37,7 +37,10 @@ function setupSocket(server) {
     try {
       const authHeader = String(socket.handshake.headers?.authorization || '');
       const headerToken = authHeader.match(/^Bearer\s+(.+)$/i)?.[1] || '';
-      const token = String(socket.handshake.auth?.token || headerToken || '').trim();
+      const suppliedToken = String(socket.handshake.auth?.token || headerToken || '').trim();
+      const token = suppliedToken && suppliedToken.toLowerCase() !== 'cookie'
+        ? suppliedToken
+        : sessionTokenFromCookieHeader(socket.handshake.headers?.cookie);
       if (!token) return next(new Error('unauthorized'));
 
       const decoded = await verifyAccessToken(token);
