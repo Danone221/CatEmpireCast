@@ -202,7 +202,7 @@ function messageHtml(m) {
   if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
     fileHtml = `<img class="message-image" src="${esc(m.file_data)}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${esc(m.file_data)}">`;
   } else if (m.file_data) {
-    fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
+    fileHtml = `<a class="message-file" href="${esc(m.file_data)}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
   const isMine = m.sender_id === userId;
   const editedTag = m.edited_at ? '<span class="message-edited-tag">(editado)</span>' : '';
