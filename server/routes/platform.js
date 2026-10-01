@@ -4,6 +4,7 @@ const router = express.Router();
 const { query, queryOne } = require('../database');
 const Server = require('../database/models/Server');
 const User = require('../database/models/User');
+const Role = require('../database/models/Role');
 const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
@@ -24,6 +25,22 @@ async function requireManage(serverId, userId) {
     throw Object.assign(new Error('Sem permissão para gerenciar este servidor'), { status: 403 });
   }
   return role;
+}
+
+async function getManageLevel(serverId, userId) {
+  const server = await Server.findById(serverId);
+  if (!server) throw Object.assign(new Error('Servidor não encontrado'), { status: 404 });
+  if (server.creator_id === userId || server.owner_id === userId) return 100;
+  const role = await memberRole(serverId, userId);
+  if (role === 'owner') return 100;
+  if (role === 'admin') return 90;
+  return 0;
+}
+
+async function requireRoleManageLevel(serverId, userId) {
+  const level = await getManageLevel(serverId, userId);
+  if (level < 90) throw Object.assign(new Error('Sem permissão para gerenciar cargos'), { status: 403 });
+  return level;
 }
 
 async function audit(serverId, actorId, action, targetType, targetId, changes = {}, reason = null) {
@@ -49,59 +66,67 @@ router.get('/servers/:serverId/roles', async (req, res) => {
 
 router.post('/servers/:serverId/roles', async (req, res) => {
   try {
-    await requireManage(req.params.serverId, req.user.id);
-    const name = String(req.body.name || 'Novo cargo').trim().slice(0, 32);
-    if (!name) throw new Error('Nome do cargo inválido');
-    const max = await queryOne('SELECT COALESCE(MAX(position),0) AS p FROM server_roles WHERE server_id=$1', [req.params.serverId]);
-    const role = await queryOne(`INSERT INTO server_roles (id,server_id,name,color,icon,position,permissions,mentionable)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`, [uuidv4(), req.params.serverId, name, req.body.color || null, req.body.icon || null, Number(max.p) + 1, JSON.stringify(req.body.permissions || {}), !!req.body.mentionable]);
-    await audit(req.params.serverId, req.user.id, 'role.create', 'role', role.id, { name });
+    const level = await requireRoleManageLevel(req.params.serverId, req.user.id);
+    const role = await Role.create(req.params.serverId, req.body || {});
+    if (Number(role.position || 0) >= level) {
+      const adjusted = await Role.update(req.params.serverId, role.id, { position: level - 1 });
+      await audit(req.params.serverId, req.user.id, 'role.create', 'role', role.id, { name: adjusted.name });
+      return res.json(adjusted);
+    }
+    await audit(req.params.serverId, req.user.id, 'role.create', 'role', role.id, { name: role.name });
     res.json(role);
   } catch (e) { fail(res, e, 'Erro ao criar cargo'); }
 });
 
 router.put('/servers/:serverId/roles/:roleId', async (req, res) => {
   try {
-    await requireManage(req.params.serverId, req.user.id);
-    const fields = [];
-    const values = [];
-    const add = (sql, value) => { values.push(value); fields.push(sql.replace('?', `$${values.length}`)); };
-    if (typeof req.body.name === 'string') add('name=?', req.body.name.trim().slice(0,32));
-    if (typeof req.body.color === 'string' || req.body.color === null) add('color=?', req.body.color || null);
-    if (typeof req.body.icon === 'string' || req.body.icon === null) add('icon=?', req.body.icon || null);
-    if (req.body.permissions && typeof req.body.permissions === 'object') add('permissions=?', JSON.stringify(req.body.permissions));
-    if (typeof req.body.mentionable === 'boolean') add('mentionable=?', req.body.mentionable);
-    if (req.body.position !== undefined) add('position=?', Math.max(0, Number(req.body.position) || 0));
-    if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
-    values.push(req.params.serverId, req.params.roleId);
-    const role = await queryOne(`UPDATE server_roles SET ${fields.join(', ')} WHERE server_id=$${values.length-1} AND id=$${values.length} RETURNING *`, values);
+    const level = await requireRoleManageLevel(req.params.serverId, req.user.id);
+    const role = await Role.findById(req.params.serverId, req.params.roleId);
     if (!role) return res.status(404).json({ error: 'Cargo não encontrado' });
-    await audit(req.params.serverId, req.user.id, 'role.update', 'role', role.id, req.body);
-    res.json(role);
+    if (Number(role.position || 0) >= level && role.name !== '@everyone') {
+      return res.status(403).json({ error: 'Você não pode editar um cargo acima ou igual à sua hierarquia' });
+    }
+    const next = { ...(req.body || {}) };
+    if (next.position !== undefined && Number(next.position) >= level) next.position = level - 1;
+    const updated = await Role.update(req.params.serverId, req.params.roleId, next);
+    await audit(req.params.serverId, req.user.id, 'role.update', 'role', updated.id, next);
+    res.json(updated);
   } catch (e) { fail(res, e, 'Erro ao editar cargo'); }
 });
 
 router.delete('/servers/:serverId/roles/:roleId', async (req, res) => {
   try {
-    await requireManage(req.params.serverId, req.user.id);
-    if (req.params.roleId.endsWith(':everyone')) return res.status(400).json({ error: 'O cargo padrão não pode ser removido' });
-    const deleted = await queryOne('DELETE FROM server_roles WHERE server_id=$1 AND id=$2 RETURNING id', [req.params.serverId, req.params.roleId]);
-    if (!deleted) return res.status(404).json({ error: 'Cargo não encontrado' });
-    await audit(req.params.serverId, req.user.id, 'role.delete', 'role', deleted.id);
-    res.json({ success: true });
+    const level = await requireRoleManageLevel(req.params.serverId, req.user.id);
+    const role = await Role.findById(req.params.serverId, req.params.roleId);
+    if (!role) return res.status(404).json({ error: 'Cargo não encontrado' });
+    if (Number(role.position || 0) >= level) {
+      return res.status(403).json({ error: 'Você não pode excluir um cargo acima ou igual à sua hierarquia' });
+    }
+    const result = await Role.remove(req.params.serverId, req.params.roleId);
+    await audit(req.params.serverId, req.user.id, 'role.delete', 'role', req.params.roleId);
+    res.json(result);
   } catch (e) { fail(res, e, 'Erro ao excluir cargo'); }
 });
 
 router.put('/servers/:serverId/members/:userId/roles', async (req, res) => {
   try {
-    await requireManage(req.params.serverId, req.user.id);
-    const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds.slice(0, 50) : [];
-    await query('DELETE FROM server_role_members WHERE server_id=$1 AND user_id=$2', [req.params.serverId, req.params.userId]);
-    for (const roleId of roleIds) {
-      await query(`INSERT INTO server_role_members(role_id,server_id,user_id) SELECT id,server_id,$2 FROM server_roles WHERE id=$1 AND server_id=$3 ON CONFLICT DO NOTHING`, [roleId, req.params.userId, req.params.serverId]);
+    const level = await requireRoleManageLevel(req.params.serverId, req.user.id);
+    const targetMember = await queryOne('SELECT user_id FROM server_members WHERE server_id=$1 AND user_id=$2', [req.params.serverId, req.params.userId]);
+    if (!targetMember) return res.status(404).json({ error: 'Membro não encontrado neste servidor' });
+    const requested = [...new Set((Array.isArray(req.body.roleIds) ? req.body.roleIds : []).map(String).slice(0, 50))];
+    const roles = requested.length
+      ? await query('SELECT id,name,position FROM server_roles WHERE server_id=$1 AND id = ANY($2::text[])', [req.params.serverId, requested])
+      : [];
+    if (roles.length !== requested.length) return res.status(400).json({ error: 'Um ou mais cargos são inválidos' });
+    if (roles.some(role => Number(role.position || 0) >= level || role.name === 'OWNER')) {
+      return res.status(403).json({ error: 'Você não pode atribuir um cargo acima ou igual à sua hierarquia' });
     }
-    await audit(req.params.serverId, req.user.id, 'member.roles.update', 'user', req.params.userId, { roleIds });
-    res.json({ success: true, roleIds });
+    await query('DELETE FROM server_role_members WHERE server_id=$1 AND user_id=$2', [req.params.serverId, req.params.userId]);
+    for (const role of roles) {
+      await query('INSERT INTO server_role_members(role_id,server_id,user_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING', [role.id, req.params.serverId, req.params.userId]);
+    }
+    await audit(req.params.serverId, req.user.id, 'member.roles.update', 'user', req.params.userId, { roleIds: requested });
+    res.json({ success: true, roleIds: requested });
   } catch (e) { fail(res, e, 'Erro ao atualizar cargos do membro'); }
 });
 
