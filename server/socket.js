@@ -65,6 +65,26 @@ function setupSocket(server) {
   const onlineUsers = new Set(); // userId presente com pelo menos 1 socket ativo
   const screenShareSockets = new Map(); // screen:<userId> -> socketId
 
+  function sanitizeAttachment(file) {
+    if (!file) return null;
+    const allowedTypes = new Set(config.upload.allowedTypes || []);
+    const type = String(file.type || '').toLowerCase();
+    if (!allowedTypes.has(type)) throw new Error('Tipo de arquivo não permitido');
+    const data = String(file.data || '');
+    const prefix = `data:${type};base64,`;
+    if (!data.startsWith(prefix)) throw new Error('Conteúdo do arquivo inválido');
+    const encoded = data.slice(prefix.length).replace(/[\r\n]/g, '');
+    if (!/^[a-z0-9+/]*={0,2}$/i.test(encoded)) throw new Error('Arquivo Base64 inválido');
+    const padding = encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0;
+    const decodedBytes = Math.max(0, Math.floor(encoded.length * 3 / 4) - padding);
+    const maxBytes = Math.min(Number(config.upload.maxSize) || 8 * 1024 * 1024, 8 * 1024 * 1024);
+    if (decodedBytes < 1 || decodedBytes > maxBytes) throw new Error('Arquivo excede o limite de 8MB');
+    const name = String(file.name || 'arquivo')
+      .replace(/[\\/\0\r\n]/g, '_')
+      .slice(0, 160);
+    return { name, type, size: decodedBytes, data };
+  }
+
   const viewerPeerId = socketId => `viewer:${socketId}`;
   const viewerSocketId = peerId => String(peerId || '').startsWith('viewer:')
     ? String(peerId).slice('viewer:'.length)
@@ -325,6 +345,11 @@ function setupSocket(server) {
         }
         const targetSocketId = userSockets.get(to) || screenSocketId;
         if (targetSocketId) {
+          if (!screenSocketId) {
+            const myChannel = userChannels.get(socket.userId);
+            const targetSocket = io.sockets.sockets.get(targetSocketId);
+            if (!myChannel || !targetSocket?.userId || userChannels.get(targetSocket.userId) !== myChannel) return;
+          }
           if (screenSocketId && data?.sdp) {
             console.log(`📡 Oferta ${data.sdp.type} do visualizador ${socket.id} encaminhada para ${to}`);
           }
@@ -341,10 +366,12 @@ function setupSocket(server) {
     });
 
     // ========== TELA NATIVA DO APK VIA WEBRTC ==========
-    socket.on('register-native-screen', async ({ userId, token, channelId }) => {
+    socket.on('register-native-screen', async ({ channelId } = {}) => {
       try {
-        const decoded = jwt.verify(String(token || ''), config.jwtSecret);
-        if (decoded.id !== userId) throw new Error('Token não corresponde ao usuário');
+        if (socket.authKind !== 'cast') throw new Error('Credencial de transmissão necessária');
+        const userId = socket.userId;
+        channelId = String(channelId || '');
+        if (!channelId || socket.castChannelId !== channelId) throw new Error('Token não corresponde ao canal');
         const user = await User.findById(userId);
         const channel = await Channel.findById(channelId);
         if (!user || !channel || channel.type !== 'voice') throw new Error('Canal de voz inválido');
@@ -460,15 +487,17 @@ function setupSocket(server) {
     });
 
     // ========== ENTRAR NO CANAL DE TEXTO (necessário pro broadcast de mensagens) ==========
-    socket.on('join-text-channel', ({ channelId }) => {
+    socket.on('join-text-channel', async ({ channelId } = {}) => {
       try {
-        if (socket.textChannel) {
-          socket.leave(`channel-${socket.textChannel}`);
-        }
+        const channel = await Channel.findById(channelId);
+        if (!channel || channel.type !== 'text') return socket.emit('error', { message: 'Canal de texto não encontrado' });
+        const role = await ServerModel.getMemberRole(channel.server_id, socket.userId);
+        if (!role) return socket.emit('error', { message: 'Você não participa deste servidor' });
+        if (socket.textChannel) socket.leave(`channel-${socket.textChannel}`);
         socket.textChannel = channelId;
         socket.join(`channel-${channelId}`);
       } catch (error) {
-        console.error('❌ Erro ao entrar no canal de texto:', error);
+        console.error('❌ Erro ao entrar no canal de texto:', error?.message || error);
       }
     });
 
@@ -476,21 +505,22 @@ function setupSocket(server) {
     socket.on('send-message', async ({ channelId, message, file }) => {
       try {
         const channel = await Channel.findById(channelId);
-        if (!channel) {
-          socket.emit('error', { message: 'Canal não encontrado' });
+        if (!channel || channel.type !== 'text') {
+          socket.emit('error', { message: 'Canal de texto não encontrado' });
           return;
         }
+        const role = await ServerModel.getMemberRole(channel.server_id, socket.userId);
+        if (!role) return socket.emit('error', { message: 'Você não participa deste servidor' });
+        if (socket.textChannel !== channelId) return socket.emit('error', { message: 'Entre no canal antes de enviar mensagens' });
+        const text = String(message || '').trim().slice(0, 2000);
+        const safeFile = file ? sanitizeAttachment(file) : null;
+        if (!text && !safeFile) return;
 
         const msgData = await Channel.saveMessage({
           channelId,
           userId: socket.userId,
-          content: message,
-          file: file ? {
-            name: file.name,
-            type: file.type,
-            size: file.size || null,
-            data: file.data || null
-          } : null
+          content: text,
+          file: safeFile
         });
 
         io.to(`channel-${channelId}`).emit('new-message', msgData);
@@ -541,9 +571,11 @@ function setupSocket(server) {
 
     // ========== INDICADOR "ESTÁ DIGITANDO…" ==========
     socket.on('typing-start', ({ channelId }) => {
+      if (!channelId || socket.textChannel !== channelId) return;
       socket.to(`channel-${channelId}`).emit('user-typing', { channelId, userId: socket.userId, userName: socket.userName });
     });
     socket.on('typing-stop', ({ channelId }) => {
+      if (!channelId || socket.textChannel !== channelId) return;
       socket.to(`channel-${channelId}`).emit('user-stop-typing', { channelId, userId: socket.userId });
     });
 
@@ -562,7 +594,8 @@ function setupSocket(server) {
         if (!text && !file) return;
         if (text.length > 2000) return socket.emit('error', { message: 'Mensagem muito longa' });
 
-        const dm = await Dm.send({ senderId: socket.userId, recipientId: toUserId, content: text, file });
+        const safeFile = file ? sanitizeAttachment(file) : null;
+        const dm = await Dm.send({ senderId: socket.userId, recipientId: toUserId, content: text, file: safeFile });
         io.to(`user-${toUserId}`).emit('new-dm', dm);
         io.to(`user-${socket.userId}`).emit('new-dm', dm); // ecoa pro remetente (multi-aba)
       } catch (error) {
@@ -616,6 +649,7 @@ function setupSocket(server) {
     // ========== GO LIVE ==========
     socket.on('start-go-live', ({ channelId }) => {
       try {
+        if (!channelId || userChannels.get(socket.userId) !== channelId) return;
         io.to(`channel-${channelId}`).emit('stream-started', {
           userId: socket.userId,
           userName: socket.userName
@@ -627,6 +661,7 @@ function setupSocket(server) {
 
     socket.on('stop-go-live', ({ channelId }) => {
       try {
+        if (!channelId || userChannels.get(socket.userId) !== channelId) return;
         io.to(`channel-${channelId}`).emit('stream-stopped', {
           userId: socket.userId
         });
