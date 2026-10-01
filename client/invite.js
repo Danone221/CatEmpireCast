@@ -31,7 +31,7 @@
 
   function applyBannerStyle(el, banner) {
     if (!el) return;
-    if (banner && /^(data:|https?:)/.test(banner)) {
+    if (banner && /^(data:image\/|https:\/\/)/i.test(banner)) {
       el.style.backgroundImage = 'url("' + banner + '")';
       el.style.backgroundSize = 'cover';
       el.style.backgroundPosition = 'center';
@@ -77,11 +77,20 @@
 
     applyBannerStyle($('inviteBanner'), d.serverBannerColor || '#5865f2');
 
-    const isImg = d.serverIcon && /^(https?:|data:)/.test(d.serverIcon);
+    const iconWrap = $('inviteIconWrap');
+    iconWrap.replaceChildren();
+    const isImg = d.serverIcon && /^(https:\/\/|data:image\/)/i.test(d.serverIcon);
     if (isImg) {
-      $('inviteIconWrap').innerHTML = '<img src="' + d.serverIcon + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+      const img = document.createElement('img');
+      img.src = d.serverIcon;
+      img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+      iconWrap.appendChild(img);
     } else {
-      $('inviteIconWrap').innerHTML = '<span id="inviteIcon">' + (d.serverIcon || '🐱') + '</span>';
+      const span = document.createElement('span');
+      span.id = 'inviteIcon';
+      span.textContent = d.serverIcon || '🐱';
+      iconWrap.appendChild(span);
     }
 
     if (d.isMember) {
