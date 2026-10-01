@@ -9,6 +9,7 @@ router.use(authenticate);
 async function requireMember(serverId, userId) {
   const role = await Server.getMemberRole(serverId, userId);
   if (!role) throw Object.assign(new Error('Você não é membro deste servidor'), { status: 403 });
+  return role;
 }
 
 async function requireManage(serverId, userId) {
@@ -50,10 +51,16 @@ router.post('/channels/:channelId/stage/join', async (req, res) => {
   try {
     const channel = await getStage(req.params.channelId);
     if (!channel) return res.status(404).json({ error: 'Stage não encontrado' });
-    await requireMember(channel.server_id, req.user.id);
+    const serverRole = await requireMember(channel.server_id, req.user.id);
 
     const requestedRole = ['moderator', 'speaker', 'audience'].includes(req.body.role) ? req.body.role : 'audience';
-    const role = requestedRole === 'moderator' ? 'audience' : requestedRole;
+    const canManageStage = ['owner', 'admin', 'moderator'].includes(serverRole);
+    const existing = await queryOne(
+      'SELECT role FROM stage_members WHERE channel_id=$1 AND user_id=$2',
+      [channel.id, req.user.id]
+    );
+    let role = existing && ['moderator','speaker'].includes(existing.role) ? existing.role : 'audience';
+    if (canManageStage) role = requestedRole;
 
     const member = await queryOne(`INSERT INTO stage_members(channel_id,user_id,role)
       VALUES($1,$2,$3)
