@@ -62,7 +62,7 @@ router.post('/register', authLimiter, async (req, res) => {
 
     const user = await User.create({ username, password, displayName });
     res.set('Cache-Control', 'no-store');
-    res.json({ user, token: createAccessToken(user) });
+    res.json({ user, token: await createAccessToken(user) });
   } catch (error) {
     if (error?.code === '23505') return res.status(409).json({ error: 'Usuário já existe' });
     console.error('Erro ao registrar:', error);
@@ -80,7 +80,7 @@ router.post('/login', authLimiter, async (req, res) => {
     if (!user) return res.status(401).json({ error: 'Credenciais inválidas' });
 
     res.set('Cache-Control', 'no-store');
-    res.json({ user, token: createAccessToken(user) });
+    res.json({ user, token: await createAccessToken(user) });
   } catch (error) {
     console.error('Erro ao fazer login:', error);
     res.status(500).json({ error: 'Erro ao fazer login' });
@@ -92,7 +92,8 @@ router.post('/logout', async (req, res) => {
   if (!token) return res.status(204).end();
 
   try {
-    await revokeAccessToken(token);
+    const decoded = await revokeAccessToken(token);
+    await User.bumpAuthVersion(decoded.id);
   } catch (error) {
     if (!/revogado/i.test(String(error.message || ''))) {
       return res.status(401).json({ error: 'Token inválido ou expirado' });
@@ -179,7 +180,7 @@ router.get('/discord/callback', authLimiter, async (req, res) => {
       avatar
     });
 
-    const appToken = createAccessToken(user);
+    const appToken = await createAccessToken(user);
     res.set('Cache-Control', 'no-store');
     res.redirect('/#discord_token=' + encodeURIComponent(appToken));
   } catch (error) {
