@@ -77,3 +77,14 @@ test('legacy clients do not recover credentials from query strings', () => {
   }
   assert.match(source('client/platform-api.js'), /localStorage\.getItem\('cat_token'\)/);
 });
+
+test('websocket upgrades enforce origin and schema migrations constrain identifiers', () => {
+  const socket = source('server/socket.js');
+  const db = source('server/database/index.js');
+  assert.match(socket, /allowRequest\(req, callback\)/);
+  assert.match(socket, /originAllowed\(origin\)/);
+  assert.match(db, /identifier = \/\^\[a-z_\]/);
+  assert.match(db, /allowedTypes = new Set/);
+  assert.match(db, /Migração de schema inválida/);
+});
+
