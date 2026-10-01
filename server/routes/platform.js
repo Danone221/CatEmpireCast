@@ -27,6 +27,51 @@ async function requireManage(serverId, userId) {
   return role;
 }
 
+function boundedJson(value, maxBytes, label) {
+  const json = JSON.stringify(value);
+  if (Buffer.byteLength(json, 'utf8') > maxBytes) {
+    throw Object.assign(new Error(`${label} excede o limite permitido`), { status: 413 });
+  }
+  return json;
+}
+
+async function validateServerIds(serverId, table, column, ids, label) {
+  const clean = [...new Set((Array.isArray(ids) ? ids : []).filter(id => typeof id === 'string').slice(0, 25))];
+  if (!clean.length) return [];
+  const allowed = new Map([
+    ['server_roles:id', 'SELECT id FROM server_roles WHERE server_id=$1 AND id = ANY($2::text[])'],
+    ['channels:id', 'SELECT id FROM channels WHERE server_id=$1 AND id = ANY($2::text[])']
+  ]);
+  const sql = allowed.get(`${table}:${column}`);
+  if (!sql) throw Object.assign(new Error('Validação de referência inválida'), { status: 500 });
+  const rows = await query(sql, [serverId, clean]);
+  if (rows.length !== clean.length) {
+    throw Object.assign(new Error(`${label} contém referência de outro servidor ou inexistente`), { status: 400 });
+  }
+  return clean;
+}
+
+async function requireModerationTarget(serverId, actorId, targetId) {
+  if (!targetId || typeof targetId !== 'string') {
+    throw Object.assign(new Error('Usuário alvo inválido'), { status: 400 });
+  }
+  if (targetId === actorId) {
+    throw Object.assign(new Error('Você não pode aplicar moderação em si mesmo'), { status: 400 });
+  }
+  const [server, actorRole, target] = await Promise.all([
+    queryOne('SELECT creator_id,owner_id FROM servers WHERE id=$1', [serverId]),
+    Server.getMemberRole(serverId, actorId),
+    queryOne('SELECT role,is_owner FROM server_members WHERE server_id=$1 AND user_id=$2', [serverId, targetId])
+  ]);
+  if (!target) throw Object.assign(new Error('Membro alvo não pertence a este servidor'), { status: 404 });
+  const actorIsOwner = actorRole === 'owner' || server?.creator_id === actorId || server?.owner_id === actorId;
+  const targetIsOwner = String(target.role || '').toLowerCase() === 'owner' || target.is_owner || server?.creator_id === targetId || server?.owner_id === targetId;
+  if (targetIsOwner && !actorIsOwner) {
+    throw Object.assign(new Error('Somente o proprietário pode moderar outro proprietário'), { status: 403 });
+  }
+  return target;
+}
+
 async function audit(serverId, actorId, action, targetType, targetId, changes = {}, reason = null) {
   await query(`INSERT INTO audit_logs (id,server_id,actor_id,action,target_type,target_id,reason,changes)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, [uuidv4(), serverId, actorId, action, targetType, targetId, reason, JSON.stringify(changes)]);
@@ -277,16 +322,44 @@ router.post('/notifications/:id/read',async(req,res)=>{try{await query('UPDATE n
 
 // ===== EVENTS / MODERATION / AUDIT =====
 router.get('/servers/:serverId/events',async(req,res)=>{try{await requireMember(req.params.serverId,req.user.id);res.json(await query('SELECT e.*,u.username AS creator_name,COUNT(a.user_id)::int AS attendees FROM server_events e JOIN users u ON u.id=e.creator_id LEFT JOIN event_attendees a ON a.event_id=e.id WHERE e.server_id=$1 GROUP BY e.id,u.username ORDER BY e.start_at',[req.params.serverId]));}catch(e){fail(res,e,'Erro ao listar eventos');}});
-router.post('/servers/:serverId/events',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const e=await queryOne(`INSERT INTO server_events(id,server_id,creator_id,name,description,start_at,end_at,location,type,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,[uuidv4(),req.params.serverId,req.user.id,String(req.body.name||'Evento').slice(0,100),String(req.body.description||'').slice(0,2000),Number(req.body.startAt),req.body.endAt?Number(req.body.endAt):null,req.body.location||null,req.body.type||'other',req.body.status||'scheduled']);res.json(e);}catch(e){fail(res,e,'Erro ao criar evento');}});
+router.post('/servers/:serverId/events',async(req,res)=>{try{
+  await requireManage(req.params.serverId,req.user.id);
+  const name=String(req.body.name||'Evento').replace(/[<>]/g,'').trim().slice(0,100)||'Evento';
+  const description=String(req.body.description||'').replace(/[<>]/g,'').trim().slice(0,2000);
+  const location=String(req.body.location||'').replace(/[<>]/g,'').trim().slice(0,200)||null;
+  const startAt=Number(req.body.startAt);
+  const endAt=req.body.endAt?Number(req.body.endAt):null;
+  if(!Number.isFinite(startAt)||startAt<=0||endAt!==null&&!Number.isFinite(endAt))return res.status(400).json({error:'Data do evento inválida'});
+  const e=await queryOne(`INSERT INTO server_events(id,server_id,creator_id,name,description,start_at,end_at,location,type,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,[uuidv4(),req.params.serverId,req.user.id,name,description,startAt,endAt,location,String(req.body.type||'other').slice(0,40),String(req.body.status||'scheduled').slice(0,40)]);
+  res.json(e);
+}catch(e){fail(res,e,'Erro ao criar evento');}});
 router.post('/events/:eventId/rsvp',async(req,res)=>{try{const e=await queryOne('SELECT * FROM server_events WHERE id=$1',[req.params.eventId]);if(!e)return res.status(404).json({error:'Evento não encontrado'});await requireMember(e.server_id,req.user.id);await query('INSERT INTO event_attendees(event_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[e.id,req.user.id]);res.json({success:true});}catch(e){fail(res,e,'Erro ao confirmar presença');}});
 router.get('/servers/:serverId/moderation',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query('SELECT m.*,u.username,m2.username AS moderator_name FROM moderation_actions m JOIN users u ON u.id=m.user_id JOIN users m2 ON m2.id=m.moderator_id WHERE m.server_id=$1 ORDER BY m.started_at DESC',[req.params.serverId]));}catch(e){fail(res,e,'Erro ao listar moderação');}});
-router.post('/servers/:serverId/moderation',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const action=req.body.action;if(!['warning','kick','ban','timeout'].includes(action))return res.status(400).json({error:'Ação inválida'});const m=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,req.body.userId,req.user.id,action,req.body.reason||null,req.body.expiresAt?Number(req.body.expiresAt):null]);await audit(req.params.serverId,req.user.id,`moderation.${action}`,'user',req.body.userId,{reason:req.body.reason||null},req.body.reason||null);res.json(m);}catch(e){fail(res,e,'Erro ao aplicar moderação');}});
+router.post('/servers/:serverId/moderation',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);await requireModerationTarget(req.params.serverId,req.user.id,req.body.userId);const action=req.body.action;if(!['warning','kick','ban','timeout'].includes(action))return res.status(400).json({error:'Ação inválida'});const reason=String(req.body.reason||'').replace(/[<>]/g,'').trim().slice(0,1000)||null;const expiresAt=req.body.expiresAt?Number(req.body.expiresAt):null;if(expiresAt!==null&&!Number.isFinite(expiresAt))return res.status(400).json({error:'Expiração inválida'});const m=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,req.body.userId,req.user.id,action,reason,expiresAt]);await audit(req.params.serverId,req.user.id,`moderation.${action}`,'user',req.body.userId,{reason:req.body.reason||null},req.body.reason||null);res.json(m);}catch(e){fail(res,e,'Erro ao aplicar moderação');}});
 router.get('/servers/:serverId/audit-log',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query('SELECT a.*,u.username AS actor_name FROM audit_logs a JOIN users u ON u.id=a.actor_id WHERE a.server_id=$1 ORDER BY a.created_at DESC LIMIT 500',[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar audit log');}});
 
 // ===== ONBOARDING / AUTOMOD / SERVER SETTINGS =====
 router.get('/servers/:serverId/onboarding',async(req,res)=>{try{await requireMember(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM onboarding_configs WHERE server_id=$1',[req.params.serverId]) || {server_id:req.params.serverId,enabled:false,questions:[],default_roles:[],default_channels:[]});}catch(e){fail(res,e,'Erro ao carregar onboarding');}});
-router.put('/servers/:serverId/onboarding',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO onboarding_configs(server_id,enabled,welcome_text,questions,default_roles,default_channels,updated_at) VALUES($1,$2,$3,$4,$5,$6,extract(epoch FROM now())::bigint) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,welcome_text=EXCLUDED.welcome_text,questions=EXCLUDED.questions,default_roles=EXCLUDED.default_roles,default_channels=EXCLUDED.default_channels,updated_at=EXCLUDED.updated_at RETURNING *`,[req.params.serverId,!!req.body.enabled,req.body.welcomeText||null,JSON.stringify(req.body.questions||[]),JSON.stringify(req.body.defaultRoles||[]),JSON.stringify(req.body.defaultChannels||[])]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar onboarding');}});
+router.put('/servers/:serverId/onboarding',async(req,res)=>{try{
+  await requireManage(req.params.serverId,req.user.id);
+  const questions=Array.isArray(req.body.questions)?req.body.questions.slice(0,25):[];
+  const defaultRoles=await validateServerIds(req.params.serverId,'server_roles','id',req.body.defaultRoles,'Cargos padrão');
+  const defaultChannels=await validateServerIds(req.params.serverId,'channels','id',req.body.defaultChannels,'Canais padrão');
+  const welcomeText=String(req.body.welcomeText||'').replace(/[<>]/g,'').trim().slice(0,1500)||null;
+  const questionsJson=boundedJson(questions,32768,'Perguntas do onboarding');
+  const rolesJson=boundedJson(defaultRoles,8192,'Cargos padrão');
+  const channelsJson=boundedJson(defaultChannels,8192,'Canais padrão');
+  const row=await queryOne(`INSERT INTO onboarding_configs(server_id,enabled,welcome_text,questions,default_roles,default_channels,updated_at) VALUES($1,$2,$3,$4,$5,$6,extract(epoch FROM now())::bigint) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,welcome_text=EXCLUDED.welcome_text,questions=EXCLUDED.questions,default_roles=EXCLUDED.default_roles,default_channels=EXCLUDED.default_channels,updated_at=EXCLUDED.updated_at RETURNING *`,[req.params.serverId,!!req.body.enabled,welcomeText,questionsJson,rolesJson,channelsJson]);
+  res.json(row);
+}catch(e){fail(res,e,'Erro ao salvar onboarding');}});
 router.get('/servers/:serverId/automod',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM automod_configs WHERE server_id=$1',[req.params.serverId]) || {server_id:req.params.serverId,enabled:false,rules:{},keywords:[],actions:{}});}catch(e){fail(res,e,'Erro ao carregar automod');}});
-router.put('/servers/:serverId/automod',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO automod_configs(server_id,enabled,rules,keywords,actions,updated_at) VALUES($1,$2,$3,$4,$5,extract(epoch FROM now())::bigint) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules=EXCLUDED.rules,keywords=EXCLUDED.keywords,actions=EXCLUDED.actions,updated_at=EXCLUDED.updated_at RETURNING *`,[req.params.serverId,!!req.body.enabled,JSON.stringify(req.body.rules||{}),JSON.stringify(req.body.keywords||[]),JSON.stringify(req.body.actions||{})]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar automod');}});
+router.put('/servers/:serverId/automod',async(req,res)=>{try{
+  await requireManage(req.params.serverId,req.user.id);
+  const rules=req.body.rules&&typeof req.body.rules==='object'&&!Array.isArray(req.body.rules)?req.body.rules:{};
+  const actions=req.body.actions&&typeof req.body.actions==='object'&&!Array.isArray(req.body.actions)?req.body.actions:{};
+  const keywords=(Array.isArray(req.body.keywords)?req.body.keywords:[]).slice(0,200).map(v=>String(v).replace(/[<>]/g,'').trim().slice(0,80)).filter(Boolean);
+  const row=await queryOne(`INSERT INTO automod_configs(server_id,enabled,rules,keywords,actions,updated_at) VALUES($1,$2,$3,$4,$5,extract(epoch FROM now())::bigint) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules=EXCLUDED.rules,keywords=EXCLUDED.keywords,actions=EXCLUDED.actions,updated_at=EXCLUDED.updated_at RETURNING *`,[req.params.serverId,!!req.body.enabled,boundedJson(rules,32768,'Regras do automod'),boundedJson(keywords,32768,'Palavras do automod'),boundedJson(actions,32768,'Ações do automod')]);
+  res.json(row);
+}catch(e){fail(res,e,'Erro ao salvar automod');}});
 
 module.exports = router;
