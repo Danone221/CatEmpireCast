@@ -115,8 +115,26 @@ async function getReactions(type, ids, currentUserId) {
 router.get('/reactions', async (req, res) => {
   try {
     const type = req.query.type === 'dm' ? 'dm' : 'server';
-    const ids = String(req.query.ids || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 100);
-    res.json(await getReactions(type, ids, req.user.id));
+    const requestedIds = String(req.query.ids || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 100);
+    if (!requestedIds.length) return res.json({});
+
+    const rows = type === 'dm'
+      ? await query(`
+          SELECT id
+          FROM dm_messages
+          WHERE id = ANY($1::text[])
+            AND (sender_id=$2 OR recipient_id=$2)
+        `, [requestedIds, req.user.id])
+      : await query(`
+          SELECT m.id
+          FROM messages m
+          JOIN channels c ON c.id=m.channel_id
+          JOIN server_members sm ON sm.server_id=c.server_id AND sm.user_id=$2
+          WHERE m.id = ANY($1::text[]) AND m.deleted_at IS NULL
+        `, [requestedIds, req.user.id]);
+
+    const allowedIds = rows.map(row => row.id);
+    res.json(await getReactions(type, allowedIds, req.user.id));
   } catch (_) { res.status(500).json({ error: 'Erro ao carregar reações' }); }
 });
 
