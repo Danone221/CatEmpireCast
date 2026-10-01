@@ -1,36 +1,43 @@
-const jwt = require('jsonwebtoken');
-const config = require('../config');
-const User = require('../database/models/User');
+const { SESSION_COOKIE, getCookie, verifySessionToken } = require('../security/session');
+
+function getBearer(req) {
+  const header = String(req.headers.authorization || '');
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  if (!match) return '';
+  const token = String(match[1] || '').trim();
+  if (!token || token === 'null' || token === 'undefined') return '';
+  return token;
+}
+
+async function resolveSession(req) {
+  const token = getBearer(req) || getCookie(req, SESSION_COOKIE);
+  if (!token) return null;
+  return verifySessionToken(token);
+}
 
 async function authenticate(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) {
-    return res.status(401).json({ error: 'Token não fornecido' });
-  }
   try {
-    const decoded = jwt.verify(token, config.jwtSecret);
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(401).json({ error: 'Usuário não encontrado' });
+    const session = await resolveSession(req);
+    if (!session?.user) {
+      return res.status(401).json({ error: 'Sessão não fornecida' });
     }
-    req.user = user;
+    req.user = session.user;
+    req.auth = session.decoded;
     next();
   } catch (error) {
-    console.error('Erro ao autenticar:', error);
-    res.status(401).json({ error: 'Token inválido' });
+    return res.status(401).json({ error: 'Sessão inválida ou expirada' });
   }
 }
 
 async function optionalAuth(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, config.jwtSecret);
-      const user = await User.findById(decoded.id);
-      if (user) req.user = user;
-    } catch (e) {}
-  }
+  try {
+    const session = await resolveSession(req);
+    if (session?.user) {
+      req.user = session.user;
+      req.auth = session.decoded;
+    }
+  } catch {}
   next();
 }
 
-module.exports = { authenticate, optionalAuth };
+module.exports = { authenticate, optionalAuth, resolveSession };
