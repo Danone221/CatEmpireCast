@@ -121,6 +121,7 @@ router.patch('/messages/:messageId', async (req, res) => {
   try {
     const message = await queryOne('SELECT m.*, c.server_id,c.id AS channel_id FROM messages m JOIN channels c ON c.id=m.channel_id WHERE m.id=$1', [req.params.messageId]);
     if (!message) return res.status(404).json({ error: 'Mensagem não encontrada' });
+    await requireMemberByChannel(message.channel_id, req.user.id);
     const manage = await canManage(message, req.user.id);
     if (message.user_id !== req.user.id && !manage) return res.status(403).json({ error: 'Você não pode editar esta mensagem' });
     const content = String(req.body.content ?? message.content ?? '').slice(0, 4000);
@@ -137,6 +138,7 @@ router.delete('/messages/:messageId', async (req, res) => {
   try {
     const message = await queryOne('SELECT m.*,c.server_id,c.id AS channel_id FROM messages m JOIN channels c ON c.id=m.channel_id WHERE m.id=$1', [req.params.messageId]);
     if (!message) return res.status(404).json({ error: 'Mensagem não encontrada' });
+    await requireMemberByChannel(message.channel_id, req.user.id);
     const manage = await canManage(message, req.user.id);
     if (message.user_id !== req.user.id && !manage) return res.status(403).json({ error: 'Você não pode excluir esta mensagem' });
     await query('UPDATE messages SET deleted_at=extract(epoch FROM now())::bigint, content=NULL, file_data=NULL WHERE id=$1', [message.id]);
