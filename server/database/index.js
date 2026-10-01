@@ -36,6 +36,7 @@ async function initSchema() {
       display_name TEXT,
       avatar TEXT,
       password_hash TEXT,
+      auth_version INTEGER NOT NULL DEFAULT 0,
       created_at BIGINT NOT NULL DEFAULT extract(epoch FROM now())::bigint
     );
 
@@ -148,6 +149,7 @@ async function initSchema() {
     await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)');
   }
 
+  await addColumnIfMissing('users', 'auth_version', 'INTEGER NOT NULL DEFAULT 0');
   await addColumnIfMissing('users', 'bio', 'TEXT');
   await addColumnIfMissing('users', 'banner_color', 'TEXT');
   await addColumnIfMissing('servers', 'banner_color', 'TEXT');
