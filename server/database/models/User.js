@@ -91,36 +91,9 @@ class User {
     const fields = [];
     const values = [];
     let i = 1;
-    const marker = String.fromCharCode(36);
     for (const [key, value] of Object.entries(data || {})) {
       if (!allowed.has(key)) continue;
-      fields.push(key + ' = ' + marker + i);
-      values.push(value);
-      i++;
-    }
-    if (!fields.length) return this.findById(id);
-    values.push(id);
-    const sql = 'UPDATE users SET ' + fields.join(', ') + ' WHERE id = ' + marker + i;
-    await query(sql, values);
-    return this.findById(id);
-  }
-
-  static async getServers(userId) {
-    return query(
-      `SELECT s.*,
-        (SELECT COUNT(*) FROM server_members WHERE server_id = s.id) as member_count,
-        sm.role
-      FROM servers s
-      JOIN server_members sm ON s.id = sm.server_id
-      WHERE sm.user_id = $1
-      ORDER BY s.created_at`,
-      [userId]
-    );
-  }
-}
-
-module.exports = User;
- + i);
+      fields.push(`${key} = ${i}`);
       values.push(value);
       i++;
     }
