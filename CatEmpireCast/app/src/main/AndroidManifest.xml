@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Carregar o site -->
+    
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- getUserMedia (mic/câmera) e getDisplayMedia (compartilhar tela)
-         chamados de dentro da página web precisam dessas permissões
-         concedidas ao app pra que WebView.onPermissionRequest funcione. -->
+    
+
+
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- Necessárias pra transmissão de tela nativa (WebRTC via MediaProjection)
-         e pro serviço em primeiro plano que a captura de tela do WebView
-         (getDisplayMedia) já exigia desde o Android 14. -->
+    
+
+
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Só usado se o usuário escolher "Tirar foto" no seletor de imagem
-         do chat, em vez de escolher uma já existente na galeria. -->
+    
+
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <application
@@ -47,17 +47,17 @@
             </intent-filter>
         </activity>
 
-        <!-- Fica ativo enquanto uma sala está aberta, pra permitir que o
-             getDisplayMedia() do WebView (compartilhar tela pelo navegador
-             embutido) funcione a partir do Android 14. -->
+        
+
+
         <service
             android:name=".ScreenCaptureNotifier"
             android:foregroundServiceType="mediaProjection"
             android:exported="false" />
 
-        <!-- Transmissão de tela nativa de verdade (WebRTC via MediaProjection),
-             disparada pelo botão "📱" na chamada de voz através da ponte
-             JS CatEmpireNative. -->
+        
+
+
         <service
             android:name=".BroadcastService"
             android:foregroundServiceType="mediaProjection|microphone"

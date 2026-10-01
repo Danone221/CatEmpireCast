@@ -9,18 +9,18 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 
-/**
- * Serviço em primeiro plano bem simples. Não faz captura de tela nenhuma
- * — quem faz isso é o próprio WebView/Chromium quando a página chama
- * getDisplayMedia(). Ele só existe porque, a partir do Android 14 (API 34),
- * o sistema operacional exige que exista um foreground service do tipo
- * "mediaProjection" rodando enquanto uma captura de tela estiver ativa,
- * senão a captura é recusada.
- *
- * A MainActivity liga isso ao entrar numa sala (server.html) e desliga ao
- * sair, então fica pronto pra quando o usuário apertar "compartilhar tela"
- * dentro da página.
- */
+
+
+
+
+
+
+
+
+
+
+
+
 class ScreenCaptureNotifier : Service() {
 
     override fun onCreate() {

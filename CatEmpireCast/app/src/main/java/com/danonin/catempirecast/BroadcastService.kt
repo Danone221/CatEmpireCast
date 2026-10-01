@@ -33,7 +33,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-/** Captura MediaProjection e publica a tela no mesh WebRTC do canal. */
+
 class BroadcastService : Service() {
     private val binder = LocalBinder()
     private var listener: BroadcastStateListener? = null
@@ -166,9 +166,9 @@ class BroadcastService : Service() {
                 override fun onStop() { stopBroadcast() }
             }
             capturer = SharedProjectionScreenCapturer(mediaProjection!!, projectionCallback)
-            // Tratar como vídeo em tempo real favorece movimento/FPS. O modo
-            // clássico de screencast prioriza texto parado e derruba quadros
-            // em jogos ou ao abrir outros apps com muita mudança de pixels.
+            
+            
+            
             source = factory!!.createVideoSource(false)
             textureHelper = SurfaceTextureHelper.create("CatEmpireScreen", context)
             capturer!!.initialize(textureHelper, applicationContext, source!!.capturerObserver)
@@ -240,9 +240,9 @@ class BroadcastService : Service() {
             stopBroadcast()
         }
         client.on("native-screen-force-stop") {
-            // A página saiu/trocou de call ou o socket principal foi
-            // desconectado. Encerra MediaProjection e o serviço de verdade,
-            // evitando uma transmissão órfã que se registra novamente.
+            
+            
+            
             stopBroadcast()
         }
         client.on(Socket.EVENT_CONNECT_ERROR) {
@@ -265,9 +265,9 @@ class BroadcastService : Service() {
 
     private fun applySenderLimits() {
         val viewers = peers.size.coerceAtLeast(1)
-        // Cada espectador cria um encoder no mesh. Reduzir a taxa por peer
-        // impede que 2/3 espectadores multipliquem o upload do celular sem
-        // limite, mantendo resolução/FPS escolhidos com bitrate adaptativo.
+        
+        
+        
         val viewerScale = when (viewers) {
             1 -> 1.0
             2 -> 0.80
@@ -406,8 +406,8 @@ class BroadcastService : Service() {
         }
         val projection = mediaProjection ?: return
         try {
-            // 32 kHz mantém boa inteligibilidade/áudio de jogo e reduz em 1/3
-            // o tráfego PCM que disputa upload com o vídeo.
+            
+            
             val sampleRate = 32_000
             val channelCount = 1
             val format = AudioFormat.Builder()
@@ -425,7 +425,7 @@ class BroadcastService : Service() {
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT
             )
-            val packetBytes = 2_560 // 40 ms de PCM mono, 16-bit, 32 kHz.
+            val packetBytes = 2_560 
             val record = AudioRecord.Builder()
                 .setAudioFormat(format)
                 .setBufferSizeInBytes(maxOf(minimum * 2, packetBytes * 4))
@@ -521,11 +521,11 @@ class BroadcastService : Service() {
         } else startForeground(NOTIFICATION_ID, notification)
     }
 
-    /**
-     * Ao abrir um jogo/outro app, o WebView deixa de ser a janela visível.
-     * O serviço continua em primeiro plano, e estes locks evitam que CPU e
-     * Wi-Fi entrem em economia no meio da codificação/upload da tela.
-     */
+    
+
+
+
+
     private fun acquirePerformanceLocks() {
         try {
             val power = getSystemService(Context.POWER_SERVICE) as PowerManager
