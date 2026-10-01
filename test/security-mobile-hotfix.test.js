@@ -29,17 +29,51 @@ test('realtime signaling is rate-limited and payload-bounded', () => {
   assert.match(socket, /Buffer\.byteLength\(JSON\.stringify/);
 });
 
-test('mobile login cards avoid backdrop-filter compositor glitches', () => {
+test('mobile login is one stable card with bounded shader work', () => {
   const css = source('client/login-real-theme.css');
   const html = source('client/index.html');
-  assert.match(css, /@media\(max-width:860px\)[\s\S]*-webkit-backdrop-filter:none!important/);
-  assert.match(css, /backdrop-filter:none!important/);
-  assert.match(css, /contain:paint/);
-  assert.match(css, /transform:none!important/);
-  assert.match(html, /login-real-theme\.css\?v=20261001-mobilefix1/);
+  const shader = source('client/liquid-metal-react.jsx');
+  assert.match(css, /real-mobile-card-stable/);
+  assert.match(css, /\.real-login-card\{[\s\S]*border-radius:22px!important/);
+  assert.match(css, /\.real-visual-pane\{[\s\S]*position:absolute!important/);
+  assert.match(css, /\.real-form-pane\{[\s\S]*contain:none!important/);
+  assert.match(css, /#liquidMetalReactRoot canvas\{[\s\S]*filter:none!important/);
+  assert.match(shader, /minPixelRatio: mobile \? 1 : 1\.5/);
+  assert.match(shader, /maxPixelCount: mobile/);
+  assert.match(shader, /webglcontextlost/);
+  assert.match(html, /login-real-theme\.css\?v=20261001-mobilefix2/);
+  assert.match(html, /liquid-metal-react\.bundle\.js\?v=20261001-mobilefix2/);
 });
 
-test('production static surface blocks login lab pages', () => {
+test('production static surface blocks labs and unused legacy clients', () => {
   const app = source('server/app.js');
-  assert.match(app, /login-lab-\\d\+\\\.html/);
+  assert.match(app, /login-lab\(\?:-\\d\+\)\?\\\.html/);
+  assert.match(app, /blockedPublicFiles/);
+  assert.match(app, /features-v2\.js/);
+  assert.match(app, /vnextPages = new Set\(\['\/server\.html', '\/dms\.html'\]\)/);
+});
+
+test('browser sessions use HttpOnly cookies instead of exposing JWTs', () => {
+  const auth = source('server/routes/auth.js');
+  const security = source('server/security.js');
+  const middleware = source('server/middleware/auth.js');
+  const socket = source('server/socket.js');
+  const app = source('client/app.js');
+  assert.match(auth, /HttpOnly; SameSite=Lax/);
+  assert.match(auth, /token: 'cookie'/);
+  assert.match(auth, /#discord_token=cookie/);
+  assert.match(security, /SESSION_COOKIE_NAME = 'cat_session'/);
+  assert.match(security, /accessTokenFromRequest/);
+  assert.match(middleware, /accessTokenFromRequest\(req\)/);
+  assert.match(socket, /sessionTokenFromCookieHeader/);
+  assert.match(app, /token = 'cookie'/);
+});
+
+test('legacy clients do not recover credentials from query strings', () => {
+  for (const file of ['client/banner-persist.js','client/features-v2.js','client/features-v3.js','client/features-v3-fix.js','client/profile-v5.js']) {
+    const js = source(file);
+    assert.doesNotMatch(js, /get\(['"]token['"]\)/);
+    assert.doesNotMatch(js, /get\(['"]userId['"]\)/);
+  }
+  assert.match(source('client/platform-api.js'), /localStorage\.getItem\('cat_token'\)/);
 });
