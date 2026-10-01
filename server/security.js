@@ -97,11 +97,24 @@ function createAccessToken(user) {
 }
 
 async function verifyAccessToken(token, { allowRevoked = false } = {}) {
-  const decoded = jwt.verify(String(token || ''), config.jwtSecret, {
-    algorithms: ['HS256'],
-    issuer: TOKEN_ISSUER,
-    audience: TOKEN_AUDIENCE
-  });
+  const raw = String(token || '');
+  let decoded;
+
+  try {
+    decoded = jwt.verify(raw, config.jwtSecret, {
+      algorithms: ['HS256'],
+      issuer: TOKEN_ISSUER,
+      audience: TOKEN_AUDIENCE
+    });
+  } catch (strictError) {
+    const legacy = jwt.verify(raw, config.jwtSecret, { algorithms: ['HS256'] });
+    if (legacy?.iss || legacy?.aud || legacy?.jti) throw strictError;
+    decoded = {
+      ...legacy,
+      jti: 'legacy:' + crypto.createHash('sha256').update(raw).digest('hex')
+    };
+  }
+
   if (!decoded?.id || !decoded?.jti || !decoded?.exp) throw new Error('Token incompleto');
   if (!allowRevoked) {
     const revoked = await queryOne(
