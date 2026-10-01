@@ -7,6 +7,7 @@ const { query, queryOne } = require('./database');
 const TOKEN_ISSUER = 'cat-empire';
 const TOKEN_AUDIENCE = 'cat-empire-web';
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const SESSION_COOKIE_NAME = 'cat_session';
 
 function configuredOrigins() {
   return String(config.corsOrigin || '')
@@ -183,9 +184,32 @@ function bearerToken(req) {
   return match ? match[1].trim() : '';
 }
 
+function cookieValue(header, name) {
+  for (const chunk of String(header || '').split(';')) {
+    const index = chunk.indexOf('=');
+    if (index <= 0) continue;
+    if (chunk.slice(0, index).trim() !== name) continue;
+    try { return decodeURIComponent(chunk.slice(index + 1).trim()); }
+    catch (_) { return ''; }
+  }
+  return '';
+}
+
+function sessionTokenFromCookieHeader(header) {
+  return cookieValue(header, SESSION_COOKIE_NAME);
+}
+
+function accessTokenFromRequest(req) {
+  const bearer = bearerToken(req);
+  if (bearer && bearer.toLowerCase() !== 'cookie') return bearer;
+  return sessionTokenFromCookieHeader(req.headers.cookie);
+}
+
 module.exports = {
   TOKEN_ISSUER,
   TOKEN_AUDIENCE,
+  SESSION_COOKIE_NAME,
+  accessTokenFromRequest,
   bearerToken,
   configuredOrigins,
   createAccessToken,
@@ -194,6 +218,7 @@ module.exports = {
   requestOriginAllowed,
   revokeAccessToken,
   sanitizePlainText,
+  sessionTokenFromCookieHeader,
   validateImageValue,
   verifyAccessToken
 };
