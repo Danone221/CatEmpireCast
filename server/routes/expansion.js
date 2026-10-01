@@ -131,12 +131,42 @@ router.get('/servers/:serverId/invites', async (req, res) => {
 });
 router.post('/invites/:code/use', async (req, res) => {
   try {
-    const invite = await queryOne(`UPDATE server_invites SET uses=uses+1 WHERE code=$1 AND status='active'
-      AND (expires_at IS NULL OR expires_at > extract(epoch FROM now())::bigint)
-      AND (max_uses IS NULL OR uses < max_uses) RETURNING *`, [req.params.code]);
-    if (!invite) return res.status(404).json({ error: 'Convite inválido, expirado ou esgotado' });
-    await query(`INSERT INTO server_members(server_id,user_id,role) VALUES($1,$2,'member') ON CONFLICT DO NOTHING`, [invite.server_id, req.user.id]);
-    res.json(invite);
+    const invite = await queryOne(`
+      WITH candidate AS (
+        SELECT code, server_id
+        FROM server_invites
+        WHERE code=$1
+          AND status='active'
+          AND (expires_at IS NULL OR expires_at > extract(epoch FROM now())::bigint)
+          AND (max_uses IS NULL OR uses < max_uses)
+        FOR UPDATE
+      ),
+      joined AS (
+        INSERT INTO server_members(server_id,user_id,role)
+        SELECT server_id,$2,'member' FROM candidate
+        ON CONFLICT (server_id,user_id) DO NOTHING
+        RETURNING server_id
+      )
+      UPDATE server_invites si
+      SET uses=si.uses+1
+      FROM joined
+      WHERE si.code=$1 AND si.server_id=joined.server_id
+      RETURNING si.*
+    `, [req.params.code, req.user.id]);
+
+    if (invite) return res.json(invite);
+
+    const existing = await queryOne(`
+      SELECT si.*
+      FROM server_invites si
+      JOIN server_members sm ON sm.server_id=si.server_id AND sm.user_id=$2
+      WHERE si.code=$1
+        AND si.status='active'
+        AND (si.expires_at IS NULL OR si.expires_at > extract(epoch FROM now())::bigint)
+    `, [req.params.code, req.user.id]);
+    if (existing) return res.json({ ...existing, alreadyMember: true });
+
+    return res.status(404).json({ error: 'Convite inválido, expirado ou esgotado' });
   } catch (e) { fail(res, e, 'Erro ao usar convite'); }
 });
 router.delete('/invites/:code', async (req, res) => {
@@ -186,16 +216,72 @@ router.put('/servers/:serverId/automod',async(req,res)=>{try{await requireManage
 // ===== GLOBAL SEARCH =====
 router.get('/search',async(req,res)=>{
   try{
-    const q=String(req.query.q||'').trim();if(q.length<2)return res.json({users:[],servers:[],channels:[],messages:[],threads:[],posts:[],events:[]});
+    const q=String(req.query.q||'').trim();
+    if(q.length<2)return res.json({users:[],servers:[],channels:[],messages:[],threads:[],posts:[],events:[]});
     const like=`%${q.replace(/[%_]/g,'\\$&')}%`;
+    const uid=req.user.id;
     const [users,servers,channels,messages,threads,posts,events]=await Promise.all([
-      query('SELECT id,username,display_name,avatar,status FROM users WHERE username ILIKE $1 OR display_name ILIKE $1 ORDER BY username LIMIT 25',[like]),
-      query('SELECT id,name,icon,banner,description FROM servers WHERE name ILIKE $1 OR description ILIKE $1 LIMIT 25',[like]),
-      query('SELECT id,server_id,name,type,topic FROM channels WHERE name ILIKE $1 OR topic ILIKE $1 LIMIT 50',[like]),
-      query('SELECT id,channel_id,author_id,content,created_at FROM messages WHERE content ILIKE $1 ORDER BY created_at DESC LIMIT 50',[like]),
-      query('SELECT id,channel_id,name,creator_id,created_at FROM threads WHERE name ILIKE $1 LIMIT 25',[like]),
-      query('SELECT id,channel_id,author_id,title,content,created_at FROM forum_posts WHERE title ILIKE $1 OR content ILIKE $1 LIMIT 25',[like]),
-      query('SELECT id,server_id,name,description,start_at,status FROM server_events WHERE name ILIKE $1 OR description ILIKE $1 LIMIT 25',[like])
+      query(`
+        SELECT DISTINCT u.id,u.username,u.display_name,u.avatar,u.status
+        FROM users u
+        WHERE (u.username ILIKE $1 OR u.display_name ILIKE $1)
+          AND (
+            u.id=$2 OR EXISTS (
+              SELECT 1
+              FROM server_members mine
+              JOIN server_members shared ON shared.server_id=mine.server_id
+              WHERE mine.user_id=$2 AND shared.user_id=u.id
+            )
+          )
+        ORDER BY u.username
+        LIMIT 25
+      `,[like,uid]),
+      query(`
+        SELECT s.id,s.name,s.icon,s.banner,s.description
+        FROM servers s
+        JOIN server_members sm ON sm.server_id=s.id AND sm.user_id=$2
+        WHERE s.name ILIKE $1 OR s.description ILIKE $1
+        LIMIT 25
+      `,[like,uid]),
+      query(`
+        SELECT c.id,c.server_id,c.name,c.type,c.topic
+        FROM channels c
+        JOIN server_members sm ON sm.server_id=c.server_id AND sm.user_id=$2
+        WHERE c.name ILIKE $1 OR c.topic ILIKE $1
+        LIMIT 50
+      `,[like,uid]),
+      query(`
+        SELECT m.id,m.channel_id,m.user_id AS author_id,m.content,m.created_at
+        FROM messages m
+        JOIN channels c ON c.id=m.channel_id
+        JOIN server_members sm ON sm.server_id=c.server_id AND sm.user_id=$2
+        WHERE m.deleted_at IS NULL AND m.content ILIKE $1
+        ORDER BY m.created_at DESC
+        LIMIT 50
+      `,[like,uid]),
+      query(`
+        SELECT t.id,t.channel_id,t.name,t.creator_id,t.created_at
+        FROM threads t
+        JOIN channels c ON c.id=t.channel_id
+        JOIN server_members sm ON sm.server_id=c.server_id AND sm.user_id=$2
+        WHERE t.name ILIKE $1
+        LIMIT 25
+      `,[like,uid]),
+      query(`
+        SELECT p.id,p.channel_id,p.author_id,p.title,p.content,p.created_at
+        FROM forum_posts p
+        JOIN channels c ON c.id=p.channel_id
+        JOIN server_members sm ON sm.server_id=c.server_id AND sm.user_id=$2
+        WHERE p.title ILIKE $1 OR p.content ILIKE $1
+        LIMIT 25
+      `,[like,uid]),
+      query(`
+        SELECT e.id,e.server_id,e.name,e.description,e.start_at,e.status
+        FROM server_events e
+        JOIN server_members sm ON sm.server_id=e.server_id AND sm.user_id=$2
+        WHERE e.name ILIKE $1 OR e.description ILIKE $1
+        LIMIT 25
+      `,[like,uid])
     ]);
     res.json({users,servers,channels,messages,threads,posts,events});
   }catch(e){fail(res,e,'Erro na pesquisa');}
