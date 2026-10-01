@@ -144,23 +144,8 @@ router.post('/channels/:channelId/messages', async (req, res) => {
       const thread = await queryOne('SELECT id FROM threads WHERE id=$1 AND channel_id=$2 AND archived=false AND locked=false', [threadId, channel.id]);
       if (!thread) return res.status(400).json({ error: 'Thread inválida ou bloqueada' });
     }
-    const message = await queryOne(`INSERT INTO messages(id,channel_id,user_id,content,created_at,reply_to,thread_id,embeds,mentions,stickers)
-      VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [uuidv4(), channel.id, req.user.id, content, replyTo, threadId, JSON.stringify(embeds), JSON.stringify(mentions), JSON.stringify(stickers)]);
-
-    const attachments = Array.isArray(req.body.attachments) ? req.body.attachments.slice(0, 10) : [];
-    for (const rawAttachment of attachments) {
-      const attachment = normalizeStoredAttachment(rawAttachment);
-      await query(`INSERT INTO message_attachments(id,message_id,file_name,file_type,file_size,url,metadata)
-        VALUES($1,$2,$3,$4,$5,$6,$7)`, [
-        uuidv4(),
-        message.id,
-        attachment.fileName,
-        attachment.fileType,
-        attachment.fileSize,
-        attachment.url,
-        JSON.stringify(attachment.metadata)
-      ]);
-    }
+    const attachments = (Array.isArray(req.body.attachments) ? req.body.attachments.slice(0, 10) : [])
+      .map(normalizeStoredAttachment);
 
     const normalizedMentions = mentions
       .filter(mention => mention && typeof mention === 'object' && !Array.isArray(mention))
@@ -181,6 +166,32 @@ router.post('/channels/:channelId/messages', async (req, res) => {
     ]);
     if (validUsers.length !== mentionedUserIds.length || validRoles.length !== mentionedRoleIds.length) {
       return res.status(400).json({ error: 'Menção inválida para este servidor' });
+    }
+
+    const message = await queryOne(`INSERT INTO messages(id,channel_id,user_id,content,created_at,reply_to,thread_id,embeds,mentions,stickers)
+      VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [
+      uuidv4(),
+      channel.id,
+      req.user.id,
+      content,
+      replyTo,
+      threadId,
+      JSON.stringify(embeds),
+      JSON.stringify(normalizedMentions),
+      JSON.stringify(stickers)
+    ]);
+
+    for (const attachment of attachments) {
+      await query(`INSERT INTO message_attachments(id,message_id,file_name,file_type,file_size,url,metadata)
+        VALUES($1,$2,$3,$4,$5,$6,$7)`, [
+        uuidv4(),
+        message.id,
+        attachment.fileName,
+        attachment.fileType,
+        attachment.fileSize,
+        attachment.url,
+        JSON.stringify(attachment.metadata)
+      ]);
     }
 
     for (const mention of normalizedMentions) {
