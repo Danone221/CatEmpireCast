@@ -43,7 +43,7 @@ const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 $('myName').textContent = userName;
 const cachedAvatar = localStorage.getItem('cat_avatar');
-if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
+if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = safeMediaUrl(cachedAvatar) || '/logo.svg';
 
 (async function loadMyProfileOnStartup() {
   try {
@@ -52,7 +52,7 @@ if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
     const me = await r.json();
     if (me) {
       if (me.display_name && $('myName')) $('myName').textContent = me.display_name;
-      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = me.avatar;
+      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = safeMediaUrl(me.avatar) || '/logo.svg';
       if (me.avatar) localStorage.setItem('cat_avatar', me.avatar);
       if (me.display_name) localStorage.setItem('cat_user_name', me.display_name);
     }
@@ -65,6 +65,28 @@ function headers() {
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function safeMediaUrl(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (/^\/(?!\/)/.test(text)) return text;
+  if (/^https:\/\//i.test(text)) {
+    try { return new URL(text).protocol === 'https:' ? text : ''; } catch { return ''; }
+  }
+  if (/^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=\r\n]+$/i.test(text)) return text;
+  return '';
+}
+
+function safeAttachmentData(value, type) {
+  const text = String(value || '');
+  const mime = String(type || '').toLowerCase();
+  const allowed = new Set(['image/jpeg','image/png','image/gif','image/webp','video/mp4','video/webm','audio/mpeg','audio/wav','audio/ogg','application/pdf']);
+  if (!allowed.has(mime)) return '';
+  const prefix = 'data:' + mime + ';base64,';
+  if (!text.startsWith(prefix)) return '';
+  const encoded = text.slice(prefix.length).replace(/[\r\n]/g, '');
+  return /^[a-z0-9+/]*={0,2}$/i.test(encoded) ? text : '';
 }
 
 // Formatação estilo Discord: aplica DEPOIS de esc() escapar o HTML, então
@@ -211,7 +233,7 @@ async function load() {
     $('serverName').textContent = d.name || 'Servidor';
     $('serverName').title = d.name || 'Servidor';
     $('serverProfileName').textContent = d.name || 'Servidor';
-    $('serverProfileIconImg').src = d.icon && /^(data:|https?:)/.test(d.icon) ? d.icon : '/logo.svg';
+    $('serverProfileIconImg').src = safeMediaUrl(d.icon) || '/logo.svg';
     $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
     if (d.banner_color) $('serverHead').style.background = d.banner_color;
     channels = d.channels || [];
@@ -227,7 +249,7 @@ async function load() {
     const firstText = channels.find(c => c.type === 'text');
     if (firstText) openTextChannel(firstText.id);
     const me = members.find(m => m.id === userId);
-    if (me && me.avatar) $('myAvatarImg').src = me.avatar;
+    if (me && me.avatar) $('myAvatarImg').src = safeMediaUrl(me.avatar) || '/logo.svg';
   } catch (e) {
     toast(e.message, 'error');
     localStorage.removeItem('cat_last_server');
@@ -300,7 +322,7 @@ function renderMembers() {
   $('membersList').innerHTML = members.map(m => `
     <div class="member-row" data-user-id="${esc(m.id)}">
       <div class="m-avatar">
-        <img src="${m.avatar || '/logo.svg'}" alt="">
+        <img src="${esc(safeMediaUrl(m.avatar) || '/logo.svg')}" alt="">
         <span class="presence-dot ${onlineUserIds.has(m.id) ? 'online' : 'offline'}"></span>
       </div>
       <div class="m-name">${esc(m.display_name || m.username)}</div>
@@ -442,10 +464,11 @@ function renderMessages(msgs) {
 function messageHtml(m) {
   const time = new Date((m.created_at || 0) * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   let fileHtml = '';
-  if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
-    fileHtml = `<img class="message-image" src="${m.file_data}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${m.file_data}">`;
-  } else if (m.file_data) {
-    fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
+  const safeFileUrl = safeAttachmentData(m.file_data, m.file_type);
+  if (safeFileUrl && String(m.file_type || '').startsWith('image/')) {
+    fileHtml = `<img class="message-image" src="${esc(safeFileUrl)}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${esc(safeFileUrl)}">`;
+  } else if (safeFileUrl) {
+    fileHtml = `<a class="message-file" href="${esc(safeFileUrl)}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
   const memberInfo = members.find(mem => mem.id === m.user_id);
   const isAdminAuthor = memberInfo && memberInfo.role === 'admin';
@@ -457,7 +480,7 @@ function messageHtml(m) {
     </div>` : '';
   const messageUserId = m.user_id || m.sender_id || m.author_id || '';
   return `<div class="message" data-message-id="${esc(m.id)}" data-author-id="${esc(messageUserId)}">
-    <div class="message-avatar" data-user-id="${esc(messageUserId)}"><img src="${m.avatar || '/logo.svg'}" alt=""></div>
+    <div class="message-avatar" data-user-id="${esc(messageUserId)}"><img src="${esc(safeMediaUrl(m.avatar) || '/logo.svg')}" alt=""></div>
     <div class="message-body">
       <div class="message-head">
         <span class="message-author${isAdminAuthor ? ' author-admin' : ''}" data-user-id="${esc(messageUserId)}">${esc(m.display_name || m.username || 'Membro')}</span>
@@ -1744,8 +1767,9 @@ let pendingServerBannerData = null;
 
 function applyBannerStyle(el, banner) {
   if (!el) return;
-  if (banner && /^(data:|https?:)/.test(banner)) {
-    el.style.backgroundImage = 'url("' + banner + '")';
+  const safeBanner = safeMediaUrl(banner);
+  if (safeBanner) {
+    el.style.backgroundImage = 'url("' + safeBanner.replace(/"/g, '%22') + '")';
     el.style.backgroundSize = 'cover';
     el.style.backgroundPosition = 'center';
   } else {
@@ -1794,7 +1818,7 @@ async function openMyProfile() {
     pendingAvatarData = null;
     pendingProfileBannerData = null;
     editSelectedColor = me.banner_color || '#5865f2';
-    $('editAvatarPreview').src = me.avatar || '/logo.svg';
+    $('editAvatarPreview').src = safeMediaUrl(me.avatar) || '/logo.svg';
     $('editDisplayName').value = me.display_name || me.username || '';
     $('editBio').value = me.bio || '';
     $('editBioCount').textContent = (me.bio || '').length;
@@ -1905,7 +1929,7 @@ $('saveEditProfileBtn').onclick = async () => {
     if (!r.ok) throw new Error(d.error || 'Erro ao salvar perfil');
     $('myName').textContent = d.display_name || d.username;
     if (d.avatar) {
-      $('myAvatarImg').src = d.avatar;
+      $('myAvatarImg').src = safeMediaUrl(d.avatar) || '/logo.svg';
       localStorage.setItem('cat_avatar', d.avatar);
     }
     const meIdx = members.findIndex(m => m.id === userId);
@@ -1937,7 +1961,7 @@ async function openProfile(targetUserId) {
     const modal = $('viewProfileModal');
     modal.dataset.profileId = targetUserId;
     applyBannerStyle($('viewProfileBanner'), p.banner || p.banner_color || '#5865f2');
-    $('viewProfileAvatar').src = p.avatar || '/logo.svg';
+    $('viewProfileAvatar').src = safeMediaUrl(p.avatar) || '/logo.svg';
     $('viewProfileName').textContent = p.display_name || p.username;
     $('viewProfileUsername').textContent = '@' + p.username;
     $('viewProfileBio').textContent = p.bio || 'Sem bio.';
@@ -2106,7 +2130,7 @@ async function refreshServerDataLive() {
     $('serverName').title = data.name || 'Servidor';
     $('mobileTitle').textContent = data.name || 'CAT EMPIRE';
     if ($('serverProfileName')) $('serverProfileName').textContent = data.name || 'Servidor';
-    if ($('serverProfileIconImg')) $('serverProfileIconImg').src = data.icon && /^(data:|https?:)/.test(data.icon) ? data.icon : '/logo.svg';
+    if ($('serverProfileIconImg')) $('serverProfileIconImg').src = safeMediaUrl(data.icon) || '/logo.svg';
     applyBannerStyle($('serverHead'), data.banner || data.banner_color);
     const canManage = ['admin','owner'].includes(myRole);
     $('serverSettingsBtn').hidden = !canManage;
@@ -2151,7 +2175,7 @@ socket.on('server-updated', (s) => {
   $('serverName').title = s.name || 'Servidor';
   $('mobileTitle').textContent = s.name || 'CAT EMPIRE';
   if ($('serverProfileName')) $('serverProfileName').textContent = s.name || 'Servidor';
-  if ($('serverProfileIconImg')) $('serverProfileIconImg').src = s.icon && /^(data:|https?:)/.test(s.icon) ? s.icon : '/logo.svg';
+  if ($('serverProfileIconImg')) $('serverProfileIconImg').src = safeMediaUrl(s.icon) || '/logo.svg';
   applyBannerStyle($('serverHead'), s.banner || s.banner_color);
   loadServersRail();
 });
