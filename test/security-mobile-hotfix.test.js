@@ -26,6 +26,10 @@ test('realtime signaling is rate-limited and payload-bounded', () => {
   assert.match(socket, /rateLimited\(socket, 'voice-signal'/);
   assert.match(socket, /rateLimited\(socket, 'native-screen-signal'/);
   assert.match(socket, /rateLimited\(socket, 'dm-typing'/);
+  assert.match(socket, /rateLimited\(socket, 'send-attachment', 4, 60_000\)/);
+  assert.match(socket, /rateLimited\(socket, 'send-dm-attachment', 4, 60_000\)/);
+  assert.match(socket, /rateLimited\(socket, 'edit-message'/);
+  assert.match(socket, /rateLimited\(socket, 'edit-dm'/);
   assert.match(socket, /Buffer\.byteLength\(JSON\.stringify/);
 });
 
@@ -86,5 +90,13 @@ test('websocket upgrades enforce origin and schema migrations constrain identifi
   assert.match(db, /identifier = \/\^\[a-z_\]/);
   assert.match(db, /allowedTypes = new Set/);
   assert.match(db, /Migração de schema inválida/);
+});
+
+test('message mutations re-check current access and blocked DMs cannot be edited', () => {
+  const socket = source('server/socket.js');
+  assert.match(socket, /memberRole = channel \? await ServerModel\.getMemberRole/);
+  assert.match(socket, /if \(!memberRole\) return socket\.emit\('error', \{ message: 'Acesso ao canal negado' \}\)/);
+  assert.match(socket, /role === 'admin' \|\| role === 'owner'/);
+  assert.match(socket, /if \(block\) return socket\.emit\('error', \{ message: 'Esta conversa está bloqueada' \}\)/);
 });
 
