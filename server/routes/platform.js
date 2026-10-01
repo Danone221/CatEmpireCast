@@ -4,6 +4,7 @@ const router = express.Router();
 const { query, queryOne } = require('../database');
 const Server = require('../database/models/Server');
 const User = require('../database/models/User');
+const Role = require('../database/models/Role');
 const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
@@ -62,27 +63,21 @@ router.post('/servers/:serverId/roles', async (req, res) => {
 
 router.put('/servers/:serverId/roles/:roleId', async (req, res) => {
   try {
-    await requireManage(req.params.serverId, req.user.id);
-    const server = await queryOne('SELECT creator_id FROM servers WHERE id=$1', [req.params.serverId]);
-    const existingRole = await queryOne('SELECT id,name FROM server_roles WHERE server_id=$1 AND id=$2', [req.params.serverId, req.params.roleId]);
-    if (!server || !existingRole) return res.status(404).json({ error: 'Cargo não encontrado' });
-    if (String(existingRole.name || '').toUpperCase() === 'OWNER' && server.creator_id !== req.user.id) {
-      return res.status(403).json({ error: 'Somente o proprietário pode alterar o cargo OWNER' });
+    const actorRole = await requireManage(req.params.serverId, req.user.id);
+    const actorLevel = actorRole === 'owner' ? 100 : 90;
+    const existingRole = await Role.findById(req.params.serverId, req.params.roleId);
+    if (!existingRole) return res.status(404).json({ error: 'Cargo não encontrado' });
+    if (Number(existingRole.position || 0) >= actorLevel) {
+      return res.status(403).json({ error: 'Você não pode editar um cargo acima ou igual à sua hierarquia' });
     }
-    const fields = [];
-    const values = [];
-    const add = (sql, value) => { values.push(value); fields.push(sql.replace('?', `$${values.length}`)); };
-    if (typeof req.body.name === 'string') add('name=?', req.body.name.trim().slice(0,32));
-    if (typeof req.body.color === 'string' || req.body.color === null) add('color=?', req.body.color || null);
-    if (typeof req.body.icon === 'string' || req.body.icon === null) add('icon=?', req.body.icon || null);
-    if (req.body.permissions && typeof req.body.permissions === 'object') add('permissions=?', JSON.stringify(req.body.permissions));
-    if (typeof req.body.mentionable === 'boolean') add('mentionable=?', req.body.mentionable);
-    if (req.body.position !== undefined) add('position=?', Math.max(0, Number(req.body.position) || 0));
-    if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
-    values.push(req.params.serverId, req.params.roleId);
-    const role = await queryOne(`UPDATE server_roles SET ${fields.join(', ')} WHERE server_id=$${values.length-1} AND id=$${values.length} RETURNING *`, values);
-    if (!role) return res.status(404).json({ error: 'Cargo não encontrado' });
-    await audit(req.params.serverId, req.user.id, 'role.update', 'role', role.id, req.body);
+
+    const next = { ...(req.body || {}) };
+    if (next.position !== undefined && Number(next.position) >= actorLevel) {
+      next.position = actorLevel - 1;
+    }
+
+    const role = await Role.update(req.params.serverId, req.params.roleId, next);
+    await audit(req.params.serverId, req.user.id, 'role.update', 'role', role.id, next);
     res.json(role);
   } catch (e) { fail(res, e, 'Erro ao editar cargo'); }
 });
@@ -100,14 +95,34 @@ router.delete('/servers/:serverId/roles/:roleId', async (req, res) => {
 
 router.put('/servers/:serverId/members/:userId/roles', async (req, res) => {
   try {
-    await requireManage(req.params.serverId, req.user.id);
+    const actorRole = await requireManage(req.params.serverId, req.user.id);
+    const actorLevel = actorRole === 'owner' ? 100 : 90;
     const server = await queryOne('SELECT creator_id FROM servers WHERE id=$1', [req.params.serverId]);
     if (!server) return res.status(404).json({ error: 'Servidor não encontrado' });
 
-    const actorIsOwner = server.creator_id === req.user.id;
+    const targetMember = await queryOne(
+      'SELECT user_id FROM server_members WHERE server_id=$1 AND user_id=$2',
+      [req.params.serverId, req.params.userId]
+    );
+    if (!targetMember) return res.status(404).json({ error: 'Membro não encontrado neste servidor' });
+
+    const actorIsOwner = server.creator_id === req.user.id || actorRole === 'owner';
     const targetIsOwner = server.creator_id === req.params.userId;
     if (targetIsOwner && !actorIsOwner) {
       return res.status(403).json({ error: 'Somente o proprietário pode alterar os próprios cargos' });
+    }
+
+    if (!actorIsOwner) {
+      const targetHighest = await queryOne(
+        `SELECT COALESCE(MAX(r.position),0)::int AS position
+         FROM server_role_members rm
+         JOIN server_roles r ON r.id=rm.role_id
+         WHERE rm.server_id=$1 AND rm.user_id=$2`,
+        [req.params.serverId, req.params.userId]
+      );
+      if (Number(targetHighest?.position || 0) >= actorLevel) {
+        return res.status(403).json({ error: 'Você não pode alterar cargos de um membro acima ou igual à sua hierarquia' });
+      }
     }
 
     const roleIds = Array.isArray(req.body.roleIds)
@@ -115,14 +130,17 @@ router.put('/servers/:serverId/members/:userId/roles', async (req, res) => {
       : [];
 
     const roles = roleIds.length
-      ? await query('SELECT id,name FROM server_roles WHERE server_id=$1 AND id = ANY($2::text[])', [req.params.serverId, roleIds])
+      ? await query('SELECT id,name,position FROM server_roles WHERE server_id=$1 AND id = ANY($2::text[])', [req.params.serverId, roleIds])
       : [];
 
     if (roles.length !== roleIds.length) {
       return res.status(400).json({ error: 'Um ou mais cargos são inválidos para este servidor' });
     }
-    if (!actorIsOwner && roles.some(role => String(role.name || '').toUpperCase() === 'OWNER')) {
-      return res.status(403).json({ error: 'Cargo OWNER só pode ser atribuído pelo proprietário' });
+    if (roles.some(role => ['owner', '@everyone'].includes(String(role.name || '').trim().toLowerCase()))) {
+      return res.status(403).json({ error: 'Cargos reservados não podem ser atribuídos manualmente' });
+    }
+    if (roles.some(role => Number(role.position || 0) >= actorLevel)) {
+      return res.status(403).json({ error: 'Você não pode atribuir um cargo acima ou igual à sua hierarquia' });
     }
 
     await query('DELETE FROM server_role_members WHERE server_id=$1 AND user_id=$2', [req.params.serverId, req.params.userId]);
@@ -156,9 +174,26 @@ router.put('/servers/:serverId/permissions', async (req, res) => {
     await requireManage(req.params.serverId, req.user.id);
     const id = uuidv4();
     const { categoryId=null, channelId=null, roleId=null, userId=null, permissions={} } = req.body || {};
+    const refs = [
+      categoryId ? queryOne('SELECT id FROM channel_categories WHERE id=$1 AND server_id=$2', [categoryId, req.params.serverId]) : Promise.resolve({ id: null }),
+      channelId ? queryOne('SELECT id FROM channels WHERE id=$1 AND server_id=$2', [channelId, req.params.serverId]) : Promise.resolve({ id: null }),
+      roleId ? queryOne('SELECT id FROM server_roles WHERE id=$1 AND server_id=$2', [roleId, req.params.serverId]) : Promise.resolve({ id: null }),
+      userId ? queryOne('SELECT user_id AS id FROM server_members WHERE user_id=$1 AND server_id=$2', [userId, req.params.serverId]) : Promise.resolve({ id: null })
+    ];
+    const [categoryRef, channelRef, roleRef, userRef] = await Promise.all(refs);
+    if ((categoryId && !categoryRef) || (channelId && !channelRef) || (roleId && !roleRef) || (userId && !userRef)) {
+      return res.status(400).json({ error: 'Referência de permissão inválida para este servidor' });
+    }
+    if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) {
+      return res.status(400).json({ error: 'Permissões inválidas' });
+    }
+    const serializedPermissions = JSON.stringify(permissions);
+    if (serializedPermissions.length > 12000) {
+      return res.status(413).json({ error: 'Conjunto de permissões muito grande' });
+    }
     await query(`INSERT INTO permission_overrides(id,server_id,category_id,channel_id,role_id,user_id,permissions)
       VALUES($1,$2,$3,$4,$5,$6,$7)
-      ON CONFLICT (id) DO NOTHING`, [id, req.params.serverId, categoryId, channelId, roleId, userId, JSON.stringify(permissions)]);
+      ON CONFLICT (id) DO NOTHING`, [id, req.params.serverId, categoryId, channelId, roleId, userId, serializedPermissions]);
     await audit(req.params.serverId, req.user.id, 'permissions.update', 'permission', id, { categoryId, channelId, roleId, userId, permissions });
     res.json({ id, serverId:req.params.serverId, categoryId, channelId, roleId, userId, permissions });
   } catch (e) { fail(res, e, 'Erro ao salvar permissões'); }
