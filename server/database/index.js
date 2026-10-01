@@ -216,6 +216,12 @@ async function initSchema() {
 }
 
 async function addColumnIfMissing(table, column, type) {
+  const identifier = /^[a-z_][a-z0-9_]*$/;
+  const allowedTypes = new Set(['TEXT', 'BIGINT', 'INTEGER', 'INTEGER NOT NULL DEFAULT 0']);
+  if (!identifier.test(table) || !identifier.test(column) || !allowedTypes.has(type)) {
+    throw new Error('Migração de schema inválida');
+  }
+
   const col = await pool.query(
     `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
     [table, column]
