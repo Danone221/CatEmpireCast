@@ -22,4 +22,4 @@ services:
       - key: DISCORD_REDIRECT_URI
         sync: false
       - key: CORS_ORIGIN
-        value: "*"
+        value: "https://cat-empire-n6qv.onrender.com"
