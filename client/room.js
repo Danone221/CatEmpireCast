@@ -437,7 +437,7 @@ function messageHtml(m) {
   if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
     fileHtml = `<img class="message-image" src="${esc(m.file_data)}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${esc(m.file_data)}">`;
   } else if (m.file_data) {
-    fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
+    fileHtml = `<a class="message-file" href="${esc(m.file_data)}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
   const memberInfo = members.find(mem => mem.id === m.user_id);
   const isAdminAuthor = memberInfo && memberInfo.role === 'admin';
@@ -449,7 +449,7 @@ function messageHtml(m) {
     </div>` : '';
   const messageUserId = m.user_id || m.sender_id || m.author_id || '';
   return `<div class="message" data-message-id="${esc(m.id)}" data-author-id="${esc(messageUserId)}">
-    <div class="message-avatar" data-user-id="${esc(messageUserId)}"><img src="${m.avatar || '/logo.svg'}" alt=""></div>
+    <div class="message-avatar" data-user-id="${esc(messageUserId)}"><img src="${esc(m.avatar || '/logo.svg')}" alt=""></div>
     <div class="message-body">
       <div class="message-head">
         <span class="message-author${isAdminAuthor ? ' author-admin' : ''}" data-user-id="${esc(messageUserId)}">${esc(m.display_name || m.username || 'Membro')}</span>
