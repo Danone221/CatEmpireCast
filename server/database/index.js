@@ -178,78 +178,8 @@ async function initSchema() {
           display_name = CASE WHEN display_name IS NULL THEN NULL ELSE regexp_replace(display_name, '[<>]', '', 'g') END,
           avatar = CASE
             WHEN avatar IS NULL OR avatar = '' THEN NULL
-            WHEN avatar ~* '^https://[^<>"[:space:]]+
-  `);
-
-  // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
-  // depender de extensões como pgcrypto só para gerar IDs de categorias.
-  await pool.query(`
-    INSERT INTO channel_categories (id, server_id, name, position)
-    SELECT md5(x.server_id || ':' || x.category), x.server_id, x.category,
-           ROW_NUMBER() OVER (PARTITION BY x.server_id ORDER BY x.category) - 1
-    FROM (
-      SELECT DISTINCT server_id, trim(category) AS category
-      FROM channels
-      WHERE category IS NOT NULL AND trim(category) <> ''
-    ) x
-    ON CONFLICT DO NOTHING
-  `);
-
-  const usernameCollision = await pool.query('SELECT lower(username) AS normalized FROM users GROUP BY lower(username) HAVING COUNT(*) > 1 LIMIT 1');
-  if (usernameCollision.rowCount > 0) throw new Error('Existem usuários que diferem apenas por maiúsculas/minúsculas. Resolva a colisão antes de iniciar.');
-  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username))');
-
-  console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
-}
-
-async function addColumnIfMissing(table, column, type) {
-  const col = await pool.query(
-    `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
-    [table, column]
-  );
-  if (col.rowCount === 0) {
-    await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
-  }
-}
-
-module.exports = { pool, query, queryOne, initSchema };
- THEN avatar
-            WHEN avatar ~* '^data:image/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+
-  `);
-
-  // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
-  // depender de extensões como pgcrypto só para gerar IDs de categorias.
-  await pool.query(`
-    INSERT INTO channel_categories (id, server_id, name, position)
-    SELECT md5(x.server_id || ':' || x.category), x.server_id, x.category,
-           ROW_NUMBER() OVER (PARTITION BY x.server_id ORDER BY x.category) - 1
-    FROM (
-      SELECT DISTINCT server_id, trim(category) AS category
-      FROM channels
-      WHERE category IS NOT NULL AND trim(category) <> ''
-    ) x
-    ON CONFLICT DO NOTHING
-  `);
-
-  const usernameCollision = await pool.query('SELECT lower(username) AS normalized FROM users GROUP BY lower(username) HAVING COUNT(*) > 1 LIMIT 1');
-  if (usernameCollision.rowCount > 0) throw new Error('Existem usuários que diferem apenas por maiúsculas/minúsculas. Resolva a colisão antes de iniciar.');
-  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username))');
-
-  console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
-}
-
-async function addColumnIfMissing(table, column, type) {
-  const col = await pool.query(
-    `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
-    [table, column]
-  );
-  if (col.rowCount === 0) {
-    await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
-  }
-}
-
-module.exports = { pool, query, queryOne, initSchema };
- THEN avatar
+            WHEN avatar ~* '^https://[^<>"[:space:]]+$' THEN avatar
+            WHEN avatar ~* '^data:image/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$' THEN avatar
             ELSE NULL
           END;
     UPDATE servers
@@ -257,78 +187,8 @@ module.exports = { pool, query, queryOne, initSchema };
           description = CASE WHEN description IS NULL THEN NULL ELSE regexp_replace(description, '[<>]', '', 'g') END,
           icon = CASE
             WHEN icon IS NULL OR icon = '' THEN '🐱'
-            WHEN icon ~* '^https://[^<>"[:space:]]+
-  `);
-
-  // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
-  // depender de extensões como pgcrypto só para gerar IDs de categorias.
-  await pool.query(`
-    INSERT INTO channel_categories (id, server_id, name, position)
-    SELECT md5(x.server_id || ':' || x.category), x.server_id, x.category,
-           ROW_NUMBER() OVER (PARTITION BY x.server_id ORDER BY x.category) - 1
-    FROM (
-      SELECT DISTINCT server_id, trim(category) AS category
-      FROM channels
-      WHERE category IS NOT NULL AND trim(category) <> ''
-    ) x
-    ON CONFLICT DO NOTHING
-  `);
-
-  const usernameCollision = await pool.query('SELECT lower(username) AS normalized FROM users GROUP BY lower(username) HAVING COUNT(*) > 1 LIMIT 1');
-  if (usernameCollision.rowCount > 0) throw new Error('Existem usuários que diferem apenas por maiúsculas/minúsculas. Resolva a colisão antes de iniciar.');
-  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username))');
-
-  console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
-}
-
-async function addColumnIfMissing(table, column, type) {
-  const col = await pool.query(
-    `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
-    [table, column]
-  );
-  if (col.rowCount === 0) {
-    await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
-  }
-}
-
-module.exports = { pool, query, queryOne, initSchema };
- THEN icon
-            WHEN icon ~* '^data:image/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+
-  `);
-
-  // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
-  // depender de extensões como pgcrypto só para gerar IDs de categorias.
-  await pool.query(`
-    INSERT INTO channel_categories (id, server_id, name, position)
-    SELECT md5(x.server_id || ':' || x.category), x.server_id, x.category,
-           ROW_NUMBER() OVER (PARTITION BY x.server_id ORDER BY x.category) - 1
-    FROM (
-      SELECT DISTINCT server_id, trim(category) AS category
-      FROM channels
-      WHERE category IS NOT NULL AND trim(category) <> ''
-    ) x
-    ON CONFLICT DO NOTHING
-  `);
-
-  const usernameCollision = await pool.query('SELECT lower(username) AS normalized FROM users GROUP BY lower(username) HAVING COUNT(*) > 1 LIMIT 1');
-  if (usernameCollision.rowCount > 0) throw new Error('Existem usuários que diferem apenas por maiúsculas/minúsculas. Resolva a colisão antes de iniciar.');
-  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username))');
-
-  console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
-}
-
-async function addColumnIfMissing(table, column, type) {
-  const col = await pool.query(
-    `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
-    [table, column]
-  );
-  if (col.rowCount === 0) {
-    await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
-  }
-}
-
-module.exports = { pool, query, queryOne, initSchema };
- THEN icon
+            WHEN icon ~* '^https://[^<>"[:space:]]+$' THEN icon
+            WHEN icon ~* '^data:image/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$' THEN icon
             WHEN char_length(icon) <= 16 AND icon !~ '[<>"]' AND icon !~* '^[a-z][a-z0-9+.-]*:' THEN icon
             ELSE '🐱'
           END;
