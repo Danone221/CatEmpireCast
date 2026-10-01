@@ -1,20 +1,17 @@
-const app = require('./app');
-const http = require('http');
-const { setupSocket } = require('./socket');
-const config = require('./config');
-const db = require('./database');
-const { initPlatformSchema } = require('./database/platform');
-const { initMessagingSchema } = require('./database/messaging');
-const { initStageSchema } = require('./database/stage');
-const { initExpansionSchema } = require('./database/expansion');
-const { startMediaServer } = require('./media');
-
+const app = require("./app");
+const http = require("http");
+const { setupSocket } = require("./socket");
+const config = require("./config");
+const db = require("./database");
+const { initPlatformSchema } = require("./database/platform");
+const { initMessagingSchema } = require("./database/messaging");
+const { initStageSchema } = require("./database/stage");
+const { initExpansionSchema } = require("./database/expansion");
+const { startMediaServer } = require("./media");
 const server = http.createServer(app);
 const io = setupSocket(server);
-app.set('io', io);
-
+app.set("io", io);
 const PORT = config.port;
-
 async function start() {
   try {
     await db.initSchema();
@@ -22,7 +19,6 @@ async function start() {
     await initMessagingSchema();
     await initStageSchema();
     await initExpansionSchema();
-
     await db.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS banner TEXT;
       ALTER TABLE servers ADD COLUMN IF NOT EXISTS banner TEXT;
@@ -61,31 +57,31 @@ async function start() {
       WHERE sm.role='member'
         AND NOT EXISTS (SELECT 1 FROM server_role_members rm WHERE rm.role_id=r.id AND rm.user_id=sm.user_id);
     `);
-
     server.listen(PORT, () => {
       console.log(`🐱 Cat Empire rodando em http://localhost:${PORT}`);
       console.log(`📡 Modo: ${config.nodeEnv}`);
-      console.log('🗄️  Banco: Postgres');
-      console.log('🧩 Plataforma: expansão completa sem reset destrutivo');
-      console.log('🗂️  Estrutura: categorias, text/voice/stage/forum, threads e permissões');
-      console.log('🎙️  Stage: moderadores, palestrantes e audiência persistidos');
-      console.log('👑 Hierarquia: OWNER > ADMIN > MODERATOR > STAFF > MEMBER > @EVERYONE');
-      console.log('💬 Mensagens: reações, anexos, menções, respostas e pins habilitados');
-      console.log('🌐 V4 API: perfis, segurança, comunidade, convites, emojis, stickers, moderação, onboarding, automod e pesquisa');
+      console.log("🗄️  Banco: Postgres");
+      console.log("🧩 Plataforma: expansão completa sem reset destrutivo");
+      console.log("🗂️  Estrutura: categorias, text/voice/stage/forum, threads e permissões");
+      console.log("🎙️  Stage: moderadores, palestrantes e audiência persistidos");
+      console.log("👑 Hierarquia: OWNER > ADMIN > MODERATOR > STAFF > MEMBER > @EVERYONE");
+      console.log("💬 Mensagens: reações, anexos, menções, respostas e pins habilitados");
+      console.log("🌐 V4 API: perfis, segurança, comunidade, convites, emojis, stickers, moderação, onboarding, automod e pesquisa");
     });
-
     startMediaServer(io);
   } catch (error) {
-    console.error('❌ Falha ao inicializar o banco de dados:', error);
+    console.error("❌ Falha ao inicializar o banco de dados:", error);
     process.exit(1);
   }
 }
-
 start();
-
 async function shutdown(message) {
   console.log(message);
-  try { await db.pool.end(); } finally { process.exit(0); }
+  try {
+    await db.pool.end();
+  } finally {
+    process.exit(0);
+  }
 }
-process.on('SIGINT', () => shutdown('🛑 Desligando...'));
-process.on('SIGTERM', () => shutdown('🛑 Desligando (SIGTERM)...'));
+process.on("SIGINT", () => shutdown("🛑 Desligando..."));
+process.on("SIGTERM", () => shutdown("🛑 Desligando (SIGTERM)..."));

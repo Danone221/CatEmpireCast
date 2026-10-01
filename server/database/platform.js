@@ -1,5 +1,4 @@
-const { query } = require('./index');
-
+const { query } = require("./index");
 async function initPlatformSchema() {
   await query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS banner TEXT;
@@ -199,7 +198,6 @@ async function initPlatformSchema() {
     CREATE INDEX IF NOT EXISTS idx_audit_server ON audit_logs(server_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read, created_at);
   `);
-
   await query(`
     UPDATE servers SET owner_id = creator_id WHERE owner_id IS NULL;
     INSERT INTO server_roles (id, server_id, name, color, position, permissions)
@@ -212,5 +210,4 @@ async function initPlatformSchema() {
     WHERE NOT EXISTS (SELECT 1 FROM server_roles r WHERE r.server_id=s.id AND r.name='OWNER');
   `);
 }
-
 module.exports = { initPlatformSchema };

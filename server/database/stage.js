@@ -1,9 +1,4 @@
-const { query } = require('./index');
-
-/**
- * Stage channel persistence.
- * This is additive: it does not alter or delete existing voice data.
- */
+const { query } = require("./index");
 async function initStageSchema() {
   await query(`
     CREATE TABLE IF NOT EXISTS stage_members (
@@ -21,5 +16,4 @@ async function initStageSchema() {
       ON stage_members(channel_id, role, joined_at);
   `);
 }
-
 module.exports = { initStageSchema };

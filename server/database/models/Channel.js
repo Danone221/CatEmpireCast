@@ -1,28 +1,23 @@
-const { query, queryOne } = require('../index');
-const { v4: uuidv4 } = require('uuid');
-
+const { query, queryOne } = require("../index");
+const { v4: uuidv4 } = require("uuid");
 class Channel {
   static async create({ serverId, name, type, category }) {
     const id = uuidv4();
     await query(
       `INSERT INTO channels (id, server_id, name, type, category) VALUES ($1, $2, $3, $4, $5)`,
-      [id, serverId, name, type, category || 'CANAIS']
+      [id, serverId, name, type, category || "CANAIS"]
     );
     return this.findById(id);
   }
-
   static async findById(id) {
-    return queryOne('SELECT * FROM channels WHERE id = $1', [id]);
+    return queryOne("SELECT * FROM channels WHERE id = $1", [id]);
   }
-
   static async findByServer(serverId) {
-    return query('SELECT * FROM channels WHERE server_id = $1 ORDER BY category, position, name', [serverId]);
+    return query("SELECT * FROM channels WHERE server_id = $1 ORDER BY category, position, name", [serverId]);
   }
-
   static async delete(id) {
-    return query('DELETE FROM channels WHERE id = $1', [id]);
+    return query("DELETE FROM channels WHERE id = $1", [id]);
   }
-
   static async update(id, data) {
     const fields = [];
     const values = [];
@@ -33,9 +28,8 @@ class Channel {
       i++;
     }
     values.push(id);
-    return query(`UPDATE channels SET ${fields.join(', ')} WHERE id = $${i}`, values);
+    return query(`UPDATE channels SET ${fields.join(", ")} WHERE id = $${i}`, values);
   }
-
   static async getMessages(channelId, limit = 100) {
     const rows = await query(
       `SELECT m.*, u.username, u.display_name, u.avatar
@@ -48,7 +42,6 @@ class Channel {
     );
     return rows.reverse();
   }
-
   static async saveMessage({ channelId, userId, content, file }) {
     const id = uuidv4();
     await query(
@@ -58,7 +51,7 @@ class Channel {
         id,
         channelId,
         userId,
-        content || '',
+        content || "",
         file?.name || null,
         file?.type || null,
         file?.size || null,
@@ -67,7 +60,6 @@ class Channel {
     );
     return this.getMessage(id);
   }
-
   static async getMessage(id) {
     return queryOne(
       `SELECT m.*, u.username, u.display_name, u.avatar
@@ -77,7 +69,6 @@ class Channel {
       [id]
     );
   }
-
   // Edita o conteúdo de uma mensagem já enviada (marca edited_at). Não
   // mexe em anexo — só o texto pode ser editado, igual ao Discord.
   static async editMessage(id, content) {
@@ -87,11 +78,9 @@ class Channel {
     );
     return this.getMessage(id);
   }
-
   static async deleteMessage(id) {
-    await query('DELETE FROM messages WHERE id = $1', [id]);
+    await query("DELETE FROM messages WHERE id = $1", [id]);
   }
-
   static async getVoiceMembers(channelId) {
     return query(
       `SELECT vs.*, u.username, u.display_name, u.avatar
@@ -101,7 +90,6 @@ class Channel {
       [channelId]
     );
   }
-
   static async joinVoice(userId, channelId) {
     await query(
       `INSERT INTO voice_states (user_id, channel_id, joined_at)
@@ -111,11 +99,9 @@ class Channel {
       [userId, channelId]
     );
   }
-
   static async leaveVoice(userId, channelId) {
-    await query('DELETE FROM voice_states WHERE user_id = $1 AND channel_id = $2', [userId, channelId]);
+    await query("DELETE FROM voice_states WHERE user_id = $1 AND channel_id = $2", [userId, channelId]);
   }
-
   static async updateVoiceState(userId, channelId, muted, deafened) {
     await query(
       `UPDATE voice_states SET muted = $1, deafened = $2 WHERE user_id = $3 AND channel_id = $4`,
@@ -123,5 +109,4 @@ class Channel {
     );
   }
 }
-
 module.exports = Channel;

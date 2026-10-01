@@ -1,6 +1,5 @@
-const { query, queryOne } = require('../index');
-const { v4: uuidv4 } = require('uuid');
-
+const { query, queryOne } = require("../index");
+const { v4: uuidv4 } = require("uuid");
 class Dm {
   // Lista de conversas do usuário — a pessoa do outro lado, a última
   // mensagem trocada e quantas estão sem ler. Sem tabela de "conversa"
@@ -20,8 +19,7 @@ class Dm {
       LIMIT 500`,
       [userId]
     );
-
-    const byOther = new Map();
+    const byOther = /* @__PURE__ */ new Map();
     for (const row of rows) {
       const isSender = row.sender_id === userId;
       const otherId = isSender ? row.recipient_id : row.sender_id;
@@ -46,7 +44,6 @@ class Dm {
     }
     return Array.from(byOther.values()).sort((a, b) => b.last_created_at - a.last_created_at);
   }
-
   static async getMessages(userId, otherId, limit = 100) {
     const rows = await query(
       `SELECT dm.*,
@@ -60,20 +57,24 @@ class Dm {
     );
     return rows.reverse();
   }
-
   static async send({ senderId, recipientId, content, file }) {
     const id = uuidv4();
     await query(
       `INSERT INTO dm_messages (id, sender_id, recipient_id, content, file_name, file_type, file_size, file_data)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
-        id, senderId, recipientId, content || '',
-        file?.name || null, file?.type || null, file?.size || null, file?.data || null
+        id,
+        senderId,
+        recipientId,
+        content || "",
+        file?.name || null,
+        file?.type || null,
+        file?.size || null,
+        file?.data || null
       ]
     );
     return this.getById(id);
   }
-
   static async getById(id) {
     return queryOne(
       `SELECT dm.*, su.username AS sender_username, su.display_name AS sender_display_name, su.avatar AS sender_avatar
@@ -83,7 +84,6 @@ class Dm {
       [id]
     );
   }
-
   static async edit(id, content) {
     await query(
       `UPDATE dm_messages SET content = $1, edited_at = extract(epoch FROM now())::bigint WHERE id = $2`,
@@ -91,11 +91,9 @@ class Dm {
     );
     return this.getById(id);
   }
-
   static async delete(id) {
-    await query('DELETE FROM dm_messages WHERE id = $1', [id]);
+    await query("DELETE FROM dm_messages WHERE id = $1", [id]);
   }
-
   // Marca como lidas todas as mensagens que `otherId` mandou pra `userId`.
   static async markRead(userId, otherId) {
     await query(
@@ -104,7 +102,6 @@ class Dm {
       [userId, otherId]
     );
   }
-
   static async getUnreadTotal(userId) {
     const row = await queryOne(
       `SELECT COUNT(*) AS count FROM dm_messages dm WHERE recipient_id = $1 AND read_at IS NULL
@@ -114,5 +111,4 @@ class Dm {
     return row ? parseInt(row.count, 10) : 0;
   }
 }
-
 module.exports = Dm;
