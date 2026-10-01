@@ -346,8 +346,16 @@ router.post('/invites/:code/join', authenticate, async (req, res) => {
       return res.status(410).json({ error: 'Este convite atingiu o limite de usos' });
     }
 
+    const existingRole = await Server.getMemberRole(invite.server_id, req.user.id);
+    if (existingRole) {
+      return res.json({ success: true, serverId: invite.server_id, alreadyMember: true });
+    }
+
+    const consumed = await Invite.consume(invite.code);
+    if (!consumed) {
+      return res.status(410).json({ error: 'Este convite expirou ou atingiu o limite de usos' });
+    }
     await Server.addMember(invite.server_id, req.user.id);
-    await Invite.use(invite.code);
 
     // Avisa quem já está com o servidor aberto
     const io = req.app.get('io');
