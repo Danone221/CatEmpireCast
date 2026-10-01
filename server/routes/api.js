@@ -27,45 +27,6 @@ router.get('/me', authenticate, async (req, res) => {
 });
 
 // Editar meu perfil: nome de exibição, avatar, bio, cor do banner
-router.put('/me/profile', authenticate, async (req, res) => {
-  try {
-    const { displayName, avatar, bio, bannerColor } = req.body;
-    const data = {};
-    if (typeof displayName === 'string') {
-      const trimmed = sanitizePlainText(displayName, 32);
-      if (trimmed) data.display_name = trimmed;
-    }
-    if (typeof bio === 'string') data.bio = sanitizePlainText(bio, 190);
-    if (bannerColor !== undefined) {
-      const rawBanner = bannerColor == null ? '' : String(bannerColor).trim();
-      data.banner_color = !rawBanner ? null : (/^#[0-9a-f]{6}$/i.test(rawBanner)
-        ? rawBanner
-        : validateImageValue(rawBanner, { maxLength: 900000 }));
-    }
-    if (avatar !== undefined) {
-      data.avatar = validateImageValue(avatar, { maxLength: 700000 });
-    }
-    const user = await User.update(req.user.id, data);
-
-    // Propaga em tempo real pra quem estiver com a página aberta em
-    // qualquer servidor que essa pessoa participa — sem isso, nomes e
-    // avatares atualizados só apareceriam pros outros membros depois de
-    // um refresh manual da página.
-    const io = req.app.get('io');
-    if (io) {
-      const servers = await User.getServers(req.user.id);
-      const publicUser = await User.getPublicProfile(req.user.id);
-      for (const s of servers) {
-        io.to(`server-${s.id}`).emit('member-profile-updated', publicUser);
-      }
-    }
-
-    res.json(user);
-  } catch (error) {
-    console.error('Erro ao editar perfil:', error);
-    res.status(500).json({ error: 'Erro ao editar perfil' });
-  }
-});
 
 // Alterar senha da conta
 router.put('/me/password', authenticate, async (req, res) => {
