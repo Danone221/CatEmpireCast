@@ -1,10 +1,10 @@
 (() => {
   'use strict';
-  const q=new URLSearchParams(location.search), token=localStorage.getItem('cat_token')||q.get('token')||'', userId=localStorage.getItem('cat_user_id')||q.get('userId')||'', serverId=q.get('serverId')||'';
+  const q=new URLSearchParams(location.search), userId=localStorage.getItem('cat_user_id')||'', serverId=q.get('serverId')||'';
   const input=document.getElementById('messageInput');
-  if(!token||!userId||!input||!serverId)return;
+  if(!userId||!input||!serverId)return;
   const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const headers={Authorization:'Bearer '+token};
+  const headers={};
   let members=[];
   fetch('/api/v4/servers/'+encodeURIComponent(serverId)+'/full',{headers}).then(r=>r.ok?r.json():null).then(d=>{members=d?.members||[]}).catch(()=>{});
   const wrap=input.parentElement;if(!wrap)return;
