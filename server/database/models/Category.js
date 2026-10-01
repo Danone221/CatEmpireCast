@@ -1,5 +1,6 @@
 const { query, queryOne } = require('../index');
 const { v4: uuidv4 } = require('uuid');
+const { sanitizePlainText } = require('../../security');
 
 class Category {
   static async ensureFromChannels(serverId) {
@@ -32,7 +33,7 @@ class Category {
   }
 
   static async create(serverId, name) {
-    const clean = String(name || '').trim().slice(0, 40);
+    const clean = sanitizePlainText(name, 40);
     if (!clean) throw new Error('Nome da categoria é obrigatório');
     await this.ensureFromChannels(serverId);
     const exists = await queryOne(
@@ -50,7 +51,7 @@ class Category {
   }
 
   static async rename(serverId, categoryId, name) {
-    const clean = String(name || '').trim().slice(0, 40);
+    const clean = sanitizePlainText(name, 40);
     if (!clean) throw new Error('Nome da categoria é obrigatório');
     const current = await queryOne(
       'SELECT * FROM channel_categories WHERE id = $1 AND server_id = $2',

@@ -158,6 +158,7 @@ async function initSchema() {
 
   await addColumnIfMissing('users', 'bio', 'TEXT');
   await addColumnIfMissing('users', 'banner_color', 'TEXT');
+  await addColumnIfMissing('users', 'auth_version', 'INTEGER NOT NULL DEFAULT 0');
   await addColumnIfMissing('servers', 'banner_color', 'TEXT');
   await addColumnIfMissing('servers', 'description', 'TEXT');
   await addColumnIfMissing('messages', 'edited_at', 'BIGINT');
@@ -175,11 +176,22 @@ async function initSchema() {
     UPDATE users
       SET bio = CASE WHEN bio IS NULL THEN NULL ELSE regexp_replace(bio, '[<>]', '', 'g') END,
           display_name = CASE WHEN display_name IS NULL THEN NULL ELSE regexp_replace(display_name, '[<>]', '', 'g') END,
-          avatar = CASE WHEN avatar ~* '^(file|javascript|http):' THEN NULL ELSE avatar END;
+          avatar = CASE
+            WHEN avatar IS NULL OR avatar = '' THEN NULL
+            WHEN avatar ~* '^https://[^<>"[:space:]]+$' THEN avatar
+            WHEN avatar ~* '^data:image/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$' THEN avatar
+            ELSE NULL
+          END;
     UPDATE servers
       SET name = regexp_replace(name, '[<>]', '', 'g'),
           description = CASE WHEN description IS NULL THEN NULL ELSE regexp_replace(description, '[<>]', '', 'g') END,
-          icon = CASE WHEN icon ~* '^(file|javascript|http):' THEN '🐱' ELSE icon END;
+          icon = CASE
+            WHEN icon IS NULL OR icon = '' THEN '🐱'
+            WHEN icon ~* '^https://[^<>"[:space:]]+$' THEN icon
+            WHEN icon ~* '^data:image/(png|jpe?g|gif|webp);base64,[a-z0-9+/=]+$' THEN icon
+            WHEN char_length(icon) <= 16 AND icon !~ '[<>"]' AND icon !~* '^[a-z][a-z0-9+.-]*:' THEN icon
+            ELSE '🐱'
+          END;
   `);
 
   // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita

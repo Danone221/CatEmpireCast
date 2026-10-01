@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const net = require('net');
 const jwt = require('jsonwebtoken');
 const config = require('./config');
 const { query, queryOne } = require('./database');
@@ -51,13 +52,49 @@ function sanitizePlainText(value, maxLength) {
 }
 
 function isPrivateHost(hostname) {
-  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
   if (!host) return true;
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
-  if (/^(127\.|0\.|10\.|169\.254\.|192\.168\.)/.test(host)) return true;
-  const m = host.match(/^172\.(\d{1,3})\./);
-  if (m && Number(m[1]) >= 16 && Number(m[1]) <= 31) return true;
-  if (host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true;
+  if (
+    host === 'localhost' ||
+    host === 'metadata.google.internal' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal')
+  ) return true;
+
+  if (net.isIP(host) === 4) {
+    const octets = host.split('.').map(Number);
+    const [a, b] = octets;
+    if (
+      a === 0 || a === 10 || a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
+    ) return true;
+  }
+
+  if (net.isIP(host) === 6) {
+    const normalized = host.toLowerCase();
+    if (
+      normalized === '::' ||
+      normalized === '::1' ||
+      normalized.startsWith('fc') ||
+      normalized.startsWith('fd') ||
+      normalized.startsWith('fe8') ||
+      normalized.startsWith('fe9') ||
+      normalized.startsWith('fea') ||
+      normalized.startsWith('feb') ||
+      normalized.startsWith('ff') ||
+      normalized.startsWith('::ffff:127.') ||
+      normalized.startsWith('::ffff:10.') ||
+      normalized.startsWith('::ffff:192.168.') ||
+      normalized.startsWith('::ffff:169.254.')
+    ) return true;
+  }
+
   return false;
 }
 
@@ -82,12 +119,16 @@ function validateImageValue(value, { allowShortText = false, maxLength = 700000 
   return parsed.toString();
 }
 
-function createAccessToken(user) {
+async function createAccessToken(user) {
+  const state = await queryOne('SELECT auth_version FROM users WHERE id=$1', [user.id]);
+  if (!state) throw new Error('Usuário não encontrado');
+  const authVersion = Number(state.auth_version || 0);
+
   return jwt.sign(
-    { id: user.id, username: user.username },
+    { id: user.id, username: user.username, av: authVersion },
     config.jwtSecret,
     {
-      expiresIn: '7d',
+      expiresIn: '12h',
       algorithm: 'HS256',
       issuer: TOKEN_ISSUER,
       audience: TOKEN_AUDIENCE,
@@ -97,25 +138,24 @@ function createAccessToken(user) {
 }
 
 async function verifyAccessToken(token, { allowRevoked = false } = {}) {
-  const raw = String(token || '');
-  let decoded;
+  const raw = String(token || '').trim();
+  if (!raw || raw.length > 8192) throw new Error('Token inválido');
 
-  try {
-    decoded = jwt.verify(raw, config.jwtSecret, {
-      algorithms: ['HS256'],
-      issuer: TOKEN_ISSUER,
-      audience: TOKEN_AUDIENCE
-    });
-  } catch (strictError) {
-    const legacy = jwt.verify(raw, config.jwtSecret, { algorithms: ['HS256'] });
-    if (legacy?.iss || legacy?.aud || legacy?.jti) throw strictError;
-    decoded = {
-      ...legacy,
-      jti: 'legacy:' + crypto.createHash('sha256').update(raw).digest('hex')
-    };
+  const decoded = jwt.verify(raw, config.jwtSecret, {
+    algorithms: ['HS256'],
+    issuer: TOKEN_ISSUER,
+    audience: TOKEN_AUDIENCE
+  });
+
+  if (!decoded?.id || !decoded?.jti || !decoded?.exp || decoded?.av === undefined) {
+    throw new Error('Token incompleto');
   }
 
-  if (!decoded?.id || !decoded?.jti || !decoded?.exp) throw new Error('Token incompleto');
+  const authState = await queryOne('SELECT auth_version FROM users WHERE id=$1', [decoded.id]);
+  if (!authState || Number(authState.auth_version || 0) !== Number(decoded.av)) {
+    throw new Error('Sessão revogada');
+  }
+
   if (!allowRevoked) {
     const revoked = await queryOne(
       'SELECT 1 FROM revoked_tokens WHERE jti=$1 AND expires_at > extract(epoch FROM now())::bigint',
