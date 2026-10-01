@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
+const { sanitizePlainText, validateImageValue } = require('../security');
 
 const router = express.Router();
 router.use(authenticate);
@@ -46,18 +47,35 @@ router.get('/servers/:serverId/full', async (req, res) => {
 router.patch('/servers/:serverId/profile', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
-    const allowed = ['name', 'description', 'icon', 'banner', 'owner_id'];
     const fields = [];
     const values = [];
-    for (const key of allowed) if (Object.prototype.hasOwnProperty.call(req.body, key)) {
-      values.push(req.body[key]); fields.push(`${key}=$${values.length}`);
+    const add = (key, value) => {
+      values.push(value);
+      fields.push(`${key}=${values.length}`);
+    };
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
+      const name = sanitizePlainText(req.body.name, 50);
+      if (!name) return res.status(400).json({ error: 'Nome do servidor inválido' });
+      add('name', name);
     }
-    if (req.body.settings && typeof req.body.settings === 'object') {
-      values.push(JSON.stringify(req.body.settings)); fields.push(`settings=$${values.length}`);
+    if (Object.prototype.hasOwnProperty.call(req.body, 'description')) {
+      add('description', sanitizePlainText(req.body.description, 300));
     }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'icon')) {
+      add('icon', validateImageValue(req.body.icon, { allowShortText: true, maxLength: 700000 }));
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'banner')) {
+      const raw = req.body.banner == null ? '' : String(req.body.banner).trim();
+      add('banner', !raw ? null : validateImageValue(raw, { maxLength: 900000 }));
+    }
+    if (req.body.settings && typeof req.body.settings === 'object' && !Array.isArray(req.body.settings)) {
+      add('settings', JSON.stringify(req.body.settings));
+    }
+
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
     values.push(req.params.serverId);
-    const server = await queryOne(`UPDATE servers SET ${fields.join(', ')} WHERE id=$${values.length} RETURNING *`, values);
+    const server = await queryOne(`UPDATE servers SET ${fields.join(', ')} WHERE id=${values.length} RETURNING *`, values);
     res.json(server);
   } catch (e) { fail(res, e, 'Erro ao salvar perfil do servidor'); }
 });
