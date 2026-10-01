@@ -1,11 +1,11 @@
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-const userId = q.get('userId') || localStorage.getItem('cat_user_id');
-const userName = q.get('userName') || localStorage.getItem('cat_user_name') || 'Membro';
-const token = q.get('token') || localStorage.getItem('cat_token');
-const openWith = q.get('with'); // pra abrir direto numa conversa (ex: veio do botão "Enviar mensagem" no perfil)
+const userId = localStorage.getItem('cat_user_id') || '';
+const userName = localStorage.getItem('cat_user_name') || 'Membro';
+const openWith = q.get('with');
+localStorage.removeItem('cat_token');
 
-if (!userId || !token) { location.href = '/'; }
+if (!userId) { location.href = '/'; }
 
 const socket = io();
 
@@ -35,7 +35,7 @@ if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
 })();
 
 function headers() {
-  return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
+  return { 'Content-Type': 'application/json' };
 }
 function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -64,10 +64,18 @@ async function loadServersRail() {
 }
 
 socket.on('connect', () => {
-  socket.emit('register', { userId, token });
+  socket.emit('register', {});
   loadServersRail();
 });
 socket.on('error', d => { if (d?.message) toast(d.message, 'error'); });
+socket.on('connect_error', (error) => {
+  if (String(error?.message || '').toLowerCase().includes('unauthorized')) {
+    localStorage.removeItem('cat_user_id');
+    localStorage.removeItem('cat_user_name');
+    localStorage.removeItem('cat_token');
+    location.href = '/';
+  }
+});
 socket.on('dm-send-error', d => { if(d?.message) toast(d.message,'error'); });
 socket.on('block-changed', d => { if(d?.userId===currentOtherId) openConversation(currentOtherId); loadBlockedAccounts(); });
 socket.on('profile-updated', profile => {
@@ -561,7 +569,8 @@ function fileToDataUrl(file, maxBytes) {
   });
 }
 
-function logout() {
+async function logout() {
+  try { await fetch('/auth/logout', { method: 'POST', headers: headers() }); } catch {}
   localStorage.removeItem('cat_user_id');
   localStorage.removeItem('cat_user_name');
   localStorage.removeItem('cat_token');
