@@ -1,7 +1,36 @@
 const { query, queryOne } = require('../index');
 const { v4: uuidv4 } = require('uuid');
+const { sanitizePlainText } = require('../../security');
 
 const SYSTEM_ROLES = new Set(['@everyone', 'OWNER']);
+
+function cleanRoleColor(value) {
+  if (value == null || value === '') return null;
+  const color = String(value).trim();
+  if (!/^#[0-9a-f]{6}$/i.test(color)) {
+    throw Object.assign(new Error('Cor de cargo inválida'), { status: 400 });
+  }
+  return color;
+}
+
+function cleanRoleIcon(value) {
+  if (value == null || value === '') return null;
+  const icon = sanitizePlainText(value, 16);
+  if (!icon || /^[a-z][a-z0-9+.-]*:/i.test(icon)) {
+    throw Object.assign(new Error('Ícone de cargo inválido'), { status: 400 });
+  }
+  return icon;
+}
+
+function cleanPermissions(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out = {};
+  for (const [key, enabled] of Object.entries(value).slice(0, 64)) {
+    if (!/^[a-z0-9_.:-]{1,64}$/i.test(key)) continue;
+    out[key] = !!enabled;
+  }
+  return out;
+}
 
 class Role {
   static async list(serverId) {
@@ -28,7 +57,7 @@ class Role {
   }
 
   static async create(serverId, data) {
-    const name = String(data.name || 'Novo cargo').trim().slice(0, 80);
+    const name = sanitizePlainText(data.name || 'Novo cargo', 80);
     if (!name) throw Object.assign(new Error('Nome do cargo inválido'), { status: 400 });
 
     const highest = await queryOne(
@@ -47,10 +76,10 @@ class Role {
         uuidv4(),
         serverId,
         name,
-        data.color || null,
-        data.icon || null,
+        cleanRoleColor(data.color),
+        cleanRoleIcon(data.icon),
         Math.min(position, 99),
-        JSON.stringify(data.permissions || {}),
+        JSON.stringify(cleanPermissions(data.permissions)),
         !!data.mentionable
       ]
     );
@@ -72,14 +101,14 @@ class Role {
     };
 
     if (typeof data.name === 'string') {
-      const name = data.name.trim().slice(0, 80);
+      const name = sanitizePlainText(data.name, 80);
       if (!name) throw Object.assign(new Error('Nome do cargo inválido'), { status: 400 });
       add('name', name);
     }
-    if (data.color !== undefined) add('color', data.color || null);
-    if (data.icon !== undefined) add('icon', data.icon || null);
+    if (data.color !== undefined) add('color', cleanRoleColor(data.color));
+    if (data.icon !== undefined) add('icon', cleanRoleIcon(data.icon));
     if (data.mentionable !== undefined) add('mentionable', !!data.mentionable);
-    if (data.permissions !== undefined) add('permissions', JSON.stringify(data.permissions || {}));
+    if (data.permissions !== undefined) add('permissions', JSON.stringify(cleanPermissions(data.permissions)));
 
     if (data.position !== undefined) {
       const position = Math.max(1, Math.min(99, Number(data.position) || 1));
