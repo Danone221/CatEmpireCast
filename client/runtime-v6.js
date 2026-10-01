@@ -5,8 +5,8 @@
 
   const $ = id => document.getElementById(id);
   const params = new URLSearchParams(location.search);
-  const token = localStorage.getItem('cat_token') || params.get('token') || '';
-  const userId = localStorage.getItem('cat_user_id') || params.get('userId') || '';
+  const token = localStorage.getItem('cat_token') || '';
+  const userId = localStorage.getItem('cat_user_id') || '';
   const serverId = params.get('serverId') || localStorage.getItem('cat_last_server') || '';
   const isServer = !!$('serverName') && !!serverId;
   const isDm = !!$('dmSidebar');
