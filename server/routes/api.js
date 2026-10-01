@@ -5,7 +5,7 @@ const Channel = require('../database/models/Channel');
 const User = require('../database/models/User');
 const Invite = require('../database/models/Invite');
 const { query, queryOne } = require('../database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, optionalAuth } = require('../middleware/auth');
 const { issueSession } = require('../security/session');
 const { isSafeImageRef, isSafeBannerValue } = require('../security/input');
 
@@ -279,7 +279,7 @@ router.delete('/servers/:serverId/invites/:code', authenticate, async (req, res)
 });
 
 // Prévia pública de convite
-router.get('/invites/:code', async (req, res) => {
+router.get('/invites/:code', optionalAuth, async (req, res) => {
   try {
     const invite = await Invite.findByCode(req.params.code);
     if (!invite) {
@@ -293,18 +293,9 @@ router.get('/invites/:code', async (req, res) => {
     }
 
     let isMember = false;
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const jwt = require('jsonwebtoken');
-        const config = require('../config');
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, config.jwtSecret);
-        if (decoded && decoded.id) {
-          const role = await Server.getMemberRole(invite.server_id, decoded.id);
-          isMember = !!role;
-        }
-      } catch (e) {}
+    if (req.user?.id) {
+      const role = await Server.getMemberRole(invite.server_id, req.user.id);
+      isMember = !!role;
     }
 
     res.json({
@@ -364,7 +355,10 @@ router.post('/invites/:code/join', authenticate, async (req, res) => {
 // Entrar em servidor direto (se já tiver permissão)
 router.post('/servers/:serverId/join', authenticate, async (req, res) => {
   try {
-    await Server.addMember(req.params.serverId, req.user.id);
+    const existingRole = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (!existingRole) {
+      return res.status(403).json({ error: 'Use um convite válido para entrar neste servidor' });
+    }
 
     const io = req.app.get('io');
     if (io) {
