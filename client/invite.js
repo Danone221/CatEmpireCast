@@ -22,12 +22,37 @@
     return;
   }
 
-  let token = localStorage.getItem('cat_token');
-  let userId = localStorage.getItem('cat_user_id');
+  let userId = localStorage.getItem('cat_user_id') || '';
+  localStorage.removeItem('cat_token');
 
   function headers() {
-    return { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) };
+    return { 'Content-Type': 'application/json' };
   }
+
+  function safeMediaUrl(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    if (/^\/(?!\/)/.test(text)) return text;
+    if (/^https:\/\//i.test(text)) return text;
+    if (/^data:image\/(?:png|jpeg|jpg|webp|gif);base64,/i.test(text)) return text;
+    return '';
+  }
+
+  try {
+    const sessionResponse = await fetch('/auth/verify', { headers: headers() });
+    if (sessionResponse.ok) {
+      const sessionData = await sessionResponse.json();
+      userId = sessionData.user?.id || '';
+      if (userId) {
+        localStorage.setItem('cat_user_id', userId);
+        localStorage.setItem('cat_user_name', sessionData.user.display_name || sessionData.user.username || '');
+      }
+    } else {
+      userId = '';
+      localStorage.removeItem('cat_user_id');
+      localStorage.removeItem('cat_user_name');
+    }
+  } catch {}
 
   function applyBannerStyle(el, banner) {
     if (!el) return;
@@ -77,11 +102,20 @@
 
     applyBannerStyle($('inviteBanner'), d.serverBannerColor || '#5865f2');
 
-    const isImg = d.serverIcon && /^(https?:|data:)/.test(d.serverIcon);
-    if (isImg) {
-      $('inviteIconWrap').innerHTML = '<img src="' + d.serverIcon + '" alt="" style="width:100%;height:100%;object-fit:cover">';
+    const iconWrap = $('inviteIconWrap');
+    iconWrap.replaceChildren();
+    const safeIcon = safeMediaUrl(d.serverIcon);
+    if (safeIcon) {
+      const img = document.createElement('img');
+      img.src = safeIcon;
+      img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+      iconWrap.appendChild(img);
     } else {
-      $('inviteIconWrap').innerHTML = '<span id="inviteIcon">' + (d.serverIcon || '🐱') + '</span>';
+      const span = document.createElement('span');
+      span.id = 'inviteIcon';
+      span.textContent = String(d.serverIcon || '🐱').slice(0, 12);
+      iconWrap.appendChild(span);
     }
 
     if (d.isMember) {
@@ -93,7 +127,7 @@
       return;
     }
 
-    if (!token || !userId) {
+    if (!userId) {
       $('inviteActions').hidden = true;
       $('inviteAuth').hidden = false;
     } else {
@@ -117,11 +151,10 @@
         });
         const dReg = await rReg.json();
         if (!rReg.ok) throw new Error(dReg.error || 'Erro ao criar conta');
-        token = dReg.token;
         userId = dReg.user.id;
         localStorage.setItem('cat_user_id', userId);
         localStorage.setItem('cat_user_name', dReg.user.display_name || dReg.user.username);
-        localStorage.setItem('cat_token', token);
+        localStorage.removeItem('cat_token');
         await joinServer(code);
       } catch (e) {
         if (window.toast) toast(e.message, 'error');
