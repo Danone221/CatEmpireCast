@@ -107,3 +107,60 @@ test('reserved system role names cannot be spoofed by custom roles', () => {
   assert.match(role, /trim\(\)\.toLowerCase\(\)/);
 });
 
+test('alternate REST message routes keep the same authorization and input guards', () => {
+  const dm = source('server/routes/dm.js');
+  const messaging = source('server/routes/messaging.js');
+  assert.match(dm, /sanitizeAttachment/);
+  assert.match(dm, /cleanMessageText/);
+  assert.match(dm, /Esta conversa está bloqueada/);
+  assert.match(dm, /Não é possível adicionar um usuário bloqueado ao grupo/);
+  assert.match(messaging, /await requireMemberByChannel\(message\.channel_id, req\.user\.id\)/);
+  assert.match(messaging, /normalizeStoredAttachment/);
+  assert.match(messaging, /validatePublicHttpsUrl/);
+  assert.match(messaging, /Menção inválida para este servidor/);
+});
+
+test('platform role update and assignment enforce hierarchy and tenant scope', () => {
+  const platform = source('server/routes/platform.js');
+  const role = source('server/database/models/Role.js');
+  assert.match(platform, /Role\.update\(req\.params\.serverId, req\.params\.roleId, next\)/);
+  assert.match(platform, /Você não pode editar um cargo acima ou igual à sua hierarquia/);
+  assert.match(platform, /Cargos reservados não podem ser atribuídos manualmente/);
+  assert.match(platform, /Membro não encontrado neste servidor/);
+  assert.match(platform, /Referência de permissão inválida para este servidor/);
+  assert.match(role, /Este cargo é gerenciado pelo sistema/);
+});
+
+test('V4 server profile uses PostgreSQL placeholders and admin payloads are bounded', () => {
+  const expansion = source('server/routes/expansion.js');
+  const platform = source('server/routes/platform.js');
+  assert.match(expansion, /fields\.push\(\`\$\{key\}=\$\$\{values\.length\}\`\)/);
+  assert.match(expansion, /WHERE id=\$\$\{values\.length\}/);
+  assert.match(expansion, /validateServerChannel/);
+  assert.match(expansion, /requireModerationTarget/);
+  assert.match(expansion, /boundedJson\(questions,32768/);
+  assert.match(platform, /validateServerIds/);
+  assert.match(platform, /requireModerationTarget/);
+  assert.match(platform, /boundedJson\(rules,32768/);
+});
+
+test('feature settings allow both owner and admin', () => {
+  const settings = source('server/routes/settings.js');
+  assert.match(settings, /\['admin', 'owner'\]\.includes\(role\)/);
+});
+
+test('Engine.IO handshakes have pre-auth resource limits', () => {
+  const socket = source('server/socket.js');
+  assert.match(socket, /handshakeBuckets/);
+  assert.match(socket, /allowHandshake\(req\)/);
+  assert.match(socket, /bucket\.count <= 120/);
+  assert.match(socket, /handshakeBuckets\.size >= 10_000/);
+});
+
+test('generic external attachment URLs require public HTTPS', () => {
+  const security = source('server/security.js');
+  assert.match(security, /function validatePublicHttpsUrl/);
+  assert.match(security, /parsed\.protocol !== 'https:'/);
+  assert.match(security, /isPrivateHost\(parsed\.hostname\)/);
+});
+
