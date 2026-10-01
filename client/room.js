@@ -292,7 +292,7 @@ function renderMembers() {
   $('membersList').innerHTML = members.map(m => `
     <div class="member-row" data-user-id="${esc(m.id)}">
       <div class="m-avatar">
-        <img src="${m.avatar || '/logo.svg'}" alt="">
+        <img src="${esc(m.avatar || '/logo.svg')}" alt="">
         <span class="presence-dot ${onlineUserIds.has(m.id) ? 'online' : 'offline'}"></span>
       </div>
       <div class="m-name">${esc(m.display_name || m.username)}</div>
@@ -435,7 +435,7 @@ function messageHtml(m) {
   const time = new Date((m.created_at || 0) * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   let fileHtml = '';
   if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
-    fileHtml = `<img class="message-image" src="${m.file_data}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${m.file_data}">`;
+    fileHtml = `<img class="message-image" src="${esc(m.file_data)}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${esc(m.file_data)}">`;
   } else if (m.file_data) {
     fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
