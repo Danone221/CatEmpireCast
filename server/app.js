@@ -32,14 +32,21 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+      scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+      scriptSrcAttr: ["'none'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com'],
-      mediaSrc: ["'self'", 'blob:'],
-      connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:']
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com', 'https:'],
+      mediaSrc: ["'self'", 'blob:', 'data:', 'https:'],
+      connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"],
+      frameSrc: ["'none'"],
+      formAction: ["'self'"]
     }
-  }
+  },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 app.use(cors({ origin: config.corsOrigin }));
 app.use(compression());
