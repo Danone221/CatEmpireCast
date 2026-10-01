@@ -158,6 +158,7 @@ async function initSchema() {
 
   await addColumnIfMissing('users', 'bio', 'TEXT');
   await addColumnIfMissing('users', 'banner_color', 'TEXT');
+  await addColumnIfMissing('users', 'auth_version', 'INTEGER NOT NULL DEFAULT 0');
   await addColumnIfMissing('servers', 'banner_color', 'TEXT');
   await addColumnIfMissing('servers', 'description', 'TEXT');
   await addColumnIfMissing('messages', 'edited_at', 'BIGINT');
