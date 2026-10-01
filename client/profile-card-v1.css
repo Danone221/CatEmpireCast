@@ -1,688 +1,756 @@
-/* Cat Empire profile card — complete redesign V1 */
-.room-page .profile-x-modal{
-  align-items:center!important;
-  justify-content:center!important;
-  padding:24px!important;
+.room-page .profile-x-modal {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
   background:
-    radial-gradient(circle at 50% 34%,rgba(48,228,171,.055),transparent 28rem),
-    rgba(2,5,8,.74)!important;
-  backdrop-filter:blur(12px) saturate(112%)!important;
+    radial-gradient(
+      circle at 50% 34%,
+      rgba(48, 228, 171, .055),
+      transparent 28rem),
+    rgba(2, 5, 8, .74) !important;
+  backdrop-filter: blur(12px) saturate(112%) !important;
 }
-
-.room-page .profile-x-card{
+.room-page .profile-x-card {
   --profile-x:50%;
   --profile-y:38%;
-  position:relative!important;
-  width:min(470px,calc(100vw - 40px))!important;
-  max-width:470px!important;
-  max-height:min(88dvh,760px)!important;
-  margin:0!important;
-  padding:0 0 20px!important;
-  border:1px solid rgba(112,255,211,.14)!important;
-  border-radius:28px!important;
-  overflow:auto!important;
+  position: relative !important;
+  width: min(470px, calc(100vw - 40px)) !important;
+  max-width: 470px !important;
+  max-height: min(88dvh, 760px) !important;
+  margin: 0 !important;
+  padding: 0 0 20px !important;
+  border: 1px solid rgba(112, 255, 211, .14) !important;
+  border-radius: 28px !important;
+  overflow: auto !important;
   background:
-    linear-gradient(180deg,rgba(8,18,21,.985),rgba(5,10,14,.992))!important;
+    linear-gradient(
+      180deg,
+      rgba(8, 18, 21, .985),
+      rgba(5, 10, 14, .992)) !important;
   box-shadow:
-    0 38px 100px rgba(0,0,0,.58),
-    0 0 0 1px rgba(255,255,255,.018),
-    inset 0 1px rgba(255,255,255,.045)!important;
-  scrollbar-width:thin!important;
-  scrollbar-color:rgba(89,239,190,.16) transparent!important;
-  isolation:isolate!important;
+    0 38px 100px rgba(0, 0, 0, .58),
+    0 0 0 1px rgba(255, 255, 255, .018),
+    inset 0 1px rgba(255, 255, 255, .045) !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(89, 239, 190, .16) transparent !important;
+  isolation: isolate !important;
 }
-
-.room-page .profile-x-card::-webkit-scrollbar{width:6px}
-.room-page .profile-x-card::-webkit-scrollbar-track{background:transparent}
-.room-page .profile-x-card::-webkit-scrollbar-thumb{
-  border-radius:999px;
-  background:rgba(89,239,190,.16);
+.room-page .profile-x-card::-webkit-scrollbar {
+  width: 6px;
 }
-
-.room-page .profile-x-glow{
-  position:absolute!important;
-  inset:0!important;
-  z-index:-1!important;
-  pointer-events:none!important;
-  border-radius:inherit!important;
+.room-page .profile-x-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+.room-page .profile-x-card::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(89, 239, 190, .16);
+}
+.room-page .profile-x-glow {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+  border-radius: inherit !important;
   background:
-    radial-gradient(circle at var(--profile-x) var(--profile-y),rgba(68,239,182,.08),transparent 28%),
-    linear-gradient(135deg,rgba(55,235,178,.028),transparent 32%,rgba(72,165,255,.024) 72%,transparent)!important;
+    radial-gradient(
+      circle at var(--profile-x) var(--profile-y),
+      rgba(68, 239, 182, .08),
+      transparent 28%),
+    linear-gradient(
+      135deg,
+      rgba(55, 235, 178, .028),
+      transparent 32%,
+      rgba(72, 165, 255, .024) 72%,
+      transparent) !important;
 }
-
-.room-page .profile-x-hero{
-  position:relative!important;
-  height:196px!important;
-  min-height:196px!important;
-  overflow:hidden!important;
-  border-radius:27px 27px 0 0!important;
+.room-page .profile-x-hero {
+  position: relative !important;
+  height: 196px !important;
+  min-height: 196px !important;
+  overflow: hidden !important;
+  border-radius: 27px 27px 0 0 !important;
 }
-
-.room-page .profile-x-banner.profile-banner{
-  position:absolute!important;
-  inset:0!important;
-  width:100%!important;
-  height:100%!important;
-  min-height:0!important;
-  margin:0!important;
-  border:0!important;
-  border-radius:0!important;
-  background-position:center!important;
-  background-size:cover!important;
-  transform:scale(1.02)!important;
-  box-shadow:none!important;
+.room-page .profile-x-banner.profile-banner {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background-position: center !important;
+  background-size: cover !important;
+  transform: scale(1.02) !important;
+  box-shadow: none !important;
 }
-
-.room-page .profile-x-hero-shade{
-  position:absolute!important;
-  inset:0!important;
-  pointer-events:none!important;
+.room-page .profile-x-hero-shade {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
   background:
-    linear-gradient(180deg,rgba(1,5,7,.08) 0%,rgba(2,8,10,.10) 30%,rgba(3,10,12,.56) 77%,rgba(5,12,15,.97) 100%),
-    radial-gradient(circle at 16% 12%,rgba(112,255,215,.12),transparent 32%),
-    linear-gradient(115deg,transparent 0 54%,rgba(255,255,255,.035) 55%,transparent 56%)!important;
+    linear-gradient(
+      180deg,
+      rgba(1, 5, 7, .08) 0%,
+      rgba(2, 8, 10, .10) 30%,
+      rgba(3, 10, 12, .56) 77%,
+      rgba(5, 12, 15, .97) 100%),
+    radial-gradient(
+      circle at 16% 12%,
+      rgba(112, 255, 215, .12),
+      transparent 32%),
+    linear-gradient(
+      115deg,
+      transparent 0 54%,
+      rgba(255, 255, 255, .035) 55%,
+      transparent 56%) !important;
 }
-
-.room-page .profile-x-topline{
-  position:absolute!important;
-  top:16px!important;
-  left:18px!important;
-  right:64px!important;
-  z-index:4!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  gap:10px!important;
+.room-page .profile-x-topline {
+  position: absolute !important;
+  top: 16px !important;
+  left: 18px !important;
+  right: 64px !important;
+  z-index: 4 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
 }
-
-.room-page .profile-x-brand{
-  display:inline-flex!important;
-  align-items:center!important;
-  gap:7px!important;
-  color:rgba(236,249,244,.70)!important;
-  font:850 9px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  letter-spacing:.15em!important;
-  text-transform:uppercase!important;
-  text-shadow:0 2px 12px rgba(0,0,0,.40)!important;
+.room-page .profile-x-brand {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  color: rgba(236, 249, 244, .70) !important;
+  font:
+    850 9px/1 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+  letter-spacing: .15em !important;
+  text-transform: uppercase !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .40) !important;
 }
-
-.room-page .profile-x-brand::before{
-  content:""!important;
-  width:7px!important;
-  height:7px!important;
-  border-radius:50%!important;
-  background:#62f0bd!important;
-  box-shadow:0 0 10px rgba(98,240,189,.65)!important;
+.room-page .profile-x-brand::before {
+  content: "" !important;
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 50% !important;
+  background: #62f0bd !important;
+  box-shadow: 0 0 10px rgba(98, 240, 189, .65) !important;
 }
-
-.room-page .profile-x-member-badge{
-  display:inline-flex!important;
-  align-items:center!important;
-  gap:6px!important;
-  min-height:26px!important;
-  padding:0 9px!important;
-  border:1px solid rgba(255,255,255,.09)!important;
-  border-radius:999px!important;
-  background:rgba(4,10,13,.38)!important;
-  color:rgba(226,240,234,.57)!important;
-  font:800 8px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  letter-spacing:.10em!important;
-  backdrop-filter:blur(8px)!important;
+.room-page .profile-x-member-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-height: 26px !important;
+  padding: 0 9px !important;
+  border: 1px solid rgba(255, 255, 255, .09) !important;
+  border-radius: 999px !important;
+  background: rgba(4, 10, 13, .38) !important;
+  color: rgba(226, 240, 234, .57) !important;
+  font:
+    800 8px/1 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+  letter-spacing: .10em !important;
+  backdrop-filter: blur(8px) !important;
 }
-.room-page .profile-x-member-badge i{
-  width:5px!important;
-  height:5px!important;
-  border-radius:50%!important;
-  background:#55f2bd!important;
-  box-shadow:0 0 8px rgba(85,242,189,.55)!important;
+.room-page .profile-x-member-badge i {
+  width: 5px !important;
+  height: 5px !important;
+  border-radius: 50% !important;
+  background: #55f2bd !important;
+  box-shadow: 0 0 8px rgba(85, 242, 189, .55) !important;
 }
-
-.room-page .profile-x-more.profile-sheet-more{
-  position:absolute!important;
-  top:14px!important;
-  right:16px!important;
-  z-index:9!important;
-  width:38px!important;
-  height:38px!important;
-  padding:0!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:3px!important;
-  border:1px solid rgba(255,255,255,.09)!important;
-  border-radius:12px!important;
-  background:rgba(5,11,14,.48)!important;
-  color:#dff5ed!important;
-  box-shadow:0 8px 22px rgba(0,0,0,.20)!important;
-  backdrop-filter:blur(8px)!important;
-  transition:background .2s ease,border-color .2s ease,transform .2s ease!important;
+.room-page .profile-x-more.profile-sheet-more {
+  position: absolute !important;
+  top: 14px !important;
+  right: 16px !important;
+  z-index: 9 !important;
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  border: 1px solid rgba(255, 255, 255, .09) !important;
+  border-radius: 12px !important;
+  background: rgba(5, 11, 14, .48) !important;
+  color: #dff5ed !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .20) !important;
+  backdrop-filter: blur(8px) !important;
+  transition:
+    background .2s ease,
+    border-color .2s ease,
+    transform .2s ease !important;
 }
-.room-page .profile-x-more span{
-  display:block!important;
-  width:3px!important;
-  height:3px!important;
-  border-radius:50%!important;
-  background:currentColor!important;
+.room-page .profile-x-more span {
+  display: block !important;
+  width: 3px !important;
+  height: 3px !important;
+  border-radius: 50% !important;
+  background: currentColor !important;
 }
-.room-page .profile-x-more:hover{
-  transform:translateY(-1px)!important;
-  background:rgba(20,45,38,.68)!important;
-  border-color:rgba(96,241,193,.26)!important;
+.room-page .profile-x-more:hover {
+  transform: translateY(-1px) !important;
+  background: rgba(20, 45, 38, .68) !important;
+  border-color: rgba(96, 241, 193, .26) !important;
 }
-
-.room-page .profile-x-menu.profile-sheet-menu{
-  position:absolute!important;
-  top:58px!important;
-  right:16px!important;
-  z-index:30!important;
-  width:220px!important;
-  overflow:hidden!important;
-  border:1px solid rgba(112,255,211,.12)!important;
-  border-radius:14px!important;
-  background:rgba(7,15,18,.97)!important;
-  box-shadow:0 22px 60px rgba(0,0,0,.50)!important;
-  backdrop-filter:blur(12px)!important;
+.room-page .profile-x-menu.profile-sheet-menu {
+  position: absolute !important;
+  top: 58px !important;
+  right: 16px !important;
+  z-index: 30 !important;
+  width: 220px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(112, 255, 211, .12) !important;
+  border-radius: 14px !important;
+  background: rgba(7, 15, 18, .97) !important;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .50) !important;
+  backdrop-filter: blur(12px) !important;
 }
-.room-page .profile-x-menu[hidden]{display:none!important}
-.room-page .profile-x-menu button{
-  width:100%!important;
-  min-height:44px!important;
-  padding:0 13px!important;
-  display:flex!important;
-  align-items:center!important;
-  gap:10px!important;
-  border:0!important;
-  border-bottom:1px solid rgba(255,255,255,.055)!important;
-  background:transparent!important;
-  color:rgba(228,240,235,.69)!important;
-  text-align:left!important;
-  font:650 10px/1.3 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  box-shadow:none!important;
+.room-page .profile-x-menu[hidden] {
+  display: none !important;
 }
-.room-page .profile-x-menu button:last-child{border-bottom:0!important}
-.room-page .profile-x-menu button:hover{
-  background:rgba(65,230,176,.07)!important;
-  color:#effff8!important;
+.room-page .profile-x-menu button {
+  width: 100% !important;
+  min-height: 44px !important;
+  padding: 0 13px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, .055) !important;
+  background: transparent !important;
+  color: rgba(228, 240, 235, .69) !important;
+  text-align: left !important;
+  font:
+    650 10px/1.3 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+  box-shadow: none !important;
 }
-.room-page .profile-x-menu-icon{
-  width:22px!important;
-  height:22px!important;
-  display:grid!important;
-  place-items:center!important;
-  border-radius:7px!important;
-  background:rgba(255,255,255,.035)!important;
-  color:#66eab9!important;
-  font-weight:850!important;
+.room-page .profile-x-menu button:last-child {
+  border-bottom: 0 !important;
 }
-
-.room-page .profile-x-identity-row.profile-avatar-row{
-  position:relative!important;
-  height:auto!important;
-  min-height:92px!important;
-  margin:0!important;
-  padding:0 24px 0 145px!important;
-  display:flex!important;
-  align-items:flex-start!important;
+.room-page .profile-x-menu button:hover {
+  background: rgba(65, 230, 176, .07) !important;
+  color: #effff8 !important;
 }
-
-.room-page .profile-x-avatar.profile-avatar-big{
-  position:absolute!important;
-  left:24px!important;
-  top:-64px!important;
-  bottom:auto!important;
-  width:108px!important;
-  height:108px!important;
-  padding:4px!important;
-  border:1px solid rgba(102,255,207,.40)!important;
-  border-radius:28px!important;
+.room-page .profile-x-menu-icon {
+  width: 22px !important;
+  height: 22px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 7px !important;
+  background: rgba(255, 255, 255, .035) !important;
+  color: #66eab9 !important;
+  font-weight: 850 !important;
+}
+.room-page .profile-x-identity-row.profile-avatar-row {
+  position: relative !important;
+  height: auto !important;
+  min-height: 92px !important;
+  margin: 0 !important;
+  padding: 0 24px 0 145px !important;
+  display: flex !important;
+  align-items: flex-start !important;
+}
+.room-page .profile-x-avatar.profile-avatar-big {
+  position: absolute !important;
+  left: 24px !important;
+  top: -64px !important;
+  bottom: auto !important;
+  width: 108px !important;
+  height: 108px !important;
+  padding: 4px !important;
+  border: 1px solid rgba(102, 255, 207, .40) !important;
+  border-radius: 28px !important;
   background:
-    linear-gradient(145deg,rgba(25,79,62,.98),rgba(5,14,18,.99))!important;
+    linear-gradient(
+      145deg,
+      rgba(25, 79, 62, .98),
+      rgba(5, 14, 18, .99)) !important;
   box-shadow:
-    0 16px 38px rgba(0,0,0,.48),
-    0 0 0 6px rgba(5,12,15,.95),
-    0 0 34px rgba(69,238,181,.11)!important;
-  overflow:visible!important;
+    0 16px 38px rgba(0, 0, 0, .48),
+    0 0 0 6px rgba(5, 12, 15, .95),
+    0 0 34px rgba(69, 238, 181, .11) !important;
+  overflow: visible !important;
 }
-.room-page .profile-x-avatar.profile-avatar-big::after{display:none!important}
-.room-page .profile-x-avatar img{
-  width:100%!important;
-  height:100%!important;
-  display:block!important;
-  object-fit:cover!important;
-  border-radius:23px!important;
+.room-page .profile-x-avatar.profile-avatar-big::after {
+  display: none !important;
 }
-
-.room-page .profile-x-avatar-ring{
-  position:absolute!important;
-  inset:-7px!important;
-  pointer-events:none!important;
-  border:1px solid rgba(102,255,207,.13)!important;
-  border-radius:34px!important;
-  opacity:.75!important;
+.room-page .profile-x-avatar img {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: cover !important;
+  border-radius: 23px !important;
 }
-.room-page .profile-x-presence{
-  position:absolute!important;
-  right:-1px!important;
-  bottom:-1px!important;
-  width:20px!important;
-  height:20px!important;
-  border:5px solid #071014!important;
-  border-radius:50%!important;
-  background:#55f2bd!important;
-  box-shadow:0 0 10px rgba(85,242,189,.55)!important;
+.room-page .profile-x-avatar-ring {
+  position: absolute !important;
+  inset: -7px !important;
+  pointer-events: none !important;
+  border: 1px solid rgba(102, 255, 207, .13) !important;
+  border-radius: 34px !important;
+  opacity: .75 !important;
 }
-
-.room-page .profile-x-identity{
-  width:100%!important;
-  min-width:0!important;
-  padding-top:15px!important;
+.room-page .profile-x-presence {
+  position: absolute !important;
+  right: -1px !important;
+  bottom: -1px !important;
+  width: 20px !important;
+  height: 20px !important;
+  border: 5px solid #071014 !important;
+  border-radius: 50% !important;
+  background: #55f2bd !important;
+  box-shadow: 0 0 10px rgba(85, 242, 189, .55) !important;
 }
-
-.room-page .profile-x-card .profile-display-name{
-  min-height:0!important;
-  margin:0 0 4px!important;
-  padding:0!important;
-  color:#f3fff9!important;
-  font:900 24px/1.08 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  letter-spacing:-.032em!important;
-  text-align:left!important;
-  text-transform:none!important;
-  text-shadow:none!important;
-  overflow-wrap:anywhere!important;
+.room-page .profile-x-identity {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding-top: 15px !important;
 }
-
-.room-page .profile-x-card .profile-username{
-  margin:0!important;
-  padding:0!important;
-  color:rgba(178,211,199,.50)!important;
-  font:650 10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace!important;
-  text-align:left!important;
-  letter-spacing:.015em!important;
+.room-page .profile-x-card .profile-display-name {
+  min-height: 0 !important;
+  margin: 0 0 4px !important;
+  padding: 0 !important;
+  color: #f3fff9 !important;
+  font:
+    900 24px/1.08 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+  letter-spacing: -.032em !important;
+  text-align: left !important;
+  text-transform: none !important;
+  text-shadow: none !important;
+  overflow-wrap: anywhere !important;
 }
-
-.room-page .profile-x-context.profile-sheet-mutual{
-  display:inline-flex!important;
-  align-items:center!important;
-  min-height:25px!important;
-  margin:9px 0 0!important;
-  padding:0 9px!important;
-  border:1px solid rgba(108,244,200,.10)!important;
-  border-radius:999px!important;
-  background:rgba(64,215,164,.045)!important;
-  color:rgba(161,205,190,.58)!important;
-  font:700 8px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  letter-spacing:.04em!important;
+.room-page .profile-x-card .profile-username {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: rgba(178, 211, 199, .50) !important;
+  font:
+    650 10px/1.4 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace !important;
+  text-align: left !important;
+  letter-spacing: .015em !important;
 }
-
-.room-page .profile-x-content.profile-sheet-content{
-  padding:0 24px 0!important;
+.room-page .profile-x-context.profile-sheet-mutual {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 25px !important;
+  margin: 9px 0 0 !important;
+  padding: 0 9px !important;
+  border: 1px solid rgba(108, 244, 200, .10) !important;
+  border-radius: 999px !important;
+  background: rgba(64, 215, 164, .045) !important;
+  color: rgba(161, 205, 190, .58) !important;
+  font:
+    700 8px/1 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+  letter-spacing: .04em !important;
 }
-
-.room-page .profile-x-actions.profile-sheet-actions{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr) 46px!important;
-  gap:9px!important;
-  margin:8px 0 18px!important;
+.room-page .profile-x-content.profile-sheet-content {
+  padding: 0 24px 0 !important;
 }
-
-.room-page .profile-x-actions .btn{
-  height:46px!important;
-  min-height:46px!important;
-  margin:0!important;
-  border-radius:13px!important;
-  box-shadow:none!important;
-  font:750 10px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+.room-page .profile-x-actions.profile-sheet-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 46px !important;
+  gap: 9px !important;
+  margin: 8px 0 18px !important;
 }
-
-.room-page .profile-x-message-btn.btn-primary{
-  position:relative!important;
-  display:flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  gap:9px!important;
-  padding:0 14px!important;
-  overflow:hidden!important;
-  border:1px solid rgba(100,255,205,.34)!important;
+.room-page .profile-x-actions .btn {
+  height: 46px !important;
+  min-height: 46px !important;
+  margin: 0 !important;
+  border-radius: 13px !important;
+  box-shadow: none !important;
+  font:
+    750 10px/1 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+}
+.room-page .profile-x-message-btn.btn-primary {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 9px !important;
+  padding: 0 14px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(100, 255, 205, .34) !important;
   background:
-    linear-gradient(135deg,rgba(49,214,158,.98),rgba(29,130,101,.98))!important;
-  color:#02150e!important;
-  box-shadow:
-    0 10px 28px rgba(36,211,153,.13),
-    inset 0 1px rgba(255,255,255,.22)!important;
-  transition:transform .2s ease,filter .2s ease,box-shadow .2s ease!important;
+    linear-gradient(
+      135deg,
+      rgba(49, 214, 158, .98),
+      rgba(29, 130, 101, .98)) !important;
+  color: #02150e !important;
+  box-shadow: 0 10px 28px rgba(36, 211, 153, .13), inset 0 1px rgba(255, 255, 255, .22) !important;
+  transition:
+    transform .2s ease,
+    filter .2s ease,
+    box-shadow .2s ease !important;
 }
-.room-page .profile-x-message-btn::before{
-  content:""!important;
-  position:absolute!important;
-  inset:0!important;
-  background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.22) 48%,transparent 72%)!important;
-  transform:translateX(-130%)!important;
-  transition:transform .65s ease!important;
-}
-.room-page .profile-x-message-btn:hover::before{transform:translateX(130%)!important}
-.room-page .profile-x-message-btn:hover{
-  transform:translateY(-1px)!important;
-  filter:brightness(1.07)!important;
-  box-shadow:0 14px 34px rgba(36,211,153,.18)!important;
-}
-.room-page .profile-x-message-btn svg{
-  position:relative!important;
-  z-index:1!important;
-  width:17px!important;
-  height:17px!important;
-  fill:none!important;
-  stroke:currentColor!important;
-  stroke-width:1.8!important;
-}
-.room-page .profile-x-message-btn span{
-  position:relative!important;
-  z-index:1!important;
-}
-
-.room-page .profile-x-close.profile-close-action{
-  width:46px!important;
-  padding:0!important;
-  display:grid!important;
-  place-items:center!important;
-  border:1px solid rgba(255,255,255,.07)!important;
-  background:rgba(13,21,26,.80)!important;
-  color:rgba(220,235,229,.58)!important;
-  transition:.2s ease!important;
-}
-.room-page .profile-x-close:hover{
-  background:rgba(59,25,31,.62)!important;
-  border-color:rgba(255,105,130,.18)!important;
-  color:#ff91a4!important;
-}
-.room-page .profile-x-close svg{
-  width:17px!important;
-  height:17px!important;
-  fill:none!important;
-  stroke:currentColor!important;
-  stroke-width:1.8!important;
-  stroke-linecap:round!important;
-}
-
-.room-page .profile-x-grid{
-  display:grid!important;
-  grid-template-columns:1.25fr .75fr!important;
-  gap:10px!important;
-}
-
-.room-page .profile-x-section.profile-sheet-section{
-  margin:0!important;
-  padding:15px 16px!important;
-  border:1px solid rgba(255,255,255,.055)!important;
-  border-radius:15px!important;
+.room-page .profile-x-message-btn::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
   background:
-    linear-gradient(145deg,rgba(11,20,24,.68),rgba(6,12,15,.80))!important;
-  box-shadow:
-    inset 0 1px rgba(255,255,255,.017),
-    0 8px 24px rgba(0,0,0,.10)!important;
+    linear-gradient(
+      100deg,
+      transparent 20%,
+      rgba(255, 255, 255, .22) 48%,
+      transparent 72%) !important;
+  transform: translateX(-130%) !important;
+  transition: transform .65s ease !important;
 }
-
-.room-page .profile-x-section-title.profile-sheet-label{
-  margin:0 0 10px!important;
-  display:flex!important;
-  align-items:center!important;
-  gap:8px!important;
-  color:rgba(146,191,175,.48)!important;
-  font:850 8px/1.3 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  letter-spacing:.12em!important;
-  text-transform:uppercase!important;
+.room-page .profile-x-message-btn:hover::before {
+  transform: translateX(130%) !important;
 }
-.room-page .profile-x-section-title i{
-  flex:1!important;
-  height:1px!important;
-  background:linear-gradient(90deg,rgba(103,244,197,.10),transparent)!important;
+.room-page .profile-x-message-btn:hover {
+  transform: translateY(-1px) !important;
+  filter: brightness(1.07) !important;
+  box-shadow: 0 14px 34px rgba(36, 211, 153, .18) !important;
 }
-
+.room-page .profile-x-message-btn svg {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 17px !important;
+  height: 17px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8 !important;
+}
+.room-page .profile-x-message-btn span {
+  position: relative !important;
+  z-index: 1 !important;
+}
+.room-page .profile-x-close.profile-close-action {
+  width: 46px !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid rgba(255, 255, 255, .07) !important;
+  background: rgba(13, 21, 26, .80) !important;
+  color: rgba(220, 235, 229, .58) !important;
+  transition: .2s ease !important;
+}
+.room-page .profile-x-close:hover {
+  background: rgba(59, 25, 31, .62) !important;
+  border-color: rgba(255, 105, 130, .18) !important;
+  color: #ff91a4 !important;
+}
+.room-page .profile-x-close svg {
+  width: 17px !important;
+  height: 17px !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8 !important;
+  stroke-linecap: round !important;
+}
+.room-page .profile-x-grid {
+  display: grid !important;
+  grid-template-columns: 1.25fr .75fr !important;
+  gap: 10px !important;
+}
+.room-page .profile-x-section.profile-sheet-section {
+  margin: 0 !important;
+  padding: 15px 16px !important;
+  border: 1px solid rgba(255, 255, 255, .055) !important;
+  border-radius: 15px !important;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(11, 20, 24, .68),
+      rgba(6, 12, 15, .80)) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .017), 0 8px 24px rgba(0, 0, 0, .10) !important;
+}
+.room-page .profile-x-section-title.profile-sheet-label {
+  margin: 0 0 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: rgba(146, 191, 175, .48) !important;
+  font:
+    850 8px/1.3 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase !important;
+}
+.room-page .profile-x-section-title i {
+  flex: 1 !important;
+  height: 1px !important;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(103, 244, 197, .10),
+      transparent) !important;
+}
 .room-page .profile-x-card .profile-bio,
-.room-page .profile-x-card .profile-sheet-value{
-  margin:0!important;
-  padding:0!important;
-  color:rgba(229,240,235,.73)!important;
-  font:500 11px/1.62 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  text-align:left!important;
-  white-space:pre-wrap!important;
-  overflow-wrap:anywhere!important;
+.room-page .profile-x-card .profile-sheet-value {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: rgba(229, 240, 235, .73) !important;
+  font:
+    500 11px/1.62 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+  text-align: left !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
 }
-
-.room-page .profile-x-since .profile-sheet-value{
-  color:rgba(200,220,212,.63)!important;
-  font-size:10px!important;
+.room-page .profile-x-since .profile-sheet-value {
+  color: rgba(200, 220, 212, .63) !important;
+  font-size: 10px !important;
 }
-
-.room-page .profile-x-roles-section{
-  margin-top:10px!important;
+.room-page .profile-x-roles-section {
+  margin-top: 10px !important;
 }
-
-.room-page .profile-x-roles.profile-sheet-roles{
-  display:flex!important;
-  flex-wrap:wrap!important;
-  gap:7px!important;
-  min-height:28px!important;
+.room-page .profile-x-roles.profile-sheet-roles {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  min-height: 28px !important;
 }
-
-.room-page .profile-x-card .profile-sheet-role{
-  display:inline-flex!important;
-  align-items:center!important;
-  gap:7px!important;
-  min-height:29px!important;
-  padding:6px 10px!important;
-  border:1px solid color-mix(in srgb,var(--role-color,#61e7b6) 34%,transparent)!important;
-  border-radius:999px!important;
-  background:color-mix(in srgb,var(--role-color,#61e7b6) 8%,rgba(7,14,17,.86))!important;
-  color:rgba(235,244,241,.80)!important;
-  font:700 9px/1.2 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  box-shadow:none!important;
+.room-page .profile-x-card .profile-sheet-role {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-height: 29px !important;
+  padding: 6px 10px !important;
+  border: 1px solid color-mix(in srgb, var(--role-color,#61e7b6) 34%, transparent) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--role-color,#61e7b6) 8%, rgba(7, 14, 17, .86)) !important;
+  color: rgba(235, 244, 241, .80) !important;
+  font:
+    700 9px/1.2 Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+  box-shadow: none !important;
 }
-.room-page .profile-x-card .profile-sheet-role::before{
-  content:""!important;
-  width:6px!important;
-  height:6px!important;
-  border-radius:50%!important;
-  background:var(--role-color,#61e7b6)!important;
-  box-shadow:0 0 8px color-mix(in srgb,var(--role-color,#61e7b6) 55%,transparent)!important;
+.room-page .profile-x-card .profile-sheet-role::before {
+  content: "" !important;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: var(--role-color,#61e7b6) !important;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--role-color,#61e7b6) 55%, transparent) !important;
 }
-
-.room-page .profile-x-modal.open .profile-x-card{
-  animation:profile-x-enter .52s cubic-bezier(.16,1,.3,1) both!important;
+.room-page .profile-x-modal.open .profile-x-card {
+  animation: profile-x-enter .52s cubic-bezier(.16, 1, .3, 1) both !important;
 }
-.room-page .profile-x-modal.open .profile-x-avatar{
-  animation:profile-x-avatar-in .64s cubic-bezier(.16,1,.3,1) .08s both!important;
+.room-page .profile-x-modal.open .profile-x-avatar {
+  animation: profile-x-avatar-in .64s cubic-bezier(.16, 1, .3, 1) .08s both !important;
 }
-.room-page .profile-x-modal.open .profile-x-identity{
-  animation:profile-x-copy-in .55s cubic-bezier(.16,1,.3,1) .12s both!important;
+.room-page .profile-x-modal.open .profile-x-identity {
+  animation: profile-x-copy-in .55s cubic-bezier(.16, 1, .3, 1) .12s both !important;
 }
-.room-page .profile-x-modal.open .profile-x-content{
-  animation:profile-x-copy-in .58s cubic-bezier(.16,1,.3,1) .18s both!important;
+.room-page .profile-x-modal.open .profile-x-content {
+  animation: profile-x-copy-in .58s cubic-bezier(.16, 1, .3, 1) .18s both !important;
 }
-
-@keyframes profile-x-enter{
-  from{opacity:0;transform:translateY(24px) scale(.955);filter:blur(10px)}
-  to{opacity:1;transform:none;filter:none}
-}
-@keyframes profile-x-avatar-in{
-  from{opacity:0;transform:translateY(14px) scale(.84) rotate(-4deg)}
-  to{opacity:1;transform:none}
-}
-@keyframes profile-x-copy-in{
-  from{opacity:0;transform:translateY(12px)}
-  to{opacity:1;transform:none}
-}
-
-/* Desktop spotlight + subtle parallax */
-@media(pointer:fine){
-  .room-page .profile-x-card{
-    transform-style:preserve-3d!important;
-    transition:border-color .22s ease,box-shadow .22s ease!important;
+@keyframes profile-x-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(.955);
+    filter: blur(10px);
   }
-  .room-page .profile-x-card:hover{
-    border-color:rgba(112,255,211,.22)!important;
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes profile-x-avatar-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(.84) rotate(-4deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes profile-x-copy-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (pointer:fine) {
+  .room-page .profile-x-card {
+    transform-style: preserve-3d !important;
+    transition: border-color .22s ease, box-shadow .22s ease !important;
+  }
+  .room-page .profile-x-card:hover {
+    border-color: rgba(112, 255, 211, .22) !important;
     box-shadow:
-      0 42px 110px rgba(0,0,0,.62),
-      0 0 42px rgba(51,239,174,.035),
-      inset 0 1px rgba(255,255,255,.05)!important;
+      0 42px 110px rgba(0, 0, 0, .62),
+      0 0 42px rgba(51, 239, 174, .035),
+      inset 0 1px rgba(255, 255, 255, .05) !important;
   }
 }
-
-/* Mobile bottom sheet */
-@media(max-width:720px){
-  .room-page .profile-x-modal{
-    align-items:flex-end!important;
-    justify-content:center!important;
-    padding:0!important;
-    background:rgba(2,5,8,.72)!important;
-    backdrop-filter:blur(8px)!important;
+@media (max-width:720px) {
+  .room-page .profile-x-modal {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    background: rgba(2, 5, 8, .72) !important;
+    backdrop-filter: blur(8px) !important;
   }
-
-  .room-page .profile-x-card{
-    width:100%!important;
-    max-width:100%!important;
-    max-height:90dvh!important;
-    padding:0 0 max(16px,env(safe-area-inset-bottom))!important;
-    border-left:0!important;
-    border-right:0!important;
-    border-bottom:0!important;
-    border-radius:26px 26px 0 0!important;
-    box-shadow:0 -26px 80px rgba(0,0,0,.50)!important;
+  .room-page .profile-x-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90dvh !important;
+    padding: 0 0 max(16px, env(safe-area-inset-bottom)) !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 26px 26px 0 0 !important;
+    box-shadow: 0 -26px 80px rgba(0, 0, 0, .50) !important;
   }
-
-  .room-page .profile-x-hero{
-    height:156px!important;
-    min-height:156px!important;
-    border-radius:25px 25px 0 0!important;
+  .room-page .profile-x-hero {
+    height: 156px !important;
+    min-height: 156px !important;
+    border-radius: 25px 25px 0 0 !important;
   }
-
-  .room-page .profile-x-topline{
-    top:13px!important;
-    left:15px!important;
-    right:56px!important;
+  .room-page .profile-x-topline {
+    top: 13px !important;
+    left: 15px !important;
+    right: 56px !important;
   }
-
-  .room-page .profile-x-more.profile-sheet-more{
-    top:11px!important;
-    right:12px!important;
-    width:36px!important;
-    height:36px!important;
+  .room-page .profile-x-more.profile-sheet-more {
+    top: 11px !important;
+    right: 12px !important;
+    width: 36px !important;
+    height: 36px !important;
   }
-
-  .room-page .profile-x-menu.profile-sheet-menu{
-    top:53px!important;
-    right:12px!important;
-    width:calc(100% - 24px)!important;
-    max-width:300px!important;
+  .room-page .profile-x-menu.profile-sheet-menu {
+    top: 53px !important;
+    right: 12px !important;
+    width: calc(100% - 24px) !important;
+    max-width: 300px !important;
   }
-
-  .room-page .profile-x-identity-row.profile-avatar-row{
-    min-height:82px!important;
-    padding:0 16px 0 114px!important;
+  .room-page .profile-x-identity-row.profile-avatar-row {
+    min-height: 82px !important;
+    padding: 0 16px 0 114px !important;
   }
-
-  .room-page .profile-x-avatar.profile-avatar-big{
-    left:17px!important;
-    top:-50px!important;
-    width:82px!important;
-    height:82px!important;
-    padding:3px!important;
-    border-radius:23px!important;
+  .room-page .profile-x-avatar.profile-avatar-big {
+    left: 17px !important;
+    top: -50px !important;
+    width: 82px !important;
+    height: 82px !important;
+    padding: 3px !important;
+    border-radius: 23px !important;
     box-shadow:
-      0 12px 30px rgba(0,0,0,.44),
-      0 0 0 5px rgba(5,12,15,.95),
-      0 0 26px rgba(69,238,181,.08)!important;
+      0 12px 30px rgba(0, 0, 0, .44),
+      0 0 0 5px rgba(5, 12, 15, .95),
+      0 0 26px rgba(69, 238, 181, .08) !important;
   }
-
-  .room-page .profile-x-avatar img{
-    border-radius:19px!important;
+  .room-page .profile-x-avatar img {
+    border-radius: 19px !important;
   }
-  .room-page .profile-x-avatar-ring{
-    inset:-6px!important;
-    border-radius:28px!important;
+  .room-page .profile-x-avatar-ring {
+    inset: -6px !important;
+    border-radius: 28px !important;
   }
-  .room-page .profile-x-presence{
-    width:17px!important;
-    height:17px!important;
-    border-width:4px!important;
+  .room-page .profile-x-presence {
+    width: 17px !important;
+    height: 17px !important;
+    border-width: 4px !important;
   }
-
-  .room-page .profile-x-identity{
-    padding-top:11px!important;
+  .room-page .profile-x-identity {
+    padding-top: 11px !important;
   }
-
-  .room-page .profile-x-card .profile-display-name{
-    font-size:19px!important;
+  .room-page .profile-x-card .profile-display-name {
+    font-size: 19px !important;
   }
-
-  .room-page .profile-x-context.profile-sheet-mutual{
-    min-height:22px!important;
-    margin-top:7px!important;
-    padding:0 8px!important;
-    font-size:7.5px!important;
+  .room-page .profile-x-context.profile-sheet-mutual {
+    min-height: 22px !important;
+    margin-top: 7px !important;
+    padding: 0 8px !important;
+    font-size: 7.5px !important;
   }
-
-  .room-page .profile-x-content.profile-sheet-content{
-    padding:0 16px!important;
+  .room-page .profile-x-content.profile-sheet-content {
+    padding: 0 16px !important;
   }
-
-  .room-page .profile-x-actions.profile-sheet-actions{
-    margin:6px 0 14px!important;
+  .room-page .profile-x-actions.profile-sheet-actions {
+    margin: 6px 0 14px !important;
   }
-
-  .room-page .profile-x-actions .btn{
-    height:44px!important;
-    min-height:44px!important;
+  .room-page .profile-x-actions .btn {
+    height: 44px !important;
+    min-height: 44px !important;
   }
-
-  .room-page .profile-x-grid{
-    grid-template-columns:1fr!important;
-    gap:8px!important;
+  .room-page .profile-x-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
   }
-
-  .room-page .profile-x-section.profile-sheet-section{
-    padding:13px 14px!important;
-    border-radius:13px!important;
+  .room-page .profile-x-section.profile-sheet-section {
+    padding: 13px 14px !important;
+    border-radius: 13px !important;
   }
-
-  .room-page .profile-x-roles-section{
-    margin-top:8px!important;
+  .room-page .profile-x-roles-section {
+    margin-top: 8px !important;
   }
 }
-
-/* Native app: denser without losing the new design */
-html.cat-native-app .room-page .profile-x-card{
-  max-height:86dvh!important;
+html.cat-native-app .room-page .profile-x-card {
+  max-height: 86dvh !important;
 }
-html.cat-native-app .room-page .profile-x-hero{
-  height:136px!important;
-  min-height:136px!important;
+html.cat-native-app .room-page .profile-x-hero {
+  height: 136px !important;
+  min-height: 136px !important;
 }
-html.cat-native-app .room-page .profile-x-identity-row.profile-avatar-row{
-  min-height:74px!important;
+html.cat-native-app .room-page .profile-x-identity-row.profile-avatar-row {
+  min-height: 74px !important;
 }
-html.cat-native-app .room-page .profile-x-avatar.profile-avatar-big{
-  width:74px!important;
-  height:74px!important;
-  top:-45px!important;
+html.cat-native-app .room-page .profile-x-avatar.profile-avatar-big {
+  width: 74px !important;
+  height: 74px !important;
+  top: -45px !important;
 }
-html.cat-native-app .room-page .profile-x-identity-row.profile-avatar-row{
-  padding-left:104px!important;
+html.cat-native-app .room-page .profile-x-identity-row.profile-avatar-row {
+  padding-left: 104px !important;
 }
-html.cat-native-app .room-page .profile-x-card .profile-display-name{
-  font-size:17px!important;
+html.cat-native-app .room-page .profile-x-card .profile-display-name {
+  font-size: 17px !important;
 }
-html.cat-native-app .room-page .profile-x-content.profile-sheet-content{
-  padding:0 14px!important;
+html.cat-native-app .room-page .profile-x-content.profile-sheet-content {
+  padding: 0 14px !important;
 }
-html.cat-native-app .room-page .profile-x-section.profile-sheet-section{
-  padding:11px 12px!important;
+html.cat-native-app .room-page .profile-x-section.profile-sheet-section {
+  padding: 11px 12px !important;
 }
-
-@media(prefers-reduced-motion:reduce){
+@media (prefers-reduced-motion:reduce) {
   .room-page .profile-x-modal.open .profile-x-card,
   .room-page .profile-x-modal.open .profile-x-avatar,
   .room-page .profile-x-modal.open .profile-x-identity,
-  .room-page .profile-x-modal.open .profile-x-content{
-    animation:none!important;
+  .room-page .profile-x-modal.open .profile-x-content {
+    animation: none !important;
   }
 }
