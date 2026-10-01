@@ -131,7 +131,7 @@ function renderConversationList() {
     const text = blocked ? 'Conversa bloqueada' : (c.last_message ? (c.last_message.length > 34 ? c.last_message.slice(0, 34) + '…' : c.last_message) : (c.last_has_file ? '📄 Arquivo' : ''));
     const active = c.id === currentOtherId ? ' active' : '';
     return `<div class="channel-item dm-item${active}${blocked ? ' dm-item-blocked' : ''}" data-id="${esc(c.id)}">
-      <div class="dm-avatar"><img src="${c.avatar || '/logo.svg'}" alt=""></div>
+      <div class="dm-avatar"><img src="${esc(c.avatar || '/logo.svg')}" alt=""></div>
       <div class="dm-info">
         <div class="cname">${esc(c.display_name || c.username)}</div>
         <div class="dm-preview">${esc(preview + text)}</div>
@@ -156,7 +156,7 @@ async function openConversation(otherId) {
     currentOtherUser = d.user;
     currentBlockState = d.blockState || { blocked_by_me:false, blocked_me:false };
     revealBlockedMessages = false;
-    $('dmHeader').innerHTML = `<button type="button" class="dm-header-user" data-open-dm-profile><img src="${d.user.avatar || '/logo.svg'}" alt=""><span><strong>${esc(d.user.display_name || d.user.username)}</strong><small>@${esc(d.user.username)}</small></span><span class="dm-header-chevron">›</span></button><div class="dm-header-actions"><button type="button" class="dm-head-icon" title="Buscar">⌕</button></div>`;
+    $('dmHeader').innerHTML = `<button type="button" class="dm-header-user" data-open-dm-profile><img src="${esc(d.user.avatar || '/logo.svg')}" alt=""><span><strong>${esc(d.user.display_name || d.user.username)}</strong><small>@${esc(d.user.username)}</small></span><span class="dm-header-chevron">›</span></button><div class="dm-header-actions"><button type="button" class="dm-head-icon" title="Buscar">⌕</button></div>`;
     $('mobileTitle').textContent = d.user.display_name || d.user.username;
     updateDmComposerState();
     renderMessages(d.messages);
@@ -176,7 +176,7 @@ function dmIntroHtml() {
   const u=currentOtherUser;
   if(!u) return '';
   const blocked=currentBlockState.blocked_by_me;
-  return `<section class="dm-profile-intro"><img class="dm-intro-avatar" src="${u.avatar || '/logo.svg'}" alt=""><h1>${esc(u.display_name || u.username)}</h1><div class="dm-intro-username">@${esc(u.username)}</div><p>Este é o começo da sua conversa com ${esc(u.display_name || u.username)}.</p><div class="dm-intro-actions"><button type="button" class="btn btn-primary" data-dm-friend>Enviar pedido de amizade</button><button type="button" class="btn ${blocked ? 'btn-primary' : ''}" data-dm-block>${blocked ? 'Desbloquear' : 'Bloquear'}</button></div></section>`;
+  return `<section class="dm-profile-intro"><img class="dm-intro-avatar" src="${esc(u.avatar || '/logo.svg')}" alt=""><h1>${esc(u.display_name || u.username)}</h1><div class="dm-intro-username">@${esc(u.username)}</div><p>Este é o começo da sua conversa com ${esc(u.display_name || u.username)}.</p><div class="dm-intro-actions"><button type="button" class="btn btn-primary" data-dm-friend>Enviar pedido de amizade</button><button type="button" class="btn ${blocked ? 'btn-primary' : ''}" data-dm-block>${blocked ? 'Desbloquear' : 'Bloquear'}</button></div></section>`;
 }
 function renderMessages(msgs) {
   const intro=dmIntroHtml();
@@ -200,7 +200,7 @@ function messageHtml(m) {
   const time = new Date((m.created_at || 0) * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   let fileHtml = '';
   if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
-    fileHtml = `<img class="message-image" src="${m.file_data}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${m.file_data}">`;
+    fileHtml = `<img class="message-image" src="${esc(m.file_data)}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${esc(m.file_data)}">`;
   } else if (m.file_data) {
     fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
@@ -211,7 +211,7 @@ function messageHtml(m) {
       <button class="msg-tool-btn" data-action="delete" title="Excluir">🗑️</button>
     </div>` : '';
   return `<div class="message" data-message-id="${esc(m.id)}" data-user-id="${esc(m.sender_id)}">
-    <div class="message-avatar" data-user-id="${esc(m.sender_id)}"><img src="${m.sender_avatar || '/logo.svg'}" alt=""></div>
+    <div class="message-avatar" data-user-id="${esc(m.sender_id)}"><img src="${esc(m.sender_avatar || '/logo.svg')}" alt=""></div>
     <div class="message-body">
       <div class="message-head">
         <span class="message-author" data-user-id="${esc(m.sender_id)}">${esc(m.sender_display_name || m.sender_username || 'Membro')}</span>
@@ -436,7 +436,7 @@ $('dmProfileMessageBtn')?.addEventListener('click',()=>{
 });
 async function loadBlockedAccounts(){
  const list=$('blockedAccountsList');if(!list)return;
- try{const r=await fetch('/api/social/blocks',{headers:headers()});const rows=await r.json();if(!r.ok)throw new Error(rows.error||'Erro ao carregar bloqueios');list.innerHTML=rows.length?rows.map(u=>`<div class="blocked-account-row"><img src="${u.avatar||'/logo.svg'}" alt=""><div><strong>${esc(u.display_name||u.username)}</strong><small>@${esc(u.username)}</small></div><button type="button" class="btn" data-unblock-id="${esc(u.id)}">Desbloquear</button></div>`).join(''):'<p class="empty-hint">Nenhuma conta bloqueada.</p>';}catch(e){list.innerHTML='<p class="empty-hint">'+esc(e.message)+'</p>';}
+ try{const r=await fetch('/api/social/blocks',{headers:headers()});const rows=await r.json();if(!r.ok)throw new Error(rows.error||'Erro ao carregar bloqueios');list.innerHTML=rows.length?rows.map(u=>`<div class="blocked-account-row"><img src="${esc(u.avatar||'/logo.svg')}" alt=""><div><strong>${esc(u.display_name||u.username)}</strong><small>@${esc(u.username)}</small></div><button type="button" class="btn" data-unblock-id="${esc(u.id)}">Desbloquear</button></div>`).join(''):'<p class="empty-hint">Nenhuma conta bloqueada.</p>';}catch(e){list.innerHTML='<p class="empty-hint">'+esc(e.message)+'</p>';}
 }
 $('refreshBlockedBtn')?.addEventListener('click',loadBlockedAccounts);
 $('blockedAccountsList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-unblock-id]');if(!b)return;await fetch('/api/social/blocks/'+encodeURIComponent(b.dataset.unblockId),{method:'DELETE',headers:headers()});loadBlockedAccounts();if(currentOtherId===b.dataset.unblockId)openConversation(currentOtherId);});
