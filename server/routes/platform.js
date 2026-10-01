@@ -83,29 +83,6 @@ function fail(res, e, fallback) {
 }
 
 // ===== ROLES =====
-router.get('/servers/:serverId/roles', async (req, res) => {
-  try {
-    await requireMember(req.params.serverId, req.user.id);
-    const roles = await query(`SELECT r.*, COUNT(rm.user_id)::int AS member_count
-      FROM server_roles r LEFT JOIN server_role_members rm ON rm.role_id=r.id
-      WHERE r.server_id=$1 GROUP BY r.id ORDER BY r.position DESC`, [req.params.serverId]);
-    res.json(roles);
-  } catch (e) { fail(res, e, 'Erro ao listar cargos'); }
-});
-
-router.post('/servers/:serverId/roles', async (req, res) => {
-  try {
-    await requireManage(req.params.serverId, req.user.id);
-    const name = String(req.body.name || 'Novo cargo').trim().slice(0, 32);
-    if (!name) throw new Error('Nome do cargo inválido');
-    const max = await queryOne('SELECT COALESCE(MAX(position),0) AS p FROM server_roles WHERE server_id=$1', [req.params.serverId]);
-    const role = await queryOne(`INSERT INTO server_roles (id,server_id,name,color,icon,position,permissions,mentionable)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`, [uuidv4(), req.params.serverId, name, req.body.color || null, req.body.icon || null, Number(max.p) + 1, JSON.stringify(req.body.permissions || {}), !!req.body.mentionable]);
-    await audit(req.params.serverId, req.user.id, 'role.create', 'role', role.id, { name });
-    res.json(role);
-  } catch (e) { fail(res, e, 'Erro ao criar cargo'); }
-});
-
 router.put('/servers/:serverId/roles/:roleId', async (req, res) => {
   try {
     const actorRole = await requireManage(req.params.serverId, req.user.id);
@@ -125,17 +102,6 @@ router.put('/servers/:serverId/roles/:roleId', async (req, res) => {
     await audit(req.params.serverId, req.user.id, 'role.update', 'role', role.id, next);
     res.json(role);
   } catch (e) { fail(res, e, 'Erro ao editar cargo'); }
-});
-
-router.delete('/servers/:serverId/roles/:roleId', async (req, res) => {
-  try {
-    await requireManage(req.params.serverId, req.user.id);
-    if (req.params.roleId.endsWith(':everyone')) return res.status(400).json({ error: 'O cargo padrão não pode ser removido' });
-    const deleted = await queryOne('DELETE FROM server_roles WHERE server_id=$1 AND id=$2 RETURNING id', [req.params.serverId, req.params.roleId]);
-    if (!deleted) return res.status(404).json({ error: 'Cargo não encontrado' });
-    await audit(req.params.serverId, req.user.id, 'role.delete', 'role', deleted.id);
-    res.json({ success: true });
-  } catch (e) { fail(res, e, 'Erro ao excluir cargo'); }
 });
 
 router.put('/servers/:serverId/members/:userId/roles', async (req, res) => {
