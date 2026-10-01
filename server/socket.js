@@ -4,7 +4,7 @@ const ServerModel = require('./database/models/Server');
 const User = require('./database/models/User');
 const Dm = require('./database/models/Dm');
 const config = require('./config');
-const { configuredOrigins, sessionTokenFromCookieHeader, verifyAccessToken } = require('./security');
+const { configuredOrigins, originAllowed, sessionTokenFromCookieHeader, verifyAccessToken } = require('./security');
 const { sanitizeAttachment, cleanMessageText } = require('./input-security');
 
 function setupSocket(server) {
@@ -12,6 +12,10 @@ function setupSocket(server) {
     cors: {
       origin: config.nodeEnv !== 'production' && configuredOrigins().includes('*') ? '*' : configuredOrigins(),
       methods: ['GET', 'POST']
+    },
+    allowRequest(req, callback) {
+      const origin = String(req.headers.origin || '').trim();
+      callback(null, !origin || originAllowed(origin));
     },
     // Padrão do Socket.IO é 1MB — muito pouco pra imagem em base64 (até ~11MB
     // pra um arquivo de 8MB). Sem isso, 'send-message' com anexo grande
