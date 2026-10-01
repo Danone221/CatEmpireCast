@@ -120,6 +120,20 @@ function validateImageValue(value, { allowShortText = false, maxLength = 700000 
   return parsed.toString();
 }
 
+function validatePublicHttpsUrl(value, maxLength = 2048) {
+  if (value == null || value === '') return null;
+  const raw = String(value).trim();
+  if (!raw || raw.length > maxLength) throw new Error('URL inválida ou muito grande');
+
+  let parsed;
+  try { parsed = new URL(raw); } catch (_) { throw new Error('URL inválida'); }
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password || isPrivateHost(parsed.hostname)) {
+    throw new Error('URL não permitida');
+  }
+  return parsed.toString();
+}
+
+
 async function createAccessToken(user) {
   const state = await queryOne('SELECT auth_version FROM users WHERE id=$1', [user.id]);
   if (!state) throw new Error('Usuário não encontrado');
@@ -220,5 +234,6 @@ module.exports = {
   sanitizePlainText,
   sessionTokenFromCookieHeader,
   validateImageValue,
+  validatePublicHttpsUrl,
   verifyAccessToken
 };
