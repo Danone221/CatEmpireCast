@@ -7,7 +7,27 @@ const { sanitizePlainText, validateImageValue } = require('../security');
 const router = express.Router();
 router.use(authenticate);
 
+
 const fail = (res, error, fallback) => res.status(error.status || 400).json({ error: error.message || fallback });
+const securityLevels = new Set(['none', 'low', 'medium', 'high', 'highest']);
+const notificationModes = new Set(['all', 'mentions', 'none']);
+
+function boundedJson(value, fallback, maxBytes = 32768) {
+  const normalized = value == null ? fallback : value;
+  const json = JSON.stringify(normalized);
+  if (Buffer.byteLength(json, 'utf8') > maxBytes) {
+    throw Object.assign(new Error('Configuração excede o limite permitido'), { status: 413 });
+  }
+  return json;
+}
+
+async function requireChannelInServer(serverId, channelId) {
+  if (!channelId) return null;
+  const row = await queryOne('SELECT id FROM channels WHERE id=$1 AND server_id=$2', [channelId, serverId]);
+  if (!row) throw Object.assign(new Error('Canal não pertence a este servidor'), { status: 400 });
+  return channelId;
+}
+
 const requireServerMember = async (serverId, userId) => {
   const member = await queryOne('SELECT * FROM server_members WHERE server_id=$1 AND user_id=$2', [serverId, userId]);
   if (!member) throw Object.assign(new Error('Você não é membro deste servidor'), { status: 403 });
@@ -70,7 +90,7 @@ router.patch('/servers/:serverId/profile', async (req, res) => {
       add('banner', !raw ? null : validateImageValue(raw, { maxLength: 900000 }));
     }
     if (req.body.settings && typeof req.body.settings === 'object' && !Array.isArray(req.body.settings)) {
-      add('settings', JSON.stringify(req.body.settings));
+      add('settings', boundedJson(req.body.settings, {}, 32768));
     }
 
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
@@ -87,12 +107,16 @@ router.get('/servers/:serverId/security', async (req, res) => {
 router.put('/servers/:serverId/security', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
+    const verificationLevel = String(req.body.verificationLevel || 'low').toLowerCase();
+    if (!securityLevels.has(verificationLevel)) {
+      return res.status(400).json({ error: 'Nível de verificação inválido' });
+    }
     const s = await queryOne(`INSERT INTO server_security(server_id,verification_level,explicit_media_filter,raid_protection,two_factor_moderation)
-      VALUES($1,COALESCE($2,'low'),COALESCE($3,false),COALESCE($4,false),COALESCE($5,false))
+      VALUES($1,$2,$3,$4,$5)
       ON CONFLICT(server_id) DO UPDATE SET verification_level=EXCLUDED.verification_level,
       explicit_media_filter=EXCLUDED.explicit_media_filter,raid_protection=EXCLUDED.raid_protection,
       two_factor_moderation=EXCLUDED.two_factor_moderation,updated_at=extract(epoch FROM now())::bigint RETURNING *`,
-      [req.params.serverId, req.body.verificationLevel, req.body.explicitMediaFilter, req.body.raidProtection, req.body.twoFactorModeration]);
+      [req.params.serverId, verificationLevel, !!req.body.explicitMediaFilter, !!req.body.raidProtection, !!req.body.twoFactorModeration]);
     res.json(s);
   } catch (e) { fail(res, e, 'Erro ao salvar segurança'); }
 });
@@ -104,11 +128,17 @@ router.get('/servers/:serverId/community', async (req, res) => {
 router.put('/servers/:serverId/community', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
+    const rulesChannelId = await requireChannelInServer(req.params.serverId, req.body.rulesChannelId || null);
+    const updatesChannelId = await requireChannelInServer(req.params.serverId, req.body.updatesChannelId || null);
+    const defaultNotifications = String(req.body.defaultNotifications || 'all').toLowerCase();
+    if (!notificationModes.has(defaultNotifications)) {
+      return res.status(400).json({ error: 'Modo de notificação inválido' });
+    }
     const c = await queryOne(`INSERT INTO server_community(server_id,enabled,rules_channel_id,updates_channel_id,default_notifications)
-      VALUES($1,COALESCE($2,false),$3,$4,COALESCE($5,'all'))
+      VALUES($1,$2,$3,$4,$5)
       ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules_channel_id=EXCLUDED.rules_channel_id,
       updates_channel_id=EXCLUDED.updates_channel_id,default_notifications=EXCLUDED.default_notifications,
-      updated_at=extract(epoch FROM now())::bigint RETURNING *`, [req.params.serverId, req.body.enabled, req.body.rulesChannelId || null, req.body.updatesChannelId || null, req.body.defaultNotifications]);
+      updated_at=extract(epoch FROM now())::bigint RETURNING *`, [req.params.serverId, !!req.body.enabled, rulesChannelId, updatesChannelId, defaultNotifications]);
     res.json(c);
   } catch (e) { fail(res, e, 'Erro ao salvar comunidade'); }
 });
@@ -119,9 +149,19 @@ router.post('/servers/:serverId/invites', async (req, res) => {
     await requireServerMember(req.params.serverId, req.user.id);
     let code = String(req.body.code || '').trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 24);
     if (!code) code = uuidv4().replace(/-/g, '').slice(0, 10);
+    const channelId = await requireChannelInServer(req.params.serverId, req.body.channelId || null);
+    const rawMaxUses = req.body.maxUses == null || req.body.maxUses === '' ? null : Number(req.body.maxUses);
+    const rawExpiresAt = req.body.expiresAt == null || req.body.expiresAt === '' ? null : Number(req.body.expiresAt);
+    const maxUses = rawMaxUses == null ? null : Math.trunc(rawMaxUses);
+    const expiresAt = rawExpiresAt == null ? null : Math.trunc(rawExpiresAt);
+    if (maxUses != null && (!Number.isFinite(maxUses) || maxUses < 1 || maxUses > 10000)) {
+      return res.status(400).json({ error: 'Limite de usos inválido' });
+    }
+    if (expiresAt != null && (!Number.isFinite(expiresAt) || expiresAt <= Math.floor(Date.now() / 1000))) {
+      return res.status(400).json({ error: 'Expiração inválida' });
+    }
     const invite = await queryOne(`INSERT INTO server_invites(code,server_id,channel_id,creator_id,max_uses,expires_at)
-      VALUES($1,$2,$3,$4,$5,$6) RETURNING *`, [code, req.params.serverId, req.body.channelId || null, req.user.id,
-      req.body.maxUses ? Number(req.body.maxUses) : null, req.body.expiresAt ? Number(req.body.expiresAt) : null]);
+      VALUES($1,$2,$3,$4,$5,$6) RETURNING *`, [code, req.params.serverId, channelId, req.user.id, maxUses, expiresAt]);
     res.json(invite);
   } catch (e) { fail(res, e, 'Erro ao criar convite'); }
 });
@@ -185,7 +225,7 @@ router.get('/servers/:serverId/emojis', async (req, res) => {
   catch (e) { fail(res, e, 'Erro ao listar emojis'); }
 });
 router.post('/servers/:serverId/emojis', async (req, res) => {
-  try { await requireManage(req.params.serverId, req.user.id); const e=await queryOne(`INSERT INTO server_emojis(id,server_id,name,image,animated) VALUES($1,$2,$3,$4,$5) RETURNING *`, [uuidv4(),req.params.serverId,String(req.body.name||'emoji').slice(0,32),String(req.body.image||'').slice(0,200000),!!req.body.animated]); res.json(e); }
+  try { await requireManage(req.params.serverId, req.user.id); const name=sanitizePlainText(req.body.name||'emoji',32); if(!name)return res.status(400).json({error:'Nome de emoji inválido'}); const image=validateImageValue(req.body.image,{maxLength:200000}); if(!image)return res.status(400).json({error:'Imagem de emoji obrigatória'}); const e=await queryOne(`INSERT INTO server_emojis(id,server_id,name,image,animated) VALUES($1,$2,$3,$4,$5) RETURNING *`, [uuidv4(),req.params.serverId,name,image,!!req.body.animated]); res.json(e); }
   catch (e) { fail(res, e, 'Erro ao criar emoji'); }
 });
 router.delete('/servers/:serverId/emojis/:emojiId', async (req, res) => {
@@ -197,7 +237,7 @@ router.get('/servers/:serverId/stickers', async (req, res) => {
   catch(e){fail(res,e,'Erro ao listar stickers');}
 });
 router.post('/servers/:serverId/stickers', async (req,res)=>{
-  try{await requireManage(req.params.serverId,req.user.id);const s=await queryOne(`INSERT INTO server_stickers(id,server_id,name,description,image) VALUES($1,$2,$3,$4,$5) RETURNING *`,[uuidv4(),req.params.serverId,String(req.body.name||'sticker').slice(0,32),String(req.body.description||'').slice(0,200),String(req.body.image||'').slice(0,200000)]);res.json(s);}catch(e){fail(res,e,'Erro ao criar sticker');}
+  try{await requireManage(req.params.serverId,req.user.id);const name=sanitizePlainText(req.body.name||'sticker',32);if(!name)return res.status(400).json({error:'Nome de sticker inválido'});const description=sanitizePlainText(req.body.description||'',200);const image=validateImageValue(req.body.image,{maxLength:200000});if(!image)return res.status(400).json({error:'Imagem de sticker obrigatória'});const s=await queryOne(`INSERT INTO server_stickers(id,server_id,name,description,image) VALUES($1,$2,$3,$4,$5) RETURNING *`,[uuidv4(),req.params.serverId,name,description,image]);res.json(s);}catch(e){fail(res,e,'Erro ao criar sticker');}
 });
 
 // ===== MODERATION / AUDIT =====
@@ -209,9 +249,9 @@ router.get('/servers/:serverId/audit-log',async(req,res)=>{try{await requireMana
 
 // ===== ONBOARDING / AUTOMOD =====
 router.get('/servers/:serverId/onboarding',async(req,res)=>{try{await requireServerMember(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM onboarding_configs WHERE server_id=$1',[req.params.serverId])||{});}catch(e){fail(res,e,'Erro ao carregar onboarding');}});
-router.put('/servers/:serverId/onboarding',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO onboarding_configs(server_id,enabled,welcome_text,questions,default_roles,default_channels) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,welcome_text=EXCLUDED.welcome_text,questions=EXCLUDED.questions,default_roles=EXCLUDED.default_roles,default_channels=EXCLUDED.default_channels,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,req.body.welcomeText||null,JSON.stringify(req.body.questions||[]),JSON.stringify(req.body.defaultRoles||[]),JSON.stringify(req.body.defaultChannels||[])]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar onboarding');}});
+router.put('/servers/:serverId/onboarding',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO onboarding_configs(server_id,enabled,welcome_text,questions,default_roles,default_channels) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,welcome_text=EXCLUDED.welcome_text,questions=EXCLUDED.questions,default_roles=EXCLUDED.default_roles,default_channels=EXCLUDED.default_channels,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,req.body.welcomeText||null,boundedJson(req.body.questions||[],[],32768),boundedJson(req.body.defaultRoles||[],[],8192),boundedJson(req.body.defaultChannels||[],[],8192)]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar onboarding');}});
 router.get('/servers/:serverId/automod',async(req,res)=>{try{await requireServerMember(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM automod_configs WHERE server_id=$1',[req.params.serverId])||{});}catch(e){fail(res,e,'Erro ao carregar automod');}});
-router.put('/servers/:serverId/automod',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO automod_configs(server_id,enabled,rules,keywords,actions) VALUES($1,$2,$3,$4,$5) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules=EXCLUDED.rules,keywords=EXCLUDED.keywords,actions=EXCLUDED.actions,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,JSON.stringify(req.body.rules||{}),JSON.stringify(req.body.keywords||[]),JSON.stringify(req.body.actions||{})]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar automod');}});
+router.put('/servers/:serverId/automod',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO automod_configs(server_id,enabled,rules,keywords,actions) VALUES($1,$2,$3,$4,$5) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules=EXCLUDED.rules,keywords=EXCLUDED.keywords,actions=EXCLUDED.actions,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,boundedJson(req.body.rules||{},{},16384),boundedJson(req.body.keywords||[],[],16384),boundedJson(req.body.actions||{},{},16384)]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar automod');}});
 
 // ===== GLOBAL SEARCH =====
 router.get('/search',async(req,res)=>{
