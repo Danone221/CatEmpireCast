@@ -1,11 +1,11 @@
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const serverId = q.get('serverId') || localStorage.getItem('cat_last_server');
-const userId = localStorage.getItem('cat_user_id') || q.get('userId');
-const userName = localStorage.getItem('cat_user_name') || q.get('userName') || 'Membro';
-const token = localStorage.getItem('cat_token') || q.get('token');
+const userId = localStorage.getItem('cat_user_id') || '';
+const userName = localStorage.getItem('cat_user_name') || 'Membro';
+localStorage.removeItem('cat_token');
 
-if (!userId || !token) { location.href = '/'; }
+if (!userId) { location.href = '/'; }
 
 const socket = io();
 
@@ -60,7 +60,7 @@ if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
 })();
 
 function headers() {
-  return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
+  return { 'Content-Type': 'application/json' };
 }
 
 function esc(s) {
@@ -104,7 +104,7 @@ async function loadServersRail() {
 
 let hadConnectedBefore = false;
 socket.on('connect', () => {
-  socket.emit('register', { userId, token, serverId });
+  socket.emit('register', { serverId });
   loadServersRail();
   if (selectedTextChannelId) socket.emit('join-text-channel', { channelId: selectedTextChannelId });
   
@@ -123,6 +123,14 @@ socket.on('connect', () => {
 
 socket.on('disconnect', () => {
   if (voiceChannelId) toast('Conexão perdida, reconectando…', 'error');
+});
+socket.on('connect_error', (error) => {
+  if (String(error?.message || '').toLowerCase().includes('unauthorized')) {
+    localStorage.removeItem('cat_user_id');
+    localStorage.removeItem('cat_user_name');
+    localStorage.removeItem('cat_token');
+    location.href = '/';
+  }
 });
 socket.on('error', d => console.error(d));
 
@@ -193,7 +201,7 @@ socket.on('new-dm', (msg) => { if (msg.recipient_id === userId) refreshDmBadge()
 
 // ========== CARREGAR SERVIDOR ==========
 async function load() {
-  if (!serverId || !token) { location.href = '/'; return; }
+  if (!serverId) { location.href = '/'; return; }
   try {
     const r = await fetch('/api/servers/' + serverId, { headers: headers() });
     const d = await r.json();
@@ -1767,7 +1775,8 @@ function fileToDataUrl(file, maxBytes) {
   });
 }
 
-function logout() {
+async function logout() {
+  try { await fetch('/auth/logout', { method: 'POST', headers: headers() }); } catch {}
   localStorage.removeItem('cat_user_id');
   localStorage.removeItem('cat_user_name');
   localStorage.removeItem('cat_token');
@@ -2221,13 +2230,22 @@ function nativeVideoOptions() {
   };
 }
 
-function connectPreparedNativeBroadcast() {
+async function connectPreparedNativeBroadcast() {
   try {
     if (!voiceChannelId) throw new Error('Entre novamente no canal de voz.');
+    const authResponse = await fetch('/auth/native-cast-token', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ channelId: voiceChannelId })
+    });
+    const authData = await authResponse.json();
+    if (!authResponse.ok || !authData.token) {
+      throw new Error(authData.error || 'Não foi possível autorizar a transmissão.');
+    }
     const { quality, fps } = nativeVideoOptions();
     window.CatEmpireNative.startPreparedWebRtc(
-      token,
-      userId,
+      authData.token,
+      authData.userId,
       voiceChannelId,
       location.origin,
       quality,
