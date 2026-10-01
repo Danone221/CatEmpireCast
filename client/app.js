@@ -3,10 +3,10 @@ let userId = localStorage.getItem('cat_user_id') || '';
 let userName = localStorage.getItem('cat_user_name') || '';
 let token = localStorage.getItem('cat_token') || '';
 
-function setSession(user, t) {
+function setSession(user) {
   userId = user.id;
   userName = user.display_name || user.username;
-  token = t;
+  token = 'cookie';
   localStorage.setItem('cat_user_id', userId);
   localStorage.setItem('cat_user_name', userName);
   localStorage.setItem('cat_token', token);
@@ -128,12 +128,11 @@ async function restoreSession() {
     toast('Não foi possível entrar com Discord. Tente novamente.', 'error');
   }
 
-  if (!token) return;
-
   try {
     const r = await fetch('/auth/verify', { headers: headers() });
     if (!r.ok) throw new Error('sessão inválida');
-    // Sessão ativa e válida: redireciona automaticamente para o último servidor ou dms
+    const d = await r.json();
+    if (d?.user) setSession(d.user);
     await resumeUserDestination();
   } catch (e) {
     // Token salvo inválido — limpa sessão

@@ -26,20 +26,84 @@ test('realtime signaling is rate-limited and payload-bounded', () => {
   assert.match(socket, /rateLimited\(socket, 'voice-signal'/);
   assert.match(socket, /rateLimited\(socket, 'native-screen-signal'/);
   assert.match(socket, /rateLimited\(socket, 'dm-typing'/);
+  assert.match(socket, /rateLimited\(socket, 'send-attachment', 4, 60_000\)/);
+  assert.match(socket, /rateLimited\(socket, 'send-dm-attachment', 4, 60_000\)/);
+  assert.match(socket, /rateLimited\(socket, 'edit-message'/);
+  assert.match(socket, /rateLimited\(socket, 'edit-dm'/);
   assert.match(socket, /Buffer\.byteLength\(JSON\.stringify/);
 });
 
-test('mobile login cards avoid backdrop-filter compositor glitches', () => {
+test('mobile login is one stable card with bounded shader work', () => {
   const css = source('client/login-real-theme.css');
   const html = source('client/index.html');
-  assert.match(css, /@media\(max-width:860px\)[\s\S]*-webkit-backdrop-filter:none!important/);
-  assert.match(css, /backdrop-filter:none!important/);
-  assert.match(css, /contain:paint/);
-  assert.match(css, /transform:none!important/);
-  assert.match(html, /login-real-theme\.css\?v=20261001-mobilefix1/);
+  const shader = source('client/liquid-metal-react.jsx');
+  assert.match(css, /real-mobile-card-stable/);
+  assert.match(css, /\.real-login-card\{[\s\S]*border-radius:22px!important/);
+  assert.match(css, /\.real-visual-pane\{[\s\S]*position:absolute!important/);
+  assert.match(css, /\.real-form-pane\{[\s\S]*contain:none!important/);
+  assert.match(css, /#liquidMetalReactRoot canvas\{[\s\S]*filter:none!important/);
+  assert.match(shader, /minPixelRatio: mobile \? 1 : 1\.5/);
+  assert.match(shader, /maxPixelCount: mobile/);
+  assert.match(shader, /webglcontextlost/);
+  assert.match(html, /login-real-theme\.css\?v=20261001-mobilefix2/);
+  assert.match(html, /liquid-metal-react\.bundle\.js\?v=20261001-mobilefix2/);
 });
 
-test('production static surface blocks login lab pages', () => {
+test('production static surface blocks labs and unused legacy clients', () => {
   const app = source('server/app.js');
-  assert.match(app, /login-lab-\\d\+\\\.html/);
+  assert.match(app, /login-lab\(\?:-\\d\+\)\?\\\.html/);
+  assert.match(app, /blockedPublicFiles/);
+  assert.match(app, /features-v2\.js/);
+  assert.match(app, /vnextPages = new Set\(\['\/server\.html', '\/dms\.html'\]\)/);
 });
+
+test('browser sessions use HttpOnly cookies instead of exposing JWTs', () => {
+  const auth = source('server/routes/auth.js');
+  const security = source('server/security.js');
+  const middleware = source('server/middleware/auth.js');
+  const socket = source('server/socket.js');
+  const app = source('client/app.js');
+  assert.match(auth, /HttpOnly; SameSite=Lax/);
+  assert.match(auth, /token: 'cookie'/);
+  assert.match(auth, /#discord_token=cookie/);
+  assert.match(security, /SESSION_COOKIE_NAME = 'cat_session'/);
+  assert.match(security, /accessTokenFromRequest/);
+  assert.match(middleware, /accessTokenFromRequest\(req\)/);
+  assert.match(socket, /sessionTokenFromCookieHeader/);
+  assert.match(app, /token = 'cookie'/);
+});
+
+test('legacy clients do not recover credentials from query strings', () => {
+  for (const file of ['client/banner-persist.js','client/features-v2.js','client/features-v3.js','client/features-v3-fix.js','client/profile-v5.js']) {
+    const js = source(file);
+    assert.doesNotMatch(js, /get\(['"]token['"]\)/);
+    assert.doesNotMatch(js, /get\(['"]userId['"]\)/);
+  }
+  assert.match(source('client/platform-api.js'), /localStorage\.getItem\('cat_token'\)/);
+});
+
+test('websocket upgrades enforce origin and schema migrations constrain identifiers', () => {
+  const socket = source('server/socket.js');
+  const db = source('server/database/index.js');
+  assert.match(socket, /allowRequest\(req, callback\)/);
+  assert.match(socket, /originAllowed\(origin\)/);
+  assert.match(db, /identifier = \/\^\[a-z_\]/);
+  assert.match(db, /allowedTypes = new Set/);
+  assert.match(db, /Migração de schema inválida/);
+});
+
+test('message mutations re-check current access and blocked DMs cannot be edited', () => {
+  const socket = source('server/socket.js');
+  assert.match(socket, /memberRole = channel \? await ServerModel\.getMemberRole/);
+  assert.match(socket, /if \(!memberRole\) return socket\.emit\('error', \{ message: 'Acesso ao canal negado' \}\)/);
+  assert.match(socket, /role === 'admin' \|\| role === 'owner'/);
+  assert.match(socket, /if \(block\) return socket\.emit\('error', \{ message: 'Esta conversa está bloqueada' \}\)/);
+});
+
+test('reserved system role names cannot be spoofed by custom roles', () => {
+  const role = source('server/database/models/Role.js');
+  assert.match(role, /isSystemRoleName/);
+  assert.match(role, /Nome do cargo inválido ou reservado/);
+  assert.match(role, /trim\(\)\.toLowerCase\(\)/);
+});
+

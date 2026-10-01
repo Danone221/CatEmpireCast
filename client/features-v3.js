@@ -1,6 +1,6 @@
 (() => {
 'use strict';
-const $=id=>document.getElementById(id), q=new URLSearchParams(location.search), token=localStorage.getItem('cat_token')||q.get('token')||'', userId=localStorage.getItem('cat_user_id')||q.get('userId')||'', serverId=q.get('serverId')||'';
+const $=id=>document.getElementById(id), q=new URLSearchParams(location.search), token=localStorage.getItem('cat_token')||'', userId=localStorage.getItem('cat_user_id')||'', serverId=q.get('serverId')||'';
 const server=!!$('serverSettingsBtn'), dm=!!$('dmSidebar'), auth=()=>({'Content-Type':'application/json',Authorization:'Bearer '+token});
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const E=['❤️','😂','😮','😢','🔥','👍','👏','🎉','💜','💖','👀','💯']; if(!token||!userId)return;

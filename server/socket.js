@@ -4,7 +4,7 @@ const ServerModel = require('./database/models/Server');
 const User = require('./database/models/User');
 const Dm = require('./database/models/Dm');
 const config = require('./config');
-const { configuredOrigins, verifyAccessToken } = require('./security');
+const { configuredOrigins, originAllowed, sessionTokenFromCookieHeader, verifyAccessToken } = require('./security');
 const { sanitizeAttachment, cleanMessageText } = require('./input-security');
 
 function setupSocket(server) {
@@ -12,6 +12,10 @@ function setupSocket(server) {
     cors: {
       origin: config.nodeEnv !== 'production' && configuredOrigins().includes('*') ? '*' : configuredOrigins(),
       methods: ['GET', 'POST']
+    },
+    allowRequest(req, callback) {
+      const origin = String(req.headers.origin || '').trim();
+      callback(null, !origin || originAllowed(origin));
     },
     // Padrão do Socket.IO é 1MB — muito pouco pra imagem em base64 (até ~11MB
     // pra um arquivo de 8MB). Sem isso, 'send-message' com anexo grande
@@ -37,7 +41,10 @@ function setupSocket(server) {
     try {
       const authHeader = String(socket.handshake.headers?.authorization || '');
       const headerToken = authHeader.match(/^Bearer\s+(.+)$/i)?.[1] || '';
-      const token = String(socket.handshake.auth?.token || headerToken || '').trim();
+      const suppliedToken = String(socket.handshake.auth?.token || headerToken || '').trim();
+      const token = suppliedToken && suppliedToken.toLowerCase() !== 'cookie'
+        ? suppliedToken
+        : sessionTokenFromCookieHeader(socket.handshake.headers?.cookie);
       if (!token) return next(new Error('unauthorized'));
 
       const decoded = await verifyAccessToken(token);
@@ -486,6 +493,7 @@ function setupSocket(server) {
     socket.on('send-message', async ({ channelId, message, file } = {}) => {
       try {
         if (rateLimited(socket, 'send-message', 30, 10_000)) return;
+        if (file && rateLimited(socket, 'send-attachment', 4, 60_000)) return;
         const channel = await getAuthorizedChannel(socket, channelId, 'text');
         if (!channel) {
           socket.emit('error', { message: 'Canal não encontrado ou acesso negado' });
@@ -521,8 +529,12 @@ function setupSocket(server) {
     // ========== EDITAR MENSAGEM ==========
     socket.on('edit-message', async ({ messageId, content }) => {
       try {
+        if (rateLimited(socket, 'edit-message', 30, 10_000)) return;
         const original = await Channel.getMessage(messageId);
         if (!original) return socket.emit('error', { message: 'Mensagem não encontrada' });
+        const channel = await Channel.findById(original.channel_id);
+        const memberRole = channel ? await ServerModel.getMemberRole(channel.server_id, socket.userId) : null;
+        if (!memberRole) return socket.emit('error', { message: 'Acesso ao canal negado' });
         if (original.user_id !== socket.userId) {
           return socket.emit('error', { message: 'Você só pode editar suas próprias mensagens' });
         }
@@ -539,12 +551,14 @@ function setupSocket(server) {
     // ========== EXCLUIR MENSAGEM ==========
     socket.on('delete-message', async ({ messageId }) => {
       try {
+        if (rateLimited(socket, 'delete-message', 20, 10_000)) return;
         const original = await Channel.getMessage(messageId);
         if (!original) return;
         const channel = await Channel.findById(original.channel_id);
         const role = channel ? await ServerModel.getMemberRole(channel.server_id, socket.userId) : null;
+        if (!role) return socket.emit('error', { message: 'Acesso ao canal negado' });
         const isOwner = original.user_id === socket.userId;
-        const isAdmin = role === 'admin';
+        const isAdmin = role === 'admin' || role === 'owner';
         if (!isOwner && !isAdmin) {
           return socket.emit('error', { message: 'Você não pode excluir essa mensagem' });
         }
@@ -575,6 +589,7 @@ function setupSocket(server) {
     socket.on('send-dm', async ({ toUserId, message, file } = {}) => {
       try {
         if (rateLimited(socket, 'send-dm', 30, 10_000)) return;
+        if (file && rateLimited(socket, 'send-dm-attachment', 4, 60_000)) return;
         if (!toUserId || toUserId === socket.userId) return;
         const target = await User.findById(toUserId);
         if (!target) return socket.emit('error', { message: 'Usuário não encontrado' });
@@ -616,10 +631,16 @@ function setupSocket(server) {
 
     socket.on('edit-dm', async ({ messageId, content }) => {
       try {
+        if (rateLimited(socket, 'edit-dm', 30, 10_000)) return;
         const original = await Dm.getById(messageId);
         if (!original || original.sender_id !== socket.userId) {
           return socket.emit('error', { message: 'Você só pode editar suas próprias mensagens' });
         }
+        const block = await require('./database').queryOne(
+          'SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
+          [original.sender_id, original.recipient_id]
+        );
+        if (block) return socket.emit('error', { message: 'Esta conversa está bloqueada' });
         const trimmed = cleanMessageText(content, 2000);
         if (!trimmed) return;
         const updated = await Dm.edit(messageId, trimmed);
@@ -633,6 +654,7 @@ function setupSocket(server) {
 
     socket.on('delete-dm', async ({ messageId }) => {
       try {
+        if (rateLimited(socket, 'delete-dm', 20, 10_000)) return;
         const original = await Dm.getById(messageId);
         if (!original || original.sender_id !== socket.userId) {
           return socket.emit('error', { message: 'Você só pode excluir suas próprias mensagens' });

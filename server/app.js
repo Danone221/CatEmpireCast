@@ -37,7 +37,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com', 'https://media.discordapp.net'],
@@ -177,14 +177,26 @@ app.get('/health', async (req, res) => {
 
 const clientDir = path.join(__dirname, '../client');
 
+const blockedPublicFiles = new Set([
+  '/banner-persist.js',
+  '/enhancements.js',
+  '/features-v2.js',
+  '/features-v3.js',
+  '/features-v3-fix.js',
+  '/profile-v5.js',
+  '/liquid-metal-react.jsx'
+]);
+
 app.use((req, res, next) => {
-  if (req.method === 'GET' && /^\/login-lab-\d+\.html$/i.test(req.path)) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+  if (/^\/login-lab(?:-\d+)?\.html$/i.test(req.path) || blockedPublicFiles.has(req.path)) {
     return res.status(404).type('text').send('Not Found');
   }
   next();
 });
 
 const htmlFiles = new Set(['/', '/index.html', '/server.html', '/dms.html', '/invite.html']);
+const vnextPages = new Set(['/server.html', '/dms.html']);
 app.use((req, res, next) => {
   if (req.method !== 'GET' || !htmlFiles.has(req.path) || !String(req.headers.accept || '').includes('text/html')) return next();
   const file = req.path === '/' ? 'index.html' : req.path.slice(1);
@@ -194,8 +206,8 @@ app.use((req, res, next) => {
     // Keep HTML pages deterministic. Do not inject legacy profile/runtime layers
     // at request time; the pages explicitly load their canonical scripts.
     html = html.replace(/<script[^>]+(?:profile-v5|features-v4-final)[^>]*><\/script>/gi, '');
-    if (!html.includes('data-cat-empire-v4') && !html.includes('vnext-loader.js')) {
-      html = html.replace('</body>', '<script src="/vnext-loader.js?v=20260822" data-cat-empire-loader></script></body>');
+    if (vnextPages.has(req.path) && !html.includes('data-cat-empire-v4') && !html.includes('vnext-loader.js')) {
+      html = html.replace('</body>', '<script src="/vnext-loader.js?v=20261001-audit1" data-cat-empire-loader></script></body>');
     }
     res.type('html').send(html);
   });

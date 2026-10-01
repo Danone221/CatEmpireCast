@@ -537,3 +537,124 @@ body.real-login-page{overflow-x:hidden;background:var(--real-bg)!important}
   .real-visual-pane{height:88px;min-height:88px}
   .real-form-pane{padding:18px 16px}
 }
+
+@keyframes real-mobile-card-stable{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:none}
+}
+
+@media(max-width:860px){
+  #liquidMetalReactRoot{
+    opacity:.72!important;
+    background:
+      radial-gradient(circle at 22% 18%,rgba(93,107,135,.28),transparent 38%),
+      radial-gradient(circle at 78% 76%,rgba(38,54,68,.24),transparent 44%),
+      linear-gradient(160deg,#080b12,#111722 52%,#05070b)!important;
+  }
+  #liquidMetalReactRoot canvas{
+    filter:none!important;
+  }
+  #liquidMetalReactRoot[data-shader-failed="true"] canvas{
+    display:none!important;
+  }
+
+  .real-topbar,
+  .real-kicker,
+  .real-features span,
+  .real-footer-card{
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
+
+  .real-login-card{
+    display:block!important;
+    position:relative!important;
+    width:min(calc(100vw - 28px),480px)!important;
+    max-width:480px!important;
+    margin:0 auto!important;
+    padding:0!important;
+    gap:0!important;
+    border:1px solid rgba(112,255,211,.16)!important;
+    border-radius:22px!important;
+    background:
+      radial-gradient(circle at 50% 4%,rgba(28,255,181,.08),transparent 32%),
+      linear-gradient(145deg,rgba(4,24,20,.985),rgba(6,15,20,.995))!important;
+    box-shadow:0 18px 46px rgba(0,0,0,.34),inset 0 1px rgba(220,255,244,.055)!important;
+    overflow:hidden!important;
+    isolation:isolate!important;
+    contain:layout paint!important;
+    animation:real-mobile-card-stable .55s cubic-bezier(.16,1,.3,1) both!important;
+  }
+
+  .real-login-card::before{
+    display:none!important;
+  }
+
+  .real-visual-pane{
+    position:absolute!important;
+    inset:0 0 auto 0!important;
+    z-index:1!important;
+    width:100%!important;
+    height:112px!important;
+    min-height:112px!important;
+    border:0!important;
+    border-bottom:1px solid rgba(112,255,211,.10)!important;
+    border-radius:0!important;
+    background:
+      radial-gradient(circle at 50% 66%,rgba(23,255,177,.18),transparent 42%),
+      linear-gradient(180deg,rgba(5,31,25,.88),rgba(4,19,18,.36))!important;
+    box-shadow:none!important;
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+    transform:none!important;
+    animation:none!important;
+    will-change:auto!important;
+    contain:layout paint!important;
+    isolation:isolate!important;
+    overflow:hidden!important;
+    pointer-events:none!important;
+  }
+
+  .real-form-pane{
+    position:relative!important;
+    z-index:2!important;
+    width:100%!important;
+    padding:128px 18px 18px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+    transform:none!important;
+    animation:none!important;
+    will-change:auto!important;
+    contain:none!important;
+    isolation:auto!important;
+    overflow:visible!important;
+  }
+
+  .real-visual-pane::after,
+  .real-form-pane::after{
+    display:none!important;
+  }
+
+  .real-mascot{
+    top:66%!important;
+  }
+}
+
+@media(max-width:520px){
+  .real-login-card{
+    width:100%!important;
+    max-width:none!important;
+  }
+  .real-visual-pane{
+    height:104px!important;
+    min-height:104px!important;
+  }
+  .real-form-pane{
+    padding:120px 16px 18px!important;
+  }
+}
+

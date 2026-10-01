@@ -3,7 +3,7 @@ services:
     name: cat-empire
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm ci --no-fund --no-audit && npm audit --omit=dev --audit-level=high
     startCommand: node server.js
     healthCheckPath: /health
     envVars:
