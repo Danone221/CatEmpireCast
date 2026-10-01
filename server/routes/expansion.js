@@ -46,7 +46,7 @@ router.get('/servers/:serverId/full', async (req, res) => {
 router.patch('/servers/:serverId/profile', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
-    const allowed = ['name', 'description', 'icon', 'banner', 'owner_id'];
+    const allowed = ['name', 'description', 'icon', 'banner'];
     const fields = [];
     const values = [];
     for (const key of allowed) if (Object.prototype.hasOwnProperty.call(req.body, key)) {
