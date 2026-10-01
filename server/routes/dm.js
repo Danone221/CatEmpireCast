@@ -4,6 +4,9 @@ const router = express.Router();
 const { query, queryOne } = require('../database');
 const User = require('../database/models/User');
 const Dm = require('../database/models/Dm');
+const config = require('../config');
+const { sanitizeAttachment, cleanMessageText } = require('../input-security');
+const { sanitizePlainText, validateImageValue } = require('../security');
 const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
@@ -26,15 +29,14 @@ router.post('/dms/:userId/messages', async (req, res) => {
     await ensureUser(req.params.userId);
     const block = await queryOne('SELECT blocker_id FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1', [req.user.id, req.params.userId]);
     if (block) return res.status(403).json({ error: block.blocker_id === req.user.id ? 'Desbloqueie este usuário antes de enviar mensagens' : 'Você não pode enviar mensagens para este usuário' });
-    const content = String(req.body.content || '').slice(0, 4000);
-    const file = req.body.file && typeof req.body.file === 'object' ? {
-      name: String(req.body.file.name || '').slice(0, 255),
-      type: String(req.body.file.type || '').slice(0, 120),
-      size: Math.max(0, Number(req.body.file.size) || 0),
-      data: typeof req.body.file.data === 'string' ? req.body.file.data : null
-    } : null;
+    const content = cleanMessageText(req.body.content, 2000);
+    const file = req.body.file
+      ? sanitizeAttachment(req.body.file, {
+          maxBytes: Math.min(Number(config.upload.maxSize) || 8 * 1024 * 1024, 8 * 1024 * 1024),
+          allowedTypes: config.upload.allowedTypes
+        })
+      : null;
     if (!content && !file) return res.status(400).json({ error: 'A mensagem está vazia' });
-    if (file?.data && file.data.length > 800000) return res.status(413).json({ error: 'Arquivo muito grande' });
 
     const message = await Dm.send({ senderId: req.user.id, recipientId: req.params.userId, content, file });
     const io = req.app.get('io');
@@ -51,7 +53,12 @@ router.patch('/dms/messages/:messageId', async (req, res) => {
     const message = await Dm.getById(req.params.messageId);
     if (!message) return res.status(404).json({ error: 'Mensagem não encontrada' });
     if (message.sender_id !== req.user.id) return res.status(403).json({ error: 'Você não pode editar esta mensagem' });
-    const content = String(req.body.content || '').slice(0, 4000);
+    const block = await queryOne(
+      'SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
+      [message.sender_id, message.recipient_id]
+    );
+    if (block) return res.status(403).json({ error: 'Esta conversa está bloqueada' });
+    const content = cleanMessageText(req.body.content, 2000);
     if (!content) return res.status(400).json({ error: 'A mensagem está vazia' });
     const updated = await Dm.edit(message.id, content);
     const io = req.app.get('io');
@@ -96,9 +103,20 @@ router.post('/group-dms', async (req, res) => {
     const participants = [...new Set((Array.isArray(req.body.participants) ? req.body.participants : []).filter(Boolean))];
     if (!participants.includes(req.user.id)) participants.push(req.user.id);
     if (participants.length < 2 || participants.length > 25) return res.status(400).json({ error: 'Um grupo de DM precisa ter entre 2 e 25 participantes' });
-    for (const userId of participants) await ensureUser(userId);
+    for (const userId of participants) {
+      await ensureUser(userId);
+      if (userId !== req.user.id) {
+        const blocked = await queryOne(
+          'SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
+          [req.user.id, userId]
+        );
+        if (blocked) return res.status(403).json({ error: 'Não é possível adicionar um usuário bloqueado ao grupo' });
+      }
+    }
     const groupId = uuidv4();
-    const group = await queryOne(`INSERT INTO group_dms(id,name,icon,owner_id) VALUES($1,$2,$3,$4) RETURNING *`, [groupId, String(req.body.name || '').slice(0, 80) || null, String(req.body.icon || '').slice(0, 500) || null, req.user.id]);
+    const groupName = sanitizePlainText(req.body.name, 80) || null;
+    const groupIcon = validateImageValue(req.body.icon, { maxLength: 500 }) || null;
+    const group = await queryOne(`INSERT INTO group_dms(id,name,icon,owner_id) VALUES($1,$2,$3,$4) RETURNING *`, [groupId, groupName, groupIcon, req.user.id]);
     for (const userId of participants) await query('INSERT INTO group_dm_members(group_id,user_id) VALUES($1,$2)', [groupId, userId]);
     res.status(201).json({ ...group, participants });
   } catch (e) { fail(res, e, 'Erro ao criar grupo de DM'); }
@@ -121,6 +139,11 @@ router.post('/group-dms/:groupId/members/:userId', async (req, res) => {
     const member = await queryOne('SELECT 1 FROM group_dm_members WHERE group_id=$1 AND user_id=$2', [group.id, req.user.id]);
     if (!owner && !member) return res.status(403).json({ error: 'Você não participa deste grupo' });
     await ensureUser(req.params.userId);
+    const blocked = await queryOne(
+      'SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
+      [req.user.id, req.params.userId]
+    );
+    if (blocked) return res.status(403).json({ error: 'Não é possível adicionar um usuário bloqueado ao grupo' });
     const count = await queryOne('SELECT COUNT(*)::int AS count FROM group_dm_members WHERE group_id=$1', [group.id]);
     if (Number(count.count) >= 25) return res.status(400).json({ error: 'Limite de participantes atingido' });
     await query('INSERT INTO group_dm_members(group_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING', [group.id, req.params.userId]);
