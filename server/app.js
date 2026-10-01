@@ -25,6 +25,7 @@ const db = require('./database');
 
 const app = express();
 
+app.disable('x-powered-by');
 if (config.nodeEnv === 'production') app.set('trust proxy', 1);
 
 app.use(helmet({
@@ -32,19 +33,40 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+      scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
       imgSrc: ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com'],
       mediaSrc: ["'self'", 'blob:'],
-      connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:']
+      connectSrc: config.nodeEnv === 'production'
+        ? ["'self'", 'wss:', 'https:']
+        : ["'self'", 'ws:', 'wss:', 'http:', 'https:'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      frameSrc: ["'none'"]
     }
   }
 }));
+app.use((req, res, next) => {
+  res.set('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()');
+  next();
+});
 app.use(cors({ origin: config.corsOrigin }));
+app.use((req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  const origin = String(req.headers.origin || '').trim();
+  if (!origin) return next();
+  const expected = config.appOrigin || `${req.protocol}://${req.get('host')}`;
+  if (origin !== expected) {
+    return res.status(403).json({ error: 'Origem não permitida' });
+  }
+  next();
+});
 app.use(compression());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '5mb', strict: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Toda mutação de servidor aprovada publica um evento único. Assim clientes
 // conectados atualizam somente os dados afetados, sem reload/F5.
