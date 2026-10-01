@@ -20,7 +20,9 @@ async function ensureSchema() {
 
 async function requireAdmin(serverId, userId) {
   const role = await Server.getMemberRole(serverId, userId);
-  if (role !== 'admin') throw new Error('Apenas administradores podem alterar estas configurações');
+  if (!['admin', 'owner'].includes(role)) {
+    throw Object.assign(new Error('Apenas administradores ou o proprietário podem alterar estas configurações'), { status: 403 });
+  }
 }
 
 router.use(authenticate);
