@@ -4,7 +4,6 @@ const router = express.Router();
 const { query, queryOne } = require('../database');
 const Server = require('../database/models/Server');
 const User = require('../database/models/User');
-const Role = require('../database/models/Role');
 const { sanitizePlainText } = require('../security');
 const { authenticate } = require('../middleware/auth');
 
@@ -73,60 +72,7 @@ function fail(res, e, fallback) {
   return res.status(e.status || 400).json({ error: e.message || fallback });
 }
 
-// ===== ROLES =====
-router.get('/servers/:serverId/roles', async (req, res) => {
-  try {
-    await requireMember(req.params.serverId, req.user.id);
-    const roles = await query(`SELECT r.*, COUNT(rm.user_id)::int AS member_count
-      FROM server_roles r LEFT JOIN server_role_members rm ON rm.role_id=r.id
-      WHERE r.server_id=$1 GROUP BY r.id ORDER BY r.position DESC`, [req.params.serverId]);
-    res.json(roles);
-  } catch (e) { fail(res, e, 'Erro ao listar cargos'); }
-});
-
-router.post('/servers/:serverId/roles', async (req, res) => {
-  try {
-    await requireManage(req.params.serverId, req.user.id);
-    const role = await Role.create(req.params.serverId, req.body || {});
-    await audit(req.params.serverId, req.user.id, 'role.create', 'role', role.id, { name: role.name, position: role.position });
-    res.status(201).json(role);
-  } catch (e) { fail(res, e, 'Erro ao criar cargo'); }
-});
-
-router.put('/servers/:serverId/roles/:roleId', async (req, res) => {
-  try {
-    const level = await requireManage(req.params.serverId, req.user.id);
-    const role = await Role.findById(req.params.serverId, req.params.roleId);
-    if (!role) return res.status(404).json({ error: 'Cargo não encontrado' });
-    if (role.position >= level || ['owner','@everyone'].includes(String(role.name || '').trim().toLowerCase())) {
-      return res.status(403).json({ error: 'Você não pode editar este cargo protegido ou acima da sua hierarquia' });
-    }
-    const next = { ...(req.body || {}) };
-    if (next.position !== undefined && Number(next.position) >= level) next.position = level - 1;
-    const updated = await Role.update(req.params.serverId, req.params.roleId, next);
-    await audit(req.params.serverId, req.user.id, 'role.update', 'role', updated.id, {
-      name: updated.name,
-      position: updated.position,
-      mentionable: updated.mentionable
-    });
-    res.json(updated);
-  } catch (e) { fail(res, e, 'Erro ao editar cargo'); }
-});
-
-router.delete('/servers/:serverId/roles/:roleId', async (req, res) => {
-  try {
-    const level = await requireManage(req.params.serverId, req.user.id);
-    const role = await Role.findById(req.params.serverId, req.params.roleId);
-    if (!role) return res.status(404).json({ error: 'Cargo não encontrado' });
-    if (Number(role.position || 0) >= level || ['owner','@everyone'].includes(String(role.name || '').trim().toLowerCase())) {
-      return res.status(403).json({ error: 'Você não pode excluir este cargo protegido ou acima da sua hierarquia' });
-    }
-    const result = await Role.remove(req.params.serverId, req.params.roleId);
-    await audit(req.params.serverId, req.user.id, 'role.delete', 'role', role.id);
-    res.json(result);
-  } catch (e) { fail(res, e, 'Erro ao excluir cargo'); }
-});
-
+// ===== MEMBER ROLE ASSIGNMENTS =====
 router.put('/servers/:serverId/members/:userId/roles', async (req, res) => {
   try {
     const level = await requireManage(req.params.serverId, req.user.id);
