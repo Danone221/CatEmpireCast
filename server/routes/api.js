@@ -171,6 +171,9 @@ router.post('/servers', authenticate, async (req, res) => {
     });
     res.json(server);
   } catch (error) {
+    if (/imagem|URL/i.test(String(error.message || ''))) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error('Erro ao criar servidor:', error);
     res.status(500).json({ error: 'Erro ao criar servidor' });
   }
@@ -402,6 +405,9 @@ router.put('/servers/:serverId', authenticate, async (req, res) => {
 
     res.json(server);
   } catch (error) {
+    if (/imagem|URL/i.test(String(error.message || ''))) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error('Erro ao editar servidor:', error);
     res.status(500).json({ error: 'Erro ao editar servidor' });
   }
