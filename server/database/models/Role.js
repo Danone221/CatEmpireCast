@@ -3,6 +3,15 @@ const { v4: uuidv4 } = require('uuid');
 
 const SYSTEM_ROLES = new Set(['@everyone', 'OWNER']);
 
+function normalizeRoleColor(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const color = String(value).trim();
+  if (!/^#[0-9a-f]{6}$/i.test(color)) {
+    throw Object.assign(new Error('Cor do cargo inválida'), { status: 400 });
+  }
+  return color.toLowerCase();
+}
+
 class Role {
   static async list(serverId) {
     return query(
@@ -47,7 +56,7 @@ class Role {
         uuidv4(),
         serverId,
         name,
-        data.color || null,
+        normalizeRoleColor(data.color),
         data.icon || null,
         Math.min(position, 99),
         JSON.stringify(data.permissions || {}),
@@ -76,7 +85,7 @@ class Role {
       if (!name) throw Object.assign(new Error('Nome do cargo inválido'), { status: 400 });
       add('name', name);
     }
-    if (data.color !== undefined) add('color', data.color || null);
+    if (data.color !== undefined) add('color', normalizeRoleColor(data.color));
     if (data.icon !== undefined) add('icon', data.icon || null);
     if (data.mentionable !== undefined) add('mentionable', !!data.mentionable);
     if (data.permissions !== undefined) add('permissions', JSON.stringify(data.permissions || {}));
