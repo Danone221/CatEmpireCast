@@ -271,9 +271,29 @@ router.get('/servers/:serverId/audit-log',async(req,res)=>{try{await requireMana
 
 // ===== ONBOARDING / AUTOMOD =====
 router.get('/servers/:serverId/onboarding',async(req,res)=>{try{await requireServerMember(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM onboarding_configs WHERE server_id=$1',[req.params.serverId])||{});}catch(e){fail(res,e,'Erro ao carregar onboarding');}});
-router.put('/servers/:serverId/onboarding',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO onboarding_configs(server_id,enabled,welcome_text,questions,default_roles,default_channels) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,welcome_text=EXCLUDED.welcome_text,questions=EXCLUDED.questions,default_roles=EXCLUDED.default_roles,default_channels=EXCLUDED.default_channels,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,req.body.welcomeText||null,JSON.stringify(req.body.questions||[]),JSON.stringify(req.body.defaultRoles||[]),JSON.stringify(req.body.defaultChannels||[])]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar onboarding');}});
+router.put('/servers/:serverId/onboarding',async(req,res)=>{try{
+  await requireManage(req.params.serverId,req.user.id);
+  const questions=Array.isArray(req.body.questions)?req.body.questions.slice(0,25):[];
+  const defaultRoles=[...new Set((Array.isArray(req.body.defaultRoles)?req.body.defaultRoles:[]).filter(id=>typeof id==='string').slice(0,25))];
+  const defaultChannels=[...new Set((Array.isArray(req.body.defaultChannels)?req.body.defaultChannels:[]).filter(id=>typeof id==='string').slice(0,25))];
+  const [roles,channels]=await Promise.all([
+    defaultRoles.length?query('SELECT id FROM server_roles WHERE server_id=$1 AND id = ANY($2::text[])',[req.params.serverId,defaultRoles]):Promise.resolve([]),
+    defaultChannels.length?query('SELECT id FROM channels WHERE server_id=$1 AND id = ANY($2::text[])',[req.params.serverId,defaultChannels]):Promise.resolve([])
+  ]);
+  if(roles.length!==defaultRoles.length||channels.length!==defaultChannels.length)return res.status(400).json({error:'Onboarding contém referência de outro servidor ou inexistente'});
+  const welcomeText=sanitizePlainText(req.body.welcomeText||'',1500)||null;
+  const row=await queryOne(`INSERT INTO onboarding_configs(server_id,enabled,welcome_text,questions,default_roles,default_channels) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,welcome_text=EXCLUDED.welcome_text,questions=EXCLUDED.questions,default_roles=EXCLUDED.default_roles,default_channels=EXCLUDED.default_channels,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,welcomeText,boundedJson(questions,32768,'Perguntas do onboarding'),boundedJson(defaultRoles,8192,'Cargos padrão'),boundedJson(defaultChannels,8192,'Canais padrão')]);
+  res.json(row);
+}catch(e){fail(res,e,'Erro ao salvar onboarding');}});
 router.get('/servers/:serverId/automod',async(req,res)=>{try{await requireServerMember(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM automod_configs WHERE server_id=$1',[req.params.serverId])||{});}catch(e){fail(res,e,'Erro ao carregar automod');}});
-router.put('/servers/:serverId/automod',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO automod_configs(server_id,enabled,rules,keywords,actions) VALUES($1,$2,$3,$4,$5) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules=EXCLUDED.rules,keywords=EXCLUDED.keywords,actions=EXCLUDED.actions,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,JSON.stringify(req.body.rules||{}),JSON.stringify(req.body.keywords||[]),JSON.stringify(req.body.actions||{})]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar automod');}});
+router.put('/servers/:serverId/automod',async(req,res)=>{try{
+  await requireManage(req.params.serverId,req.user.id);
+  const rules=req.body.rules&&typeof req.body.rules==='object'&&!Array.isArray(req.body.rules)?req.body.rules:{};
+  const actions=req.body.actions&&typeof req.body.actions==='object'&&!Array.isArray(req.body.actions)?req.body.actions:{};
+  const keywords=(Array.isArray(req.body.keywords)?req.body.keywords:[]).slice(0,200).map(v=>sanitizePlainText(v,80)).filter(Boolean);
+  const row=await queryOne(`INSERT INTO automod_configs(server_id,enabled,rules,keywords,actions) VALUES($1,$2,$3,$4,$5) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules=EXCLUDED.rules,keywords=EXCLUDED.keywords,actions=EXCLUDED.actions,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,boundedJson(rules,32768,'Regras do automod'),boundedJson(keywords,32768,'Palavras do automod'),boundedJson(actions,32768,'Ações do automod')]);
+  res.json(row);
+}catch(e){fail(res,e,'Erro ao salvar automod');}});
 
 // ===== GLOBAL SEARCH =====
 router.get('/search',async(req,res)=>{
