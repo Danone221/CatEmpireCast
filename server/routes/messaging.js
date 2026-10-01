@@ -3,6 +3,9 @@ const { v4: uuidv4 } = require('uuid');
 const router = express.Router();
 const { query, queryOne } = require('../database');
 const Server = require('../database/models/Server');
+const config = require('../config');
+const { sanitizeAttachment, cleanMessageText } = require('../input-security');
+const { validatePublicHttpsUrl } = require('../security');
 const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
@@ -23,6 +26,54 @@ async function canManage(channel, userId) {
 function fail(res, error, fallback) {
   console.error(fallback, error);
   return res.status(error.status || 400).json({ error: error.message || fallback });
+}
+
+function cleanFileName(value) {
+  return String(value || 'arquivo')
+    .replace(/[\\/\0\r\n]/g, '_')
+    .replace(/[<>"]/g, '')
+    .slice(0, 160) || 'arquivo';
+}
+
+function boundedJson(value, maxBytes, label) {
+  const json = JSON.stringify(value);
+  if (Buffer.byteLength(json, 'utf8') > maxBytes) {
+    throw Object.assign(new Error(`${label} excede o limite permitido`), { status: 413 });
+  }
+  return value;
+}
+
+function normalizeStoredAttachment(attachment) {
+  if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) {
+    throw Object.assign(new Error('Anexo inválido'), { status: 400 });
+  }
+  const fileType = String(attachment.fileType || '').trim().toLowerCase();
+  if (!config.upload.allowedTypes.includes(fileType)) {
+    throw Object.assign(new Error('Tipo de arquivo não permitido'), { status: 400 });
+  }
+  const maxBytes = Math.min(Number(config.upload.maxSize) || 8 * 1024 * 1024, 8 * 1024 * 1024);
+  const fileName = cleanFileName(attachment.fileName);
+  let url;
+  let fileSize = Math.max(0, Number(attachment.fileSize) || 0);
+
+  if (attachment.fileData) {
+    const safe = sanitizeAttachment(
+      { name: fileName, type: fileType, data: attachment.fileData },
+      { maxBytes, allowedTypes: config.upload.allowedTypes }
+    );
+    url = safe.data;
+    fileSize = safe.size;
+  } else {
+    url = validatePublicHttpsUrl(attachment.url, 4096);
+    if (!url) throw Object.assign(new Error('URL do anexo é obrigatória'), { status: 400 });
+    if (fileSize > maxBytes) throw Object.assign(new Error('Arquivo excede o limite permitido'), { status: 413 });
+  }
+
+  const metadata = attachment.metadata && typeof attachment.metadata === 'object' && !Array.isArray(attachment.metadata)
+    ? attachment.metadata
+    : {};
+  boundedJson(metadata, 8192, 'Metadados do anexo');
+  return { fileName, fileType, fileSize: fileSize || null, url, metadata };
 }
 
 async function loadMessage(messageId) {
@@ -68,12 +119,14 @@ router.post('/channels/:channelId/messages', async (req, res) => {
   try {
     const { channel } = await requireMemberByChannel(req.params.channelId, req.user.id);
     if (channel.type !== 'text') return res.status(400).json({ error: 'O canal não é de texto' });
-    const content = String(req.body.content || '').slice(0, 4000);
-    const replyTo = req.body.replyTo || null;
-    const threadId = req.body.threadId || null;
+    const content = cleanMessageText(req.body.content, 2000);
+    const replyTo = typeof req.body.replyTo === 'string' ? req.body.replyTo : null;
+    const threadId = typeof req.body.threadId === 'string' ? req.body.threadId : null;
     const embeds = Array.isArray(req.body.embeds) ? req.body.embeds.slice(0, 10) : [];
-    const mentions = Array.isArray(req.body.mentions) ? req.body.mentions.slice(0, 100) : [];
+    const mentions = Array.isArray(req.body.mentions) ? req.body.mentions.slice(0, 50) : [];
     const stickers = Array.isArray(req.body.stickers) ? req.body.stickers.slice(0, 20) : [];
+    boundedJson(embeds, 32768, 'Embeds');
+    boundedJson(stickers, 16384, 'Stickers');
     if (!content && !req.body.attachments?.length && !embeds.length && !stickers.length) {
       return res.status(400).json({ error: 'A mensagem está vazia' });
     }
@@ -94,19 +147,49 @@ router.post('/channels/:channelId/messages', async (req, res) => {
     const message = await queryOne(`INSERT INTO messages(id,channel_id,user_id,content,created_at,reply_to,thread_id,embeds,mentions,stickers)
       VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [uuidv4(), channel.id, req.user.id, content, replyTo, threadId, JSON.stringify(embeds), JSON.stringify(mentions), JSON.stringify(stickers)]);
 
-    for (const attachment of Array.isArray(req.body.attachments) ? req.body.attachments.slice(0, 10) : []) {
+    const attachments = Array.isArray(req.body.attachments) ? req.body.attachments.slice(0, 10) : [];
+    for (const rawAttachment of attachments) {
+      const attachment = normalizeStoredAttachment(rawAttachment);
       await query(`INSERT INTO message_attachments(id,message_id,file_name,file_type,file_size,url,metadata)
-        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, String(attachment.fileName || 'arquivo').slice(0,255), attachment.fileType || null, Number(attachment.fileSize) || null, attachment.url || attachment.fileData || null, JSON.stringify(attachment.metadata || {})]);
+        VALUES($1,$2,$3,$4,$5,$6,$7)`, [
+        uuidv4(),
+        message.id,
+        attachment.fileName,
+        attachment.fileType,
+        attachment.fileSize,
+        attachment.url,
+        JSON.stringify(attachment.metadata)
+      ]);
     }
 
-    for (const mention of mentions) {
-      const type = ['user','role','everyone','here'].includes(mention.type) ? mention.type : 'user';
-      if (type === 'user' && mention.userId) {
+    const normalizedMentions = mentions
+      .filter(mention => mention && typeof mention === 'object' && !Array.isArray(mention))
+      .map(mention => ({
+        type: ['user','role','everyone','here'].includes(mention.type) ? mention.type : 'user',
+        userId: typeof mention.userId === 'string' ? mention.userId : null,
+        roleId: typeof mention.roleId === 'string' ? mention.roleId : null
+      }));
+    const mentionedUserIds = [...new Set(normalizedMentions.filter(m => m.type === 'user' && m.userId).map(m => m.userId))];
+    const mentionedRoleIds = [...new Set(normalizedMentions.filter(m => m.type === 'role' && m.roleId).map(m => m.roleId))];
+    const [validUsers, validRoles] = await Promise.all([
+      mentionedUserIds.length
+        ? query('SELECT user_id AS id FROM server_members WHERE server_id=$1 AND user_id = ANY($2::text[])', [channel.server_id, mentionedUserIds])
+        : Promise.resolve([]),
+      mentionedRoleIds.length
+        ? query('SELECT id FROM server_roles WHERE server_id=$1 AND id = ANY($2::text[])', [channel.server_id, mentionedRoleIds])
+        : Promise.resolve([])
+    ]);
+    if (validUsers.length !== mentionedUserIds.length || validRoles.length !== mentionedRoleIds.length) {
+      return res.status(400).json({ error: 'Menção inválida para este servidor' });
+    }
+
+    for (const mention of normalizedMentions) {
+      if (mention.type === 'user' && mention.userId) {
         await query(`INSERT INTO message_mentions(message_id,user_id,mention_type) VALUES($1,$2,'user') ON CONFLICT DO NOTHING`, [message.id, mention.userId]);
-      } else if (type === 'role' && mention.roleId) {
+      } else if (mention.type === 'role' && mention.roleId) {
         await query(`INSERT INTO message_mentions(message_id,role_id,mention_type) VALUES($1,$2,'role')`, [message.id, mention.roleId]);
-      } else if (type === 'everyone' || type === 'here') {
-        await query(`INSERT INTO message_mentions(message_id,mention_type) VALUES($1,$2)`, [message.id, type]);
+      } else if (mention.type === 'everyone' || mention.type === 'here') {
+        await query(`INSERT INTO message_mentions(message_id,mention_type) VALUES($1,$2)`, [message.id, mention.type]);
       }
     }
 
