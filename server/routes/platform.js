@@ -95,10 +95,36 @@ router.delete('/servers/:serverId/roles/:roleId', async (req, res) => {
 router.put('/servers/:serverId/members/:userId/roles', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
-    const roleIds = Array.isArray(req.body.roleIds) ? req.body.roleIds.slice(0, 50) : [];
+    const server = await queryOne('SELECT creator_id FROM servers WHERE id=$1', [req.params.serverId]);
+    if (!server) return res.status(404).json({ error: 'Servidor não encontrado' });
+
+    const actorIsOwner = server.creator_id === req.user.id;
+    const targetIsOwner = server.creator_id === req.params.userId;
+    if (targetIsOwner && !actorIsOwner) {
+      return res.status(403).json({ error: 'Somente o proprietário pode alterar os próprios cargos' });
+    }
+
+    const roleIds = Array.isArray(req.body.roleIds)
+      ? [...new Set(req.body.roleIds.filter(id => typeof id === 'string').slice(0, 50))]
+      : [];
+
+    const roles = roleIds.length
+      ? await query('SELECT id,name FROM server_roles WHERE server_id=$1 AND id = ANY($2::text[])', [req.params.serverId, roleIds])
+      : [];
+
+    if (roles.length !== roleIds.length) {
+      return res.status(400).json({ error: 'Um ou mais cargos são inválidos para este servidor' });
+    }
+    if (!actorIsOwner && roles.some(role => String(role.name || '').toUpperCase() === 'OWNER')) {
+      return res.status(403).json({ error: 'Cargo OWNER só pode ser atribuído pelo proprietário' });
+    }
+
     await query('DELETE FROM server_role_members WHERE server_id=$1 AND user_id=$2', [req.params.serverId, req.params.userId]);
-    for (const roleId of roleIds) {
-      await query(`INSERT INTO server_role_members(role_id,server_id,user_id) SELECT id,server_id,$2 FROM server_roles WHERE id=$1 AND server_id=$3 ON CONFLICT DO NOTHING`, [roleId, req.params.userId, req.params.serverId]);
+    for (const role of roles) {
+      await query(
+        'INSERT INTO server_role_members(role_id,server_id,user_id) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',
+        [role.id, req.params.serverId, req.params.userId]
+      );
     }
     await audit(req.params.serverId, req.user.id, 'member.roles.update', 'user', req.params.userId, { roleIds });
     res.json({ success: true, roleIds });
