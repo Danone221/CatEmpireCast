@@ -91,15 +91,17 @@ class User {
     const fields = [];
     const values = [];
     let i = 1;
+    const marker = String.fromCharCode(36);
     for (const [key, value] of Object.entries(data || {})) {
       if (!allowed.has(key)) continue;
-      fields.push(key + ' = 
+      fields.push(key + ' = ' + marker + i);
       values.push(value);
       i++;
     }
     if (!fields.length) return this.findById(id);
     values.push(id);
-    await query(`UPDATE users SET ${fields.join(', ')} WHERE id = ${i}`, values);
+    const sql = 'UPDATE users SET ' + fields.join(', ') + ' WHERE id = ' + marker + i;
+    await query(sql, values);
     return this.findById(id);
   }
 
