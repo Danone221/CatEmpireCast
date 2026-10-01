@@ -22,6 +22,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.Process
 import android.util.Base64
+import android.webkit.CookieManager
 import androidx.core.app.NotificationCompat
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -195,6 +196,10 @@ class BroadcastService : Service() {
             .setTimeout(15_000)
             .build()
         options.auth = mapOf("token" to token)
+        val cookieHeader = try { CookieManager.getInstance().getCookie(baseUrl) } catch (_: Exception) { null }
+        if (!cookieHeader.isNullOrBlank()) {
+            options.extraHeaders = mapOf("Cookie" to listOf(cookieHeader))
+        }
         val client = IO.socket(URI(baseUrl), options)
         socket = client
         client.on(Socket.EVENT_CONNECT) {
