@@ -203,7 +203,7 @@ app.use((req, res, next) => {
 const htmlFiles = new Set(['/', '/index.html', '/server.html', '/dms.html', '/invite.html']);
 const vnextPages = new Set(['/server.html', '/dms.html']);
 app.use((req, res, next) => {
-  if (req.method !== 'GET' || !htmlFiles.has(req.path) || !String(req.headers.accept || '').includes('text/html')) return next();
+  if (!['GET','HEAD'].includes(req.method) || !htmlFiles.has(req.path) || !String(req.headers.accept || '').includes('text/html')) return next();
   const file = req.path === '/' ? 'index.html' : req.path.slice(1);
   const fullPath = path.join(clientDir, file);
   fs.readFile(fullPath, 'utf8', (err, html) => {
