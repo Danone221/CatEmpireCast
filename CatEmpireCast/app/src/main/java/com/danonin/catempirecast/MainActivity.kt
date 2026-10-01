@@ -31,6 +31,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.danonin.catempirecast.databinding.ActivityMainBinding
+import org.json.JSONObject
 
 /** Cat Empire — app-casca em WebView. */
 class MainActivity : AppCompatActivity() {
@@ -39,6 +40,34 @@ class MainActivity : AppCompatActivity() {
 
     private var pendingPermissionRequest: PermissionRequest? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
+
+    private fun trustedBaseUri(): Uri = Uri.parse(getString(R.string.app_base_url))
+
+    private fun isTrustedAppUrl(uri: Uri?): Boolean {
+        if (uri == null) return false
+        val base = trustedBaseUri()
+        val basePort = if (base.port == -1) 443 else base.port
+        val uriPort = if (uri.port == -1) 443 else uri.port
+        return uri.scheme.equals("https", ignoreCase = true) &&
+            uri.host.equals(base.host, ignoreCase = true) &&
+            uriPort == basePort
+    }
+
+    private fun isDiscordUrl(uri: Uri?): Boolean {
+        if (uri == null || !uri.scheme.equals("https", ignoreCase = true)) return false
+        val host = uri.host?.lowercase() ?: return false
+        return host == "discord.com" || host == "www.discord.com"
+    }
+
+    private fun updateNativeBridge(uri: Uri?) {
+        binding.webView.removeJavascriptInterface("CatEmpireNative")
+        if (isTrustedAppUrl(uri)) {
+            binding.webView.addJavascriptInterface(WebAppInterface(), "CatEmpireNative")
+        } else {
+            pendingPermissionRequest?.deny()
+            pendingPermissionRequest = null
+        }
+    }
 
     private val requestRuntimePermissions = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -204,9 +233,9 @@ class MainActivity : AppCompatActivity() {
         ) {
             runOnUiThread {
                 val safeBase = baseUrl?.trim().orEmpty()
-                val scheme = try { Uri.parse(safeBase).scheme?.lowercase() } catch (_: Exception) { null }
+                val safeUri = try { Uri.parse(safeBase) } catch (_: Exception) { null }
                 if (token.isNullOrBlank() || userId.isNullOrBlank() || channelId.isNullOrBlank() ||
-                    safeBase.isBlank() || (scheme != "https" && scheme != "http")
+                    safeBase.isBlank() || !isTrustedAppUrl(safeUri)
                 ) {
                     notifyWebBroadcastState("error", "Dados do canal inválidos para a transmissão.")
                     return@runOnUiThread
@@ -263,8 +292,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun notifyWebBroadcastState(state: String, message: String?) {
-        val safeMessage = (message ?: "").replace("\\", "\\\\").replace("'", "\\'")
-        val js = "window.onNativeBroadcastState && window.onNativeBroadcastState('$state', '$safeMessage');"
+        if (!isTrustedAppUrl(Uri.parse(binding.webView.url ?: getString(R.string.app_base_url)))) return
+        val js = "window.onNativeBroadcastState && window.onNativeBroadcastState(" +
+            JSONObject.quote(state) + "," + JSONObject.quote(message ?: "") + ");"
         binding.webView.evaluateJavascript(js, null)
     }
 
@@ -318,6 +348,9 @@ class MainActivity : AppCompatActivity() {
         s.databaseEnabled = true
         s.mediaPlaybackRequiresUserGesture = false
         s.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+        s.allowFileAccess = false
+        s.allowContentAccess = true
+        WebView.setWebContentsDebuggingEnabled(false)
         val cachePrefs = getSharedPreferences("cat_empire_web_cache", MODE_PRIVATE)
         val cachedVersion = cachePrefs.getInt("app_version", 0)
         if (cachedVersion < 11) {
@@ -331,30 +364,42 @@ class MainActivity : AppCompatActivity() {
         s.useWideViewPort = true
         s.userAgentString = s.userAgentString + " CatEmpireApp/1.0"
 
-        binding.webView.addJavascriptInterface(WebAppInterface(), "CatEmpireNative")
+        updateNativeBridge(trustedBaseUri())
 
         binding.webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                val host = request.url.host ?: ""
-                if (host.endsWith("onrender.com") || host.endsWith("discord.com") || host == Uri.parse(getString(R.string.app_base_url)).host) return false
+                if (!request.isForMainFrame) return false
+                val uri = request.url
+                if (isTrustedAppUrl(uri) || isDiscordUrl(uri)) {
+                    updateNativeBridge(uri)
+                    return false
+                }
+                updateNativeBridge(null)
                 return try {
-                    startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                    startActivity(Intent(Intent.ACTION_VIEW, uri))
                     true
-                } catch (e: Exception) { false }
+                } catch (_: Exception) {
+                    true
+                }
             }
 
             override fun onPageStarted(view: WebView, url: String?, favicon: android.graphics.Bitmap?) {
                 binding.errorOverlay.visibility = View.GONE
+                updateNativeBridge(url?.let(Uri::parse))
             }
 
             override fun onPageFinished(view: WebView, url: String?) {
                 binding.loadingOverlay.visibility = View.GONE
                 binding.swipeRefresh.isRefreshing = false
-                view.evaluateJavascript(
-                    "document.documentElement.classList.add('cat-native-app');" +
-                        "if(document.body)document.body.classList.add('cat-native-app');",
-                    null
-                )
+                val uri = url?.let(Uri::parse)
+                updateNativeBridge(uri)
+                if (isTrustedAppUrl(uri)) {
+                    view.evaluateJavascript(
+                        "document.documentElement.classList.add('cat-native-app');" +
+                            "if(document.body)document.body.classList.add('cat-native-app');",
+                        null
+                    )
+                }
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -375,6 +420,10 @@ class MainActivity : AppCompatActivity() {
         binding.webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
                 runOnUiThread {
+                    if (!isTrustedAppUrl(request.origin)) {
+                        request.deny()
+                        return@runOnUiThread
+                    }
                     val needed = request.resources.mapNotNull { resource ->
                         when (resource) {
                             PermissionRequest.RESOURCE_AUDIO_CAPTURE -> Manifest.permission.RECORD_AUDIO
@@ -400,6 +449,10 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onShowFileChooser(webView: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
+                if (!isTrustedAppUrl(webView.url?.let(Uri::parse))) {
+                    callback.onReceiveValue(null)
+                    return true
+                }
                 filePathCallback?.onReceiveValue(null)
                 filePathCallback = callback
                 val galleryIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
