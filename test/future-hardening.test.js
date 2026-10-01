@@ -132,3 +132,10 @@ test('canonical HTML supports HEAD and Android networking overrides old transiti
   assert.match(gradle, /socket\.io-client:2\.1\.2/);
   assert.match(gradle, /okhttp:4\.12\.0/);
 });
+
+test('Stage join cannot self-promote ordinary members to speaker or moderator', () => {
+  const stage = source('server/routes/stage.js');
+  assert.match(stage, /const canManageStage = \['owner', 'admin', 'moderator'\]\.includes\(serverRole\)/);
+  assert.match(stage, /let role = existing && \['moderator','speaker'\]\.includes\(existing\.role\) \? existing\.role : 'audience'/);
+  assert.match(stage, /if \(canManageStage\) role = requestedRole/);
+});
