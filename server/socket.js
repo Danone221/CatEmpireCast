@@ -5,6 +5,7 @@ const User = require('./database/models/User');
 const Dm = require('./database/models/Dm');
 const config = require('./config');
 const { configuredOrigins, verifyAccessToken } = require('./security');
+const { sanitizeAttachment, cleanMessageText } = require('./input-security');
 
 function setupSocket(server) {
   const io = new Server(server, {
@@ -59,6 +60,24 @@ function setupSocket(server) {
     if (!channel || (expectedType && channel.type !== expectedType)) return null;
     const role = await ServerModel.getMemberRole(channel.server_id, socket.userId);
     return role ? channel : null;
+  }
+
+  function allowSocketAction(socket, key, limit, windowMs) {
+    const now = Date.now();
+    if (!socket.data.securityRate) socket.data.securityRate = new Map();
+    const bucket = socket.data.securityRate.get(key);
+    if (!bucket || now - bucket.startedAt >= windowMs) {
+      socket.data.securityRate.set(key, { startedAt: now, count: 1 });
+      return true;
+    }
+    bucket.count += 1;
+    return bucket.count <= limit;
+  }
+
+  function rateLimited(socket, key, limit, windowMs) {
+    if (allowSocketAction(socket, key, limit, windowMs)) return false;
+    socket.emit('error', { message: 'Muitas ações em pouco tempo' });
+    return true;
   }
 
   const viewerPeerId = socketId => `viewer:${socketId}`;
@@ -133,6 +152,7 @@ function setupSocket(server) {
     // ========== REGISTRO ==========
     socket.on('register', async ({ serverId } = {}) => {
       try {
+        if (rateLimited(socket, 'register', 8, 10_000)) return;
         const userId = socket.userId;
         if (!userId) return socket.disconnect(true);
 
@@ -167,8 +187,9 @@ function setupSocket(server) {
     });
 
     // ========== ENTRAR NO CANAL DE VOZ ==========
-    socket.on('join-voice-channel', async ({ channelId }) => {
+    socket.on('join-voice-channel', async ({ channelId } = {}) => {
       try {
+        if (rateLimited(socket, 'join-voice', 20, 10_000)) return;
         const channel = await getAuthorizedChannel(socket, channelId, 'voice');
         if (!channel) {
           socket.emit('error', { message: 'Canal não encontrado ou acesso negado' });
@@ -430,8 +451,9 @@ function setupSocket(server) {
     });
 
     // ========== ENTRAR NO CANAL DE TEXTO (necessário pro broadcast de mensagens) ==========
-    socket.on('join-text-channel', async ({ channelId }) => {
+    socket.on('join-text-channel', async ({ channelId } = {}) => {
       try {
+        if (rateLimited(socket, 'join-text', 30, 10_000)) return;
         const channel = await getAuthorizedChannel(socket, channelId, 'text');
         if (!channel) return socket.emit('error', { message: 'Canal não encontrado ou acesso negado' });
         if (socket.textChannel) socket.leave(`channel-${socket.textChannel}`);
@@ -443,31 +465,38 @@ function setupSocket(server) {
     });
 
     // ========== MENSAGEM ==========
-    socket.on('send-message', async ({ channelId, message, file }) => {
+    socket.on('send-message', async ({ channelId, message, file } = {}) => {
       try {
+        if (rateLimited(socket, 'send-message', 30, 10_000)) return;
         const channel = await getAuthorizedChannel(socket, channelId, 'text');
         if (!channel) {
           socket.emit('error', { message: 'Canal não encontrado ou acesso negado' });
           return;
         }
+        if (socket.textChannel !== channelId) {
+          return socket.emit('error', { message: 'Entre no canal antes de enviar mensagens' });
+        }
+
+        const text = cleanMessageText(message, 2000);
+        const safeFile = file
+          ? sanitizeAttachment(file, {
+              maxBytes: Math.min(Number(config.upload.maxSize) || 8 * 1024 * 1024, 8 * 1024 * 1024),
+              allowedTypes: config.upload.allowedTypes
+            })
+          : null;
+        if (!text && !safeFile) return;
 
         const msgData = await Channel.saveMessage({
           channelId,
           userId: socket.userId,
-          content: message,
-          file: file ? {
-            name: file.name,
-            type: file.type,
-            size: file.size || null,
-            data: file.data || null
-          } : null
+          content: text,
+          file: safeFile
         });
 
         io.to(`channel-${channelId}`).emit('new-message', msgData);
-
       } catch (error) {
-        console.error('❌ Erro ao enviar mensagem:', error);
-        socket.emit('error', { message: 'Erro ao enviar mensagem' });
+        console.error('❌ Erro ao enviar mensagem:', error?.message || error);
+        socket.emit('error', { message: error?.status ? error.message : 'Erro ao enviar mensagem' });
       }
     });
 
@@ -479,9 +508,9 @@ function setupSocket(server) {
         if (original.user_id !== socket.userId) {
           return socket.emit('error', { message: 'Você só pode editar suas próprias mensagens' });
         }
-        const trimmed = (content || '').trim();
+        const trimmed = cleanMessageText(content, 2000);
         if (!trimmed) return;
-        const updated = await Channel.editMessage(messageId, trimmed.slice(0, 2000));
+        const updated = await Channel.editMessage(messageId, trimmed);
         io.to(`channel-${original.channel_id}`).emit('message-edited', updated);
       } catch (error) {
         console.error('❌ Erro ao editar mensagem:', error);
@@ -523,23 +552,45 @@ function setupSocket(server) {
     // Cada usuário já está numa sala `user-${id}` desde o registro (ver
     // 'register' acima), então dá pra mandar DM direto pra sala da pessoa
     // sem precisar que ela esteja com a página de DMs aberta.
-    socket.on('send-dm', async ({ toUserId, message, file }) => {
+    socket.on('send-dm', async ({ toUserId, message, file } = {}) => {
       try {
+        if (rateLimited(socket, 'send-dm', 30, 10_000)) return;
         if (!toUserId || toUserId === socket.userId) return;
         const target = await User.findById(toUserId);
         if (!target) return socket.emit('error', { message: 'Usuário não encontrado' });
-        const block = await require('./database').queryOne('SELECT blocker_id FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1', [socket.userId, toUserId]);
-        if (block) return socket.emit('dm-send-error', { toUserId, message: block.blocker_id === socket.userId ? 'Desbloqueie este usuário antes de enviar mensagens' : 'Você não pode enviar mensagens para este usuário' });
-        const text = (message || '').trim();
-        if (!text && !file) return;
-        if (text.length > 2000) return socket.emit('error', { message: 'Mensagem muito longa' });
+        const block = await require('./database').queryOne(
+          'SELECT blocker_id FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
+          [socket.userId, toUserId]
+        );
+        if (block) {
+          return socket.emit('dm-send-error', {
+            toUserId,
+            message: block.blocker_id === socket.userId
+              ? 'Desbloqueie este usuário antes de enviar mensagens'
+              : 'Você não pode enviar mensagens para este usuário'
+          });
+        }
 
-        const dm = await Dm.send({ senderId: socket.userId, recipientId: toUserId, content: text, file });
+        const text = cleanMessageText(message, 2000);
+        const safeFile = file
+          ? sanitizeAttachment(file, {
+              maxBytes: Math.min(Number(config.upload.maxSize) || 8 * 1024 * 1024, 8 * 1024 * 1024),
+              allowedTypes: config.upload.allowedTypes
+            })
+          : null;
+        if (!text && !safeFile) return;
+
+        const dm = await Dm.send({
+          senderId: socket.userId,
+          recipientId: toUserId,
+          content: text,
+          file: safeFile
+        });
         io.to(`user-${toUserId}`).emit('new-dm', dm);
-        io.to(`user-${socket.userId}`).emit('new-dm', dm); // ecoa pro remetente (multi-aba)
+        io.to(`user-${socket.userId}`).emit('new-dm', dm);
       } catch (error) {
-        console.error('❌ Erro ao enviar DM:', error);
-        socket.emit('error', { message: 'Erro ao enviar mensagem privada' });
+        console.error('❌ Erro ao enviar DM:', error?.message || error);
+        socket.emit('error', { message: error?.status ? error.message : 'Erro ao enviar mensagem privada' });
       }
     });
 
@@ -549,9 +600,9 @@ function setupSocket(server) {
         if (!original || original.sender_id !== socket.userId) {
           return socket.emit('error', { message: 'Você só pode editar suas próprias mensagens' });
         }
-        const trimmed = (content || '').trim();
+        const trimmed = cleanMessageText(content, 2000);
         if (!trimmed) return;
-        const updated = await Dm.edit(messageId, trimmed.slice(0, 2000));
+        const updated = await Dm.edit(messageId, trimmed);
         io.to(`user-${original.sender_id}`).emit('dm-edited', updated);
         io.to(`user-${original.recipient_id}`).emit('dm-edited', updated);
       } catch (error) {
