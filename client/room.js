@@ -70,9 +70,7 @@ function esc(s) {
 function safeImageUrl(value, fallback = '/logo.svg') {
   const s = String(value || '').trim();
   if (!s) return fallback;
-  if (/^\/(?!\/)[A-Za-z0-9._~!function esc(s) {
-  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-}'()*+,;=:@%/?#-]+$/.test(s)) return s;
+  if (/^\/(?!\/)[^\s"'<>\\]*$/.test(s)) return s;
   if (/^https:\/\/[^\s"'<>\\]+$/i.test(s)) return s;
   const m = s.match(/^data:image\/(?:png|jpe?g|webp|gif);base64,/i);
   if (m && s.length <= 1300000 && /^[A-Za-z0-9+/]+={0,2}$/.test(s.slice(m[0].length))) return s;
