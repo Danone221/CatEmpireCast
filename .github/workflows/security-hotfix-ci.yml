@@ -1,0 +1,38 @@
+name: Security Hotfix CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches:
+      - security/hotfix-2026-10-01
+
+jobs:
+  node-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run check
+
+  android-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null || true
+      - run: |
+          GRADLE_VERSION=8.7
+          curl --fail --location --retry 3 --output gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+          unzip -q gradle.zip
+          cd CatEmpireCast
+          ../gradle-${GRADLE_VERSION}/bin/gradle compileDebugKotlin --stacktrace --no-daemon
