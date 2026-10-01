@@ -8,6 +8,37 @@ const { configuredOrigins, originAllowed, sessionTokenFromCookieHeader, verifyAc
 const { sanitizeAttachment, cleanMessageText } = require('./input-security');
 
 function setupSocket(server) {
+  const handshakeBuckets = new Map();
+  let lastHandshakeSweep = 0;
+
+  function handshakeIp(req) {
+    const cf = String(req.headers['cf-connecting-ip'] || '').trim();
+    if (cf) return cf.slice(0, 80);
+    const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    if (forwarded) return forwarded.slice(0, 80);
+    return String(req.socket?.remoteAddress || 'unknown').slice(0, 80);
+  }
+
+  function allowHandshake(req) {
+    const now = Date.now();
+    if (now - lastHandshakeSweep > 60_000) {
+      lastHandshakeSweep = now;
+      for (const [key, bucket] of handshakeBuckets) {
+        if (now - bucket.startedAt > 120_000) handshakeBuckets.delete(key);
+      }
+    }
+
+    const key = handshakeIp(req);
+    let bucket = handshakeBuckets.get(key);
+    if (!bucket || now - bucket.startedAt >= 60_000) {
+      if (handshakeBuckets.size >= 10_000 && !handshakeBuckets.has(key)) return false;
+      bucket = { startedAt: now, count: 0 };
+      handshakeBuckets.set(key, bucket);
+    }
+    bucket.count += 1;
+    return bucket.count <= 120;
+  }
+
   const io = new Server(server, {
     cors: {
       origin: config.nodeEnv !== 'production' && configuredOrigins().includes('*') ? '*' : configuredOrigins(),
@@ -15,7 +46,8 @@ function setupSocket(server) {
     },
     allowRequest(req, callback) {
       const origin = String(req.headers.origin || '').trim();
-      callback(null, !origin || originAllowed(origin));
+      if (origin && !originAllowed(origin)) return callback(null, false);
+      callback(null, allowHandshake(req));
     },
     // Padrão do Socket.IO é 1MB — muito pouco pra imagem em base64 (até ~11MB
     // pra um arquivo de 8MB). Sem isso, 'send-message' com anexo grande
