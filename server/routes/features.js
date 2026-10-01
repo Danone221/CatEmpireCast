@@ -172,7 +172,7 @@ router.get('/gifs/search', async (req, res) => {
   const term = String(req.query.q || 'trending').slice(0, 80);
   try {
     const url = `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(term)}&key=${encodeURIComponent(key)}&client_key=cat_empire&limit=12`;
-    const r = await fetch(url);
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!r.ok) return res.json({ configured: true, results: [] });
     const d = await r.json();
     const results = (d.results || []).map(x => ({ id:x.id, preview:x.media_formats?.tinygif?.url || x.media_formats?.nanogif?.url, url:x.media_formats?.gif?.url || x.media_formats?.mediumgif?.url })).filter(x => x.url);
