@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const q=new URLSearchParams(location.search),token=localStorage.getItem('cat_token')||q.get('token')||'',userId=localStorage.getItem('cat_user_id')||q.get('userId')||'';
+  const q=new URLSearchParams(location.search),token=localStorage.getItem('cat_token')||'',userId=localStorage.getItem('cat_user_id')||'';
   const modal=document.getElementById('viewProfileModal');
   if(!token||!userId||!modal)return;
   const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
