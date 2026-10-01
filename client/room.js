@@ -43,7 +43,7 @@ const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 $('myName').textContent = userName;
 const cachedAvatar = localStorage.getItem('cat_avatar');
-if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
+if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = safeImageUrl(cachedAvatar);
 
 (async function loadMyProfileOnStartup() {
   try {
@@ -52,7 +52,7 @@ if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
     const me = await r.json();
     if (me) {
       if (me.display_name && $('myName')) $('myName').textContent = me.display_name;
-      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = me.avatar;
+      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = safeImageUrl(me.avatar);
       if (me.avatar) localStorage.setItem('cat_avatar', me.avatar);
       if (me.display_name) localStorage.setItem('cat_user_name', me.display_name);
     }
@@ -65,6 +65,30 @@ function headers() {
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function safeImageUrl(value, fallback = '/logo.svg') {
+  const s = String(value || '').trim();
+  if (!s) return fallback;
+  if (/^\/(?!\/)[A-Za-z0-9._~!function esc(s) {
+  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}'()*+,;=:@%/?#-]+$/.test(s)) return s;
+  if (/^https:\/\/[^\s"'<>\\]+$/i.test(s)) return s;
+  const m = s.match(/^data:image\/(?:png|jpe?g|webp|gif);base64,/i);
+  if (m && s.length <= 1300000 && /^[A-Za-z0-9+/]+={0,2}$/.test(s.slice(m[0].length))) return s;
+  return fallback;
+}
+
+function safeFileUrl(value, type) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (/^https:\/\/[^\s"'<>\\]+$/i.test(s)) return s;
+  const mime = String(type || '').toLowerCase();
+  const allowed = new Set(['image/jpeg','image/png','image/gif','image/webp','video/mp4','video/webm','audio/mpeg','audio/ogg','application/pdf']);
+  if (!allowed.has(mime)) return '';
+  const prefix = `data:${mime};base64,`;
+  if (!s.startsWith(prefix) || s.length > 12000000) return '';
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(s.slice(prefix.length)) ? s : '';
 }
 
 // Formatação estilo Discord: aplica DEPOIS de esc() escapar o HTML, então
@@ -203,7 +227,7 @@ async function load() {
     $('serverName').textContent = d.name || 'Servidor';
     $('serverName').title = d.name || 'Servidor';
     $('serverProfileName').textContent = d.name || 'Servidor';
-    $('serverProfileIconImg').src = d.icon && /^(data:|https?:)/.test(d.icon) ? d.icon : '/logo.svg';
+    $('serverProfileIconImg').src = safeImageUrl(d.icon);
     $('mobileTitle').textContent = d.name || 'CAT EMPIRE';
     if (d.banner_color) $('serverHead').style.background = d.banner_color;
     channels = d.channels || [];
@@ -219,7 +243,7 @@ async function load() {
     const firstText = channels.find(c => c.type === 'text');
     if (firstText) openTextChannel(firstText.id);
     const me = members.find(m => m.id === userId);
-    if (me && me.avatar) $('myAvatarImg').src = me.avatar;
+    if (me && me.avatar) $('myAvatarImg').src = safeImageUrl(me.avatar);
   } catch (e) {
     toast(e.message, 'error');
     localStorage.removeItem('cat_last_server');
@@ -292,7 +316,7 @@ function renderMembers() {
   $('membersList').innerHTML = members.map(m => `
     <div class="member-row" data-user-id="${esc(m.id)}">
       <div class="m-avatar">
-        <img src="${m.avatar || '/logo.svg'}" alt="">
+        <img src="${esc(safeImageUrl(m.avatar))}" alt="">
         <span class="presence-dot ${onlineUserIds.has(m.id) ? 'online' : 'offline'}"></span>
       </div>
       <div class="m-name">${esc(m.display_name || m.username)}</div>
@@ -434,10 +458,11 @@ function renderMessages(msgs) {
 function messageHtml(m) {
   const time = new Date((m.created_at || 0) * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   let fileHtml = '';
-  if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
-    fileHtml = `<img class="message-image" src="${m.file_data}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${m.file_data}">`;
-  } else if (m.file_data) {
-    fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
+  const fileUrl = safeFileUrl(m.file_data, m.file_type);
+  if (fileUrl && m.file_type && m.file_type.startsWith('image/')) {
+    fileHtml = `<img class="message-image" src="${esc(fileUrl)}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${esc(fileUrl)}">`;
+  } else if (fileUrl) {
+    fileHtml = `<a class="message-file" href="${esc(fileUrl)}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
   const memberInfo = members.find(mem => mem.id === m.user_id);
   const isAdminAuthor = memberInfo && memberInfo.role === 'admin';
@@ -449,7 +474,7 @@ function messageHtml(m) {
     </div>` : '';
   const messageUserId = m.user_id || m.sender_id || m.author_id || '';
   return `<div class="message" data-message-id="${esc(m.id)}" data-author-id="${esc(messageUserId)}">
-    <div class="message-avatar" data-user-id="${esc(messageUserId)}"><img src="${m.avatar || '/logo.svg'}" alt=""></div>
+    <div class="message-avatar" data-user-id="${esc(messageUserId)}"><img src="${esc(safeImageUrl(m.avatar))}" alt=""></div>
     <div class="message-body">
       <div class="message-head">
         <span class="message-author${isAdminAuthor ? ' author-admin' : ''}" data-user-id="${esc(messageUserId)}">${esc(m.display_name || m.username || 'Membro')}</span>
@@ -1785,7 +1810,7 @@ async function openMyProfile() {
     pendingAvatarData = null;
     pendingProfileBannerData = null;
     editSelectedColor = me.banner_color || '#5865f2';
-    $('editAvatarPreview').src = me.avatar || '/logo.svg';
+    $('editAvatarPreview').src = safeImageUrl(me.avatar);
     $('editDisplayName').value = me.display_name || me.username || '';
     $('editBio').value = me.bio || '';
     $('editBioCount').textContent = (me.bio || '').length;
@@ -1928,7 +1953,7 @@ async function openProfile(targetUserId) {
     const modal = $('viewProfileModal');
     modal.dataset.profileId = targetUserId;
     applyBannerStyle($('viewProfileBanner'), p.banner || p.banner_color || '#5865f2');
-    $('viewProfileAvatar').src = p.avatar || '/logo.svg';
+    $('viewProfileAvatar').src = safeImageUrl(p.avatar);
     $('viewProfileName').textContent = p.display_name || p.username;
     $('viewProfileUsername').textContent = '@' + p.username;
     $('viewProfileBio').textContent = p.bio || 'Sem bio.';
@@ -2067,7 +2092,7 @@ $('copyInviteBtn')?.addEventListener('click', () => {
 socket.on('member-profile-updated', (u) => {
   const idx = members.findIndex(m => m.id === u.id);
   if (idx >= 0) { members[idx] = { ...members[idx], display_name: u.display_name, avatar: u.avatar }; renderMembers(); }
-  if (u.id === userId) { $('myName').textContent = u.display_name; if (u.avatar) $('myAvatarImg').src = u.avatar; }
+  if (u.id === userId) { $('myName').textContent = u.display_name; if (u.avatar) $('myAvatarImg').src = safeImageUrl(u.avatar); }
   renderVoiceGrid();
 });
 
@@ -2097,7 +2122,7 @@ async function refreshServerDataLive() {
     $('serverName').title = data.name || 'Servidor';
     $('mobileTitle').textContent = data.name || 'CAT EMPIRE';
     if ($('serverProfileName')) $('serverProfileName').textContent = data.name || 'Servidor';
-    if ($('serverProfileIconImg')) $('serverProfileIconImg').src = data.icon && /^(data:|https?:)/.test(data.icon) ? data.icon : '/logo.svg';
+    if ($('serverProfileIconImg')) $('serverProfileIconImg').src = safeImageUrl(data.icon);
     applyBannerStyle($('serverHead'), data.banner || data.banner_color);
     const canManage = ['admin','owner'].includes(myRole);
     $('serverSettingsBtn').hidden = !canManage;
@@ -2142,7 +2167,7 @@ socket.on('server-updated', (s) => {
   $('serverName').title = s.name || 'Servidor';
   $('mobileTitle').textContent = s.name || 'CAT EMPIRE';
   if ($('serverProfileName')) $('serverProfileName').textContent = s.name || 'Servidor';
-  if ($('serverProfileIconImg')) $('serverProfileIconImg').src = s.icon && /^(data:|https?:)/.test(s.icon) ? s.icon : '/logo.svg';
+  if ($('serverProfileIconImg')) $('serverProfileIconImg').src = safeImageUrl(s.icon);
   applyBannerStyle($('serverHead'), s.banner || s.banner_color);
   loadServersRail();
 });
