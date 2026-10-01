@@ -493,3 +493,47 @@ body.real-login-page{overflow-x:hidden;background:var(--real-bg)!important}
   *,*::before,*::after{scroll-behavior:auto!important}
   .real-preview h1,.real-login-card,.real-visual-pane,.real-form-pane,.real-primary-text span,.rft-draw{animation:none!important}
 }
+@media(max-width:860px){
+  .real-shell{
+    gap:18px;
+    padding-left:max(14px,env(safe-area-inset-left));
+    padding-right:max(14px,env(safe-area-inset-right));
+  }
+  .real-login-card{
+    width:100%;
+    max-width:480px;
+    margin:0 auto;
+    isolation:isolate;
+  }
+  .real-visual-pane,
+  .real-form-pane{
+    width:100%;
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+    transform:none!important;
+    will-change:auto!important;
+    backface-visibility:hidden;
+    contain:paint;
+    isolation:isolate;
+    overflow:hidden;
+  }
+  .real-visual-pane{
+    background:
+      radial-gradient(circle at 50% 62%,rgba(23,255,177,.16),transparent 42%),
+      linear-gradient(180deg,rgba(4,29,23,.96),rgba(4,17,18,.98));
+    box-shadow:0 14px 34px rgba(0,0,0,.24),inset 0 1px rgba(214,255,242,.055);
+  }
+  .real-form-pane{
+    background:
+      radial-gradient(circle at 8% 0,rgba(31,255,180,.055),transparent 34%),
+      linear-gradient(145deg,rgba(4,24,20,.96),rgba(6,15,20,.985));
+    box-shadow:0 16px 42px rgba(0,0,0,.28),inset 0 1px rgba(220,255,244,.055);
+  }
+}
+
+@media(max-width:520px){
+  .real-shell{gap:16px}
+  .real-login-card{max-width:none}
+  .real-visual-pane{height:88px;min-height:88px}
+  .real-form-pane{padding:18px 16px}
+}

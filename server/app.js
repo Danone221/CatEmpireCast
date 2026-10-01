@@ -176,6 +176,14 @@ app.get('/health', async (req, res) => {
 });
 
 const clientDir = path.join(__dirname, '../client');
+
+app.use((req, res, next) => {
+  if (req.method === 'GET' && /^\/login-lab-\d+\.html$/i.test(req.path)) {
+    return res.status(404).type('text').send('Not Found');
+  }
+  next();
+});
+
 const htmlFiles = new Set(['/', '/index.html', '/server.html', '/dms.html', '/invite.html']);
 app.use((req, res, next) => {
   if (req.method !== 'GET' || !htmlFiles.has(req.path) || !String(req.headers.accept || '').includes('text/html')) return next();

@@ -80,6 +80,14 @@ function setupSocket(server) {
     return true;
   }
 
+  function payloadWithinLimit(value, maxBytes = 96 * 1024) {
+    try {
+      return Buffer.byteLength(JSON.stringify(value ?? null), 'utf8') <= maxBytes;
+    } catch (_) {
+      return false;
+    }
+  }
+
   const viewerPeerId = socketId => `viewer:${socketId}`;
   const viewerSocketId = peerId => String(peerId || '').startsWith('viewer:')
     ? String(peerId).slice('viewer:'.length)
@@ -291,6 +299,7 @@ function setupSocket(server) {
     // ========== ESTADO DE MÍDIA (mic/câmera) NA CHAMADA DE VOZ ==========
     socket.on('voice-media-state', ({ muted, camera, screen }) => {
       try {
+        if (rateLimited(socket, 'voice-media-state', 40, 10_000)) return;
         const channelId = userChannels.get(socket.userId);
         if (!channelId) return;
         io.to(`channel-${channelId}`).emit('user-media-state', {
@@ -308,6 +317,8 @@ function setupSocket(server) {
     // Repassa SDP offers/answers e ICE candidates diretamente para o usuário-alvo.
     socket.on('voice-signal', ({ to, data }) => {
       try {
+        if (rateLimited(socket, 'voice-signal', 120, 10_000)) return;
+        if (typeof to !== 'string' || to.length > 160 || !payloadWithinLimit(data)) return;
         const sourceChannelId = userChannels.get(socket.userId);
         if (!sourceChannelId) return;
         const screenSocketId = screenShareSockets.get(to);
@@ -375,6 +386,8 @@ function setupSocket(server) {
 
     socket.on('native-screen-signal', ({ to, data }) => {
       try {
+        if (rateLimited(socket, 'native-screen-signal', 120, 10_000)) return;
+        if (typeof to !== 'string' || to.length > 160 || !payloadWithinLimit(data)) return;
         if (!socket.screenPeerId || !socket.screenChannelId) return;
         const targetSocketId = viewerSocketId(to);
         const targetSocket = targetSocketId && io.sockets.sockets.get(targetSocketId);
@@ -388,6 +401,8 @@ function setupSocket(server) {
 
     socket.on('native-screen-viewer-ready', ({ peerId }) => {
       try {
+        if (rateLimited(socket, 'native-screen-viewer-ready', 40, 10_000)) return;
+        if (typeof peerId !== 'string' || peerId.length > 160) return;
         const nativeSocketId = screenShareSockets.get(peerId);
         const nativeSocket = nativeSocketId && io.sockets.sockets.get(nativeSocketId);
         if (!socket.userId || !nativeSocket || userChannels.get(socket.userId) !== nativeSocket.screenChannelId) return;
@@ -399,6 +414,8 @@ function setupSocket(server) {
 
     socket.on('native-screen-viewer-debug', ({ peerId, stage, detail }) => {
       try {
+        if (rateLimited(socket, 'native-screen-viewer-debug', 20, 10_000)) return;
+        if (typeof peerId !== 'string' || peerId.length > 160) return;
         const nativeSocketId = screenShareSockets.get(peerId);
         const nativeSocket = nativeSocketId && io.sockets.sockets.get(nativeSocketId);
         if (!socket.userId || !nativeSocket || userChannels.get(socket.userId) !== nativeSocket.screenChannelId) return;
@@ -411,6 +428,7 @@ function setupSocket(server) {
     });
 
     socket.on('native-screen-debug', ({ stage, detail }) => {
+      if (rateLimited(socket, 'native-screen-debug', 20, 10_000)) return;
       if (!socket.screenPeerId) return;
       const safeStage = String(stage || '').replace(/[^a-z0-9-]/gi, '').slice(0, 40);
       const safeDetail = String(detail || '').replace(/[\r\n]/g, ' ').slice(0, 160);
@@ -540,10 +558,12 @@ function setupSocket(server) {
 
     // ========== INDICADOR "ESTÁ DIGITANDO…" ==========
     socket.on('typing-start', ({ channelId }) => {
+      if (rateLimited(socket, 'typing', 60, 10_000)) return;
       if (socket.textChannel !== channelId) return;
       socket.to(`channel-${channelId}`).emit('user-typing', { channelId, userId: socket.userId, userName: socket.userName });
     });
     socket.on('typing-stop', ({ channelId }) => {
+      if (rateLimited(socket, 'typing', 60, 10_000)) return;
       if (socket.textChannel !== channelId) return;
       socket.to(`channel-${channelId}`).emit('user-stop-typing', { channelId, userId: socket.userId });
     });
@@ -628,17 +648,20 @@ function setupSocket(server) {
     });
 
     socket.on('dm-typing-start', ({ toUserId }) => {
-      if (!toUserId) return;
+      if (rateLimited(socket, 'dm-typing', 60, 10_000)) return;
+      if (!toUserId || typeof toUserId !== 'string' || toUserId.length > 160) return;
       io.to(`user-${toUserId}`).emit('dm-user-typing', { userId: socket.userId, userName: socket.userName });
     });
     socket.on('dm-typing-stop', ({ toUserId }) => {
-      if (!toUserId) return;
+      if (rateLimited(socket, 'dm-typing', 60, 10_000)) return;
+      if (!toUserId || typeof toUserId !== 'string' || toUserId.length > 160) return;
       io.to(`user-${toUserId}`).emit('dm-user-stop-typing', { userId: socket.userId });
     });
 
     // ========== GO LIVE ==========
     socket.on('start-go-live', ({ channelId }) => {
       try {
+        if (rateLimited(socket, 'go-live', 20, 10_000)) return;
         if (userChannels.get(socket.userId) !== channelId) return;
         io.to(`channel-${channelId}`).emit('stream-started', {
           userId: socket.userId,
@@ -651,6 +674,7 @@ function setupSocket(server) {
 
     socket.on('stop-go-live', ({ channelId }) => {
       try {
+        if (rateLimited(socket, 'go-live', 20, 10_000)) return;
         if (userChannels.get(socket.userId) !== channelId) return;
         io.to(`channel-${channelId}`).emit('stream-stopped', {
           userId: socket.userId

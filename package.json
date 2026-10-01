@@ -11,20 +11,21 @@
     "dev": "nodemon server.js",
     "check": "node scripts/check-js.js",
     "test": "node --test",
-    "postinstall": "node scripts/build-liquid-metal.mjs"
+    "postinstall": "npm run verify && node scripts/build-liquid-metal.mjs",
+    "verify": "npm run check && npm test"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
-    "express": "^4.18.2",
+    "express": "4.22.3",
     "express-rate-limit": "^6.7.0",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.0",
     "node-media-server": "^2.6.3",
     "pg": "^8.11.5",
-    "socket.io": "^4.6.1",
+    "socket.io": "4.8.3",
     "uuid": "^11.1.1",
     "@paper-design/shaders-react": "0.0.81",
     "react": "19.1.1",
@@ -33,5 +34,10 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  },
+  "overrides": {
+    "engine.io": "6.6.11",
+    "qs": "6.16.0",
+    "body-parser": "1.20.8"
   }
 }
