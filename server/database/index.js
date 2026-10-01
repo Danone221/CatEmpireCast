@@ -174,10 +174,12 @@ async function initSchema() {
     DELETE FROM revoked_tokens WHERE expires_at <= extract(epoch FROM now())::bigint;
     UPDATE users
       SET bio = CASE WHEN bio IS NULL THEN NULL ELSE regexp_replace(bio, '[<>]', '', 'g') END,
-          display_name = CASE WHEN display_name IS NULL THEN NULL ELSE regexp_replace(display_name, '[<>]', '', 'g') END;
+          display_name = CASE WHEN display_name IS NULL THEN NULL ELSE regexp_replace(display_name, '[<>]', '', 'g') END,
+          avatar = CASE WHEN avatar ~* '^(file|javascript|http):' THEN NULL ELSE avatar END;
     UPDATE servers
       SET name = regexp_replace(name, '[<>]', '', 'g'),
-          description = CASE WHEN description IS NULL THEN NULL ELSE regexp_replace(description, '[<>]', '', 'g') END;
+          description = CASE WHEN description IS NULL THEN NULL ELSE regexp_replace(description, '[<>]', '', 'g') END,
+          icon = CASE WHEN icon ~* '^(file|javascript|http):' THEN '🐱' ELSE icon END;
   `);
 
   // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
