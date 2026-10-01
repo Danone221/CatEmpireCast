@@ -64,6 +64,42 @@ async function verifySessionToken(token) {
   return { decoded, user };
 }
 
+async function createNativeCastToken(user, channelId) {
+  const state = await User.getAuthState(user.id);
+  if (!state) throw new Error('Usuário não encontrado');
+  return jwt.sign(
+    {
+      sub: state.id,
+      av: Number(state.auth_version || 0),
+      purpose: 'native-cast',
+      channelId: String(channelId)
+    },
+    config.jwtSecret,
+    {
+      algorithm: 'HS256',
+      expiresIn: '2m',
+      issuer: 'cat-empire',
+      audience: 'cat-empire-native-cast'
+    }
+  );
+}
+
+async function verifyNativeCastToken(token) {
+  const decoded = jwt.verify(String(token || ''), config.jwtSecret, {
+    algorithms: ['HS256'],
+    issuer: 'cat-empire',
+    audience: 'cat-empire-native-cast'
+  });
+  if (decoded.purpose !== 'native-cast' || !decoded.sub || !decoded.channelId || decoded.av === undefined) {
+    throw new Error('Token de transmissão inválido');
+  }
+  const state = await User.getAuthState(decoded.sub);
+  if (!state || Number(state.auth_version || 0) !== Number(decoded.av)) {
+    throw new Error('Token de transmissão revogado');
+  }
+  return decoded;
+}
+
 async function issueSession(res, user) {
   const token = await createSessionToken(user);
   res.cookie(SESSION_COOKIE, token, cookieOptions(12 * 60 * 60 * 1000));
@@ -99,6 +135,8 @@ module.exports = {
   getCookie,
   parseCookies,
   verifySessionToken,
+  createNativeCastToken,
+  verifyNativeCastToken,
   issueSession,
   clearSession,
   createOAuthState,
