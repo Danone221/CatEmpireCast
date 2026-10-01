@@ -289,13 +289,15 @@ function setupSocket(server) {
     // ========== AUDIO TOGGLE ==========
     socket.on('audio-toggle', async ({ muted }) => {
       try {
+        if (rateLimited(socket, 'audio-toggle', 40, 10_000)) return;
         const channelId = userChannels.get(socket.userId);
         if (!channelId) return;
 
-        await Channel.updateVoiceState(socket.userId, channelId, muted, false);
+        const safeMuted = !!muted;
+        await Channel.updateVoiceState(socket.userId, channelId, safeMuted, false);
         io.to(`channel-${channelId}`).emit('user-audio-toggle', {
           userId: socket.userId,
-          muted
+          muted: safeMuted
         });
 
       } catch (error) {
@@ -355,6 +357,7 @@ function setupSocket(server) {
     // ========== TELA NATIVA DO APK VIA WEBRTC ==========
     socket.on('register-native-screen', async ({ channelId }) => {
       try {
+        if (rateLimited(socket, 'register-native-screen', 10, 10_000)) return;
         const userId = socket.userId;
         const user = await User.findById(userId);
         const channel = await getAuthorizedChannel(socket, channelId, 'voice');
