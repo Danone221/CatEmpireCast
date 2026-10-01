@@ -4,6 +4,8 @@ const router = express.Router();
 const { query, queryOne } = require('../database');
 const Server = require('../database/models/Server');
 const { authenticate } = require('../middleware/auth');
+const config = require('../config');
+const { sanitizeAttachment, cleanMessageText } = require('../input-security');
 
 router.use(authenticate);
 
@@ -68,7 +70,7 @@ router.post('/channels/:channelId/messages', async (req, res) => {
   try {
     const { channel } = await requireMemberByChannel(req.params.channelId, req.user.id);
     if (channel.type !== 'text') return res.status(400).json({ error: 'O canal não é de texto' });
-    const content = String(req.body.content || '').slice(0, 4000);
+    const content = cleanMessageText(req.body.content, 2000);
     const replyTo = req.body.replyTo || null;
     const threadId = req.body.threadId || null;
     const embeds = Array.isArray(req.body.embeds) ? req.body.embeds.slice(0, 10) : [];
@@ -95,15 +97,50 @@ router.post('/channels/:channelId/messages', async (req, res) => {
       VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [uuidv4(), channel.id, req.user.id, content, replyTo, threadId, JSON.stringify(embeds), JSON.stringify(mentions), JSON.stringify(stickers)]);
 
     for (const attachment of Array.isArray(req.body.attachments) ? req.body.attachments.slice(0, 10) : []) {
+      const rawUrl = typeof attachment?.url === 'string' ? attachment.url.trim() : '';
+      const rawData = typeof attachment?.fileData === 'string' ? attachment.fileData : '';
+      let storedUrl = null;
+      let fileName = String(attachment?.fileName || 'arquivo').replace(/[\\/\u0000-\u001f\u007f]/g, '_').slice(0, 180);
+      let fileType = String(attachment?.fileType || '').toLowerCase().slice(0, 120) || null;
+      let fileSize = Math.max(0, Number(attachment?.fileSize) || 0) || null;
+      if (rawData) {
+        const safe = sanitizeAttachment({
+          name: fileName,
+          type: fileType,
+          size: fileSize,
+          data: rawData
+        }, {
+          maxBytes: Math.min(Number(config.upload.maxSize) || 8 * 1024 * 1024, 8 * 1024 * 1024),
+          allowedTypes: config.upload.allowedTypes
+        });
+        fileName = safe.name;
+        fileType = safe.type;
+        fileSize = safe.size;
+        storedUrl = safe.data;
+      } else if (rawUrl) {
+        let parsed;
+        try { parsed = new URL(rawUrl); } catch (_) {
+          return res.status(400).json({ error: 'URL de anexo inválida' });
+        }
+        if (parsed.protocol !== 'https:' || rawUrl.length > 2048) {
+          return res.status(400).json({ error: 'URL de anexo inválida' });
+        }
+        storedUrl = rawUrl;
+      }
+      if (!storedUrl) return res.status(400).json({ error: 'Anexo inválido' });
       await query(`INSERT INTO message_attachments(id,message_id,file_name,file_type,file_size,url,metadata)
-        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, String(attachment.fileName || 'arquivo').slice(0,255), attachment.fileType || null, Number(attachment.fileSize) || null, attachment.url || attachment.fileData || null, JSON.stringify(attachment.metadata || {})]);
+        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, fileName, fileType, fileSize, storedUrl, JSON.stringify(attachment.metadata || {})]);
     }
 
     for (const mention of mentions) {
       const type = ['user','role','everyone','here'].includes(mention.type) ? mention.type : 'user';
       if (type === 'user' && mention.userId) {
+        const member = await queryOne('SELECT 1 FROM server_members WHERE server_id=$1 AND user_id=$2', [channel.server_id, mention.userId]);
+        if (!member) continue;
         await query(`INSERT INTO message_mentions(message_id,user_id,mention_type) VALUES($1,$2,'user') ON CONFLICT DO NOTHING`, [message.id, mention.userId]);
       } else if (type === 'role' && mention.roleId) {
+        const role = await queryOne('SELECT 1 FROM server_roles WHERE server_id=$1 AND id=$2', [channel.server_id, mention.roleId]);
+        if (!role) continue;
         await query(`INSERT INTO message_mentions(message_id,role_id,mention_type) VALUES($1,$2,'role')`, [message.id, mention.roleId]);
       } else if (type === 'everyone' || type === 'here') {
         await query(`INSERT INTO message_mentions(message_id,mention_type) VALUES($1,$2)`, [message.id, type]);
@@ -121,9 +158,10 @@ router.patch('/messages/:messageId', async (req, res) => {
   try {
     const message = await queryOne('SELECT m.*, c.server_id,c.id AS channel_id FROM messages m JOIN channels c ON c.id=m.channel_id WHERE m.id=$1', [req.params.messageId]);
     if (!message) return res.status(404).json({ error: 'Mensagem não encontrada' });
-    const manage = await canManage(message, req.user.id);
+    const { role } = await requireMemberByChannel(message.channel_id, req.user.id);
+    const manage = ['owner', 'admin'].includes(role);
     if (message.user_id !== req.user.id && !manage) return res.status(403).json({ error: 'Você não pode editar esta mensagem' });
-    const content = String(req.body.content ?? message.content ?? '').slice(0, 4000);
+    const content = cleanMessageText(req.body.content ?? message.content ?? '', 2000);
     const updated = await queryOne('UPDATE messages SET content=$1, edited_at=extract(epoch FROM now())::bigint WHERE id=$2 AND deleted_at IS NULL RETURNING id', [content, message.id]);
     if (!updated) return res.status(404).json({ error: 'Mensagem não encontrada' });
     const full = await loadMessage(message.id);
@@ -137,7 +175,8 @@ router.delete('/messages/:messageId', async (req, res) => {
   try {
     const message = await queryOne('SELECT m.*,c.server_id,c.id AS channel_id FROM messages m JOIN channels c ON c.id=m.channel_id WHERE m.id=$1', [req.params.messageId]);
     if (!message) return res.status(404).json({ error: 'Mensagem não encontrada' });
-    const manage = await canManage(message, req.user.id);
+    const { role } = await requireMemberByChannel(message.channel_id, req.user.id);
+    const manage = ['owner', 'admin'].includes(role);
     if (message.user_id !== req.user.id && !manage) return res.status(403).json({ error: 'Você não pode excluir esta mensagem' });
     await query('UPDATE messages SET deleted_at=extract(epoch FROM now())::bigint, content=NULL, file_data=NULL WHERE id=$1', [message.id]);
     const io = req.app.get('io');
