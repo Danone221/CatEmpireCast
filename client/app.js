@@ -1,19 +1,18 @@
 const $ = id => document.getElementById(id);
 let userId = localStorage.getItem('cat_user_id') || '';
 let userName = localStorage.getItem('cat_user_name') || '';
-let token = localStorage.getItem('cat_token') || '';
+localStorage.removeItem('cat_token');
 
-function setSession(user, t) {
+function setSession(user) {
   userId = user.id;
   userName = user.display_name || user.username;
-  token = t;
   localStorage.setItem('cat_user_id', userId);
   localStorage.setItem('cat_user_name', userName);
-  localStorage.setItem('cat_token', token);
+  localStorage.removeItem('cat_token');
 }
 
 function headers() {
-  return { 'Content-Type': 'application/json', ...(token ? { 'Authorization': 'Bearer ' + token } : {}) };
+  return { 'Content-Type': 'application/json' };
 }
 
 function esc(s) {
@@ -21,7 +20,12 @@ function esc(s) {
 }
 
 async function ensureGuest(name, forceNew = false) {
-  if (!forceNew && token && userId) return true;
+  if (!forceNew && userId) {
+    try {
+      const vr = await fetch('/auth/verify', { headers: headers() });
+      if (vr.ok) return true;
+    } catch {}
+  }
   const clean = (name || 'Cat' + Math.random().toString(36).slice(2, 7)).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 16) || 'Cat';
   const password = crypto.randomUUID() + 'Aa1!';
   const username = (clean.toLowerCase() + '_' + Math.random().toString(36).slice(2, 7)).slice(0, 30);
@@ -32,7 +36,7 @@ async function ensureGuest(name, forceNew = false) {
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d.error || 'Não foi possível criar a conta.');
-  setSession(d.user, d.token);
+  setSession(d.user);
   return true;
 }
 
@@ -42,7 +46,6 @@ window.enterServer = id => {
 };
 
 async function loadServers() {
-  if (!token) return;
   try {
     const r = await fetch('/api/servers', { headers: headers() });
     const d = await r.json();
@@ -105,20 +108,11 @@ async function resumeUserDestination() {
 }
 
 async function restoreSession() {
-  // Retorno do fluxo OAuth do Discord chega como #discord_token=... na URL
-  const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
-  const discordToken = hash.get('discord_token');
-  if (discordToken) {
-    history.replaceState(null, '', location.pathname + location.search);
-    try {
-      const r = await fetch('/auth/verify', { headers: { Authorization: 'Bearer ' + discordToken } });
-      const d = await r.json();
-      if (r.ok) {
-        setSession(d.user, discordToken);
-        await resumeUserDestination();
-        return;
-      }
-    } catch (e) {}
+  if (location.hash || new URLSearchParams(location.search).has('token')) {
+    const cleanUrl = new URL(location.href);
+    cleanUrl.hash = '';
+    cleanUrl.searchParams.delete('token');
+    history.replaceState(null, '', cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : ''));
   }
 
   const params = new URLSearchParams(location.search);
@@ -128,16 +122,15 @@ async function restoreSession() {
     toast('Não foi possível entrar com Discord. Tente novamente.', 'error');
   }
 
-  if (!token) return;
-
   try {
     const r = await fetch('/auth/verify', { headers: headers() });
     if (!r.ok) throw new Error('sessão inválida');
-    // Sessão ativa e válida: redireciona automaticamente para o último servidor ou dms
+    const d = await r.json();
+    setSession(d.user);
     await resumeUserDestination();
-  } catch (e) {
-    // Token salvo inválido — limpa sessão
-    userId = ''; userName = ''; token = '';
+  } catch {
+    userId = '';
+    userName = '';
     localStorage.removeItem('cat_user_id');
     localStorage.removeItem('cat_user_name');
     localStorage.removeItem('cat_token');
