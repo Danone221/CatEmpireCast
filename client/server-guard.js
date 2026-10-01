@@ -33,9 +33,7 @@
   }
 
   function authHeaders() {
-    const q = new URLSearchParams(location.search);
-    const token = localStorage.getItem('cat_token') || q.get('token') || '';
-    return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
+    return { 'Content-Type': 'application/json' };
   }
 
   async function recoverServerView() {
