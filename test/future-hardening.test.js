@@ -67,3 +67,19 @@ test('Discord OAuth parsing and upstream calls are bounded', () => {
   assert.match(auth, /try \{[\s\S]*decodeURIComponent\(raw\)/);
   assert.match(auth, /AbortSignal\.timeout\(10000\)/);
 });
+
+test('platform friendship acceptance requires a real incoming pending request', () => {
+  const platform = source('server/routes/platform.js');
+  assert.match(platform, /SELECT 1 FROM friends WHERE user_id=\$1 AND friend_id=\$2 AND status='pending'/);
+  assert.match(platform, /if \(!pending\) return res\.status\(404\)/);
+  assert.match(platform, /user_blocks/);
+});
+
+test('platform role and permission mutations enforce hierarchy and tenant scope', () => {
+  const platform = source('server/routes/platform.js');
+  assert.match(platform, /Role\.update/);
+  assert.match(platform, /Number\(role\.position \|\| 0\) >= level/);
+  assert.match(platform, /assertScopedReference/);
+  assert.match(platform, /Referência não pertence a este servidor/);
+  assert.match(platform, /cleanPermissionMap/);
+});
