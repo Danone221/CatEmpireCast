@@ -90,13 +90,13 @@ class User {
     let i = 1;
     for (const [key, value] of Object.entries(data || {})) {
       if (!allowed.has(key)) continue;
-      fields.push(`${key} = ${i}`);
+      fields.push(`${key} = $${i}`);
       values.push(value);
       i++;
     }
     if (!fields.length) return this.findById(id);
     values.push(id);
-    await query(`UPDATE users SET ${fields.join(', ')} WHERE id = ${i}`, values);
+    await query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i}`, values);
     return this.findById(id);
   }
 
