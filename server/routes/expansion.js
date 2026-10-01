@@ -95,7 +95,7 @@ router.patch('/servers/:serverId/profile', async (req, res) => {
     const values = [];
     const add = (key, value) => {
       values.push(value);
-      fields.push(`${key}=${values.length}`);
+      fields.push(`${key}=$${values.length}`);
     };
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
@@ -119,7 +119,7 @@ router.patch('/servers/:serverId/profile', async (req, res) => {
 
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
     values.push(req.params.serverId);
-    const server = await queryOne(`UPDATE servers SET ${fields.join(', ')} WHERE id=${values.length} RETURNING *`, values);
+    const server = await queryOne(`UPDATE servers SET ${fields.join(', ')} WHERE id=$${values.length} RETURNING *`, values);
     res.json(server);
   } catch (e) { fail(res, e, 'Erro ao salvar perfil do servidor'); }
 });
