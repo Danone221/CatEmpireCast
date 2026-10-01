@@ -1,37 +1,29 @@
-/* CAT EMPIRE — Discord-style enhancements requested 2026-08-21 */
-(function () {
-  'use strict';
-
-  const tokenValue = () => localStorage.getItem('cat_token') || '';
-  const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + tokenValue() });
-  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
-
+(function() {
+  "use strict";
+  const tokenValue = () => localStorage.getItem("cat_token") || "";
+  const authHeaders = () => ({ "Content-Type": "application/json", Authorization: "Bearer " + tokenValue() });
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m]);
   let categories = [];
   let categoryLoaded = false;
   let callTimer = null;
   let callStartedAt = 0;
-
   function formatDate(epoch) {
-    if (!epoch) return '—';
-    const d = new Date(Number(epoch) * 1000);
-    if (Number.isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (!epoch) return "—";
+    const d = new Date(Number(epoch) * 1e3);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
-
   function formatDuration(ms) {
-    const total = Math.max(0, Math.floor(ms / 1000));
+    const total = Math.max(0, Math.floor(ms / 1e3));
     const h = Math.floor(total / 3600);
-    const m = Math.floor((total % 3600) / 60);
+    const m = Math.floor(total % 3600 / 60);
     const s = total % 60;
-    return h > 0
-      ? [h, m, s].map((v, i) => i === 0 ? String(v) : String(v).padStart(2, '0')).join(':')
-      : String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    return h > 0 ? [h, m, s].map((v, i) => i === 0 ? String(v) : String(v).padStart(2, "0")).join(":") : String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
   }
-
   function injectStyle() {
-    if (document.getElementById('catEmpireEnhancementStyle')) return;
-    const style = document.createElement('style');
-    style.id = 'catEmpireEnhancementStyle';
+    if (document.getElementById("catEmpireEnhancementStyle")) return;
+    const style = document.createElement("style");
+    style.id = "catEmpireEnhancementStyle";
     style.textContent = `
       /* ===== Perfis ===== */
       .profile-modal-box.profile-horizontal{width:min(680px,94vw);padding:0 24px 24px}
@@ -83,67 +75,62 @@
     `;
     document.head.appendChild(style);
   }
-
   async function loadCategories() {
     try {
-      const r = await fetch('/api/servers/' + encodeURIComponent(serverId) + '/categories', { headers: authHeaders() });
+      const r = await fetch("/api/servers/" + encodeURIComponent(serverId) + "/categories", { headers: authHeaders() });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.error || 'Erro ao carregar categorias');
+      if (!r.ok) throw new Error(data.error || "Erro ao carregar categorias");
       categories = Array.isArray(data) ? data : [];
       categoryLoaded = true;
       window.renderChannelList?.();
     } catch (e) {
       categoryLoaded = false;
-      console.warn('[Cat Empire] categorias:', e.message);
+      console.warn("[Cat Empire] categorias:", e.message);
     }
   }
-
   function categoryForChannel(channel) {
-    return channel?.category || (channel?.type === 'voice' ? 'CANAIS DE VOZ' : 'CANAIS');
+    return channel?.category || (channel?.type === "voice" ? "CANAIS DE VOZ" : "CANAIS");
   }
-
   function roleInfo(member) {
-    if (!member) return { key: 'MEMBRO', color: '#9a86bd', position: 10 };
-    if (currentServer && member.id === currentServer.creator_id) return { key: 'FOUNDER', color: '#ffcd3c', position: 100 };
-    if (member.role === 'admin') return { key: 'ADMIN', color: '#8b2bff', position: 80 };
-    return { key: 'MEMBRO', color: '#9a86bd', position: 10 };
+    if (!member) return { key: "MEMBRO", color: "#9a86bd", position: 10 };
+    if (currentServer && member.id === currentServer.creator_id) return { key: "FOUNDER", color: "#ffcd3c", position: 100 };
+    if (member.role === "admin") return { key: "ADMIN", color: "#8b2bff", position: 80 };
+    return { key: "MEMBRO", color: "#9a86bd", position: 10 };
   }
-
   function enhancedRenderMembers() {
-    const root = document.getElementById('membersList');
+    const root = document.getElementById("membersList");
     if (!root) return;
-    const groups = new Map();
-    (members || []).forEach(m => {
+    const groups = /* @__PURE__ */ new Map();
+    (members || []).forEach((m) => {
       const info = roleInfo(m);
       if (!groups.has(info.key)) groups.set(info.key, { info, list: [] });
       groups.get(info.key).list.push(m);
     });
     const ordered = [...groups.values()].sort((a, b) => b.info.position - a.info.position);
-    root.innerHTML = ordered.map(group => `
+    root.innerHTML = ordered.map((group) => `
       <div class="member-role-group">
         <div class="member-role-heading"><span>${escapeHtml(group.info.key)}</span><span class="count">— ${group.list.length}</span></div>
-        ${group.list.map(m => {
-          const info = roleInfo(m);
-          const online = onlineUserIds.has(m.id);
-          const owner = currentServer && m.id === currentServer.creator_id;
-          return `<div class="member-row role-highlight ${owner ? 'owner-row' : ''}" data-user-id="${escapeHtml(m.id)}">
-            <div class="m-avatar"><img src="${escapeHtml(m.avatar || '/logo.svg')}" alt=""><span class="presence-dot ${online ? 'online' : 'offline'}"></span></div>
+        ${group.list.map((m) => {
+      const info = roleInfo(m);
+      const online = onlineUserIds.has(m.id);
+      const owner = currentServer && m.id === currentServer.creator_id;
+      return `<div class="member-row role-highlight ${owner ? "owner-row" : ""}" data-user-id="${escapeHtml(m.id)}">
+            <div class="m-avatar"><img src="${escapeHtml(m.avatar || "/logo.svg")}" alt=""><span class="presence-dot ${online ? "online" : "offline"}"></span></div>
             <div class="m-name">${escapeHtml(m.display_name || m.username)}</div>
             <span class="member-role-badge" style="color:${info.color};border-color:${info.color}">${escapeHtml(info.key)}</span>
           </div>`;
-        }).join('')}
+    }).join("")}
       </div>
-    `).join('');
-    root.querySelectorAll('[data-user-id]').forEach(el => {
-      el.addEventListener('click', () => window.openProfile?.(el.dataset.userId));
+    `).join("");
+    root.querySelectorAll("[data-user-id]").forEach((el) => {
+      el.addEventListener("click", () => window.openProfile?.(el.dataset.userId));
     });
   }
-
   function ensureCategoryModal() {
-    if (document.getElementById('categoryEditModal')) return;
-    const modal = document.createElement('div');
-    modal.id = 'categoryEditModal';
-    modal.className = 'modal';
+    if (document.getElementById("categoryEditModal")) return;
+    const modal = document.createElement("div");
+    modal.id = "categoryEditModal";
+    modal.className = "modal";
     modal.innerHTML = `
       <div class="modal-box category-modal-box">
         <h2 id="categoryModalTitle">Nova categoria</h2>
@@ -155,196 +142,198 @@
         </div>
       </div>`;
     document.body.appendChild(modal);
-    document.getElementById('categoryCancelBtn').onclick = () => modal.classList.remove('open');
+    document.getElementById("categoryCancelBtn").onclick = () => modal.classList.remove("open");
   }
-
   function openCategoryEditor(category, isNew) {
     ensureCategoryModal();
-    const modal = document.getElementById('categoryEditModal');
-    const input = document.getElementById('categoryNameInput');
-    const save = document.getElementById('categorySaveBtn');
-    document.getElementById('categoryModalTitle').textContent = isNew ? 'Nova categoria' : 'Editar categoria';
-    document.getElementById('categoryModalHint').textContent = isNew
-      ? 'Crie uma categoria para organizar canais de texto e voz.'
-      : 'Altere o nome. Os canais desta categoria serão atualizados automaticamente.';
-    input.value = isNew ? '' : (category?.name || '');
-    modal.classList.add('open');
-    setTimeout(() => { input.focus(); input.select(); }, 30);
+    const modal = document.getElementById("categoryEditModal");
+    const input = document.getElementById("categoryNameInput");
+    const save = document.getElementById("categorySaveBtn");
+    document.getElementById("categoryModalTitle").textContent = isNew ? "Nova categoria" : "Editar categoria";
+    document.getElementById("categoryModalHint").textContent = isNew ? "Crie uma categoria para organizar canais de texto e voz." : "Altere o nome. Os canais desta categoria serão atualizados automaticamente.";
+    input.value = isNew ? "" : category?.name || "";
+    modal.classList.add("open");
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 30);
     save.onclick = async () => {
       const name = input.value.trim();
-      if (!name) return toast('Digite um nome para a categoria.', 'error');
+      if (!name) return toast("Digite um nome para a categoria.", "error");
       try {
-        const url = isNew
-          ? '/api/servers/' + serverId + '/categories'
-          : '/api/servers/' + serverId + '/categories/' + encodeURIComponent(category.id);
+        const url = isNew ? "/api/servers/" + serverId + "/categories" : "/api/servers/" + serverId + "/categories/" + encodeURIComponent(category.id);
         const r = await fetch(url, {
-          method: isNew ? 'POST' : 'PUT',
+          method: isNew ? "POST" : "PUT",
           headers: authHeaders(),
           body: JSON.stringify({ name })
         });
         const d = await r.json();
-        if (!r.ok) throw new Error(d.error || 'Erro ao salvar categoria');
-        modal.classList.remove('open');
+        if (!r.ok) throw new Error(d.error || "Erro ao salvar categoria");
+        modal.classList.remove("open");
         await loadCategories();
-        const serverRes = await fetch('/api/servers/' + serverId, { headers: authHeaders() });
+        const serverRes = await fetch("/api/servers/" + serverId, { headers: authHeaders() });
         if (serverRes.ok) {
           const serverData = await serverRes.json();
           channels = serverData.channels || channels;
           currentServer = { ...currentServer, ...serverData };
         }
         window.renderChannelList?.();
-        toast(isNew ? 'Categoria criada.' : 'Categoria atualizada.', 'success');
-      } catch (e) { toast(e.message, 'error'); }
+        toast(isNew ? "Categoria criada." : "Categoria atualizada.", "success");
+      } catch (e) {
+        toast(e.message, "error");
+      }
     };
   }
-
   async function deleteCategory(category) {
     if (!category) return;
-    if (!(await uiConfirm('Excluir a categoria "' + category.name + '"? Os canais serão movidos para CANAIS.'))) return;
+    if (!await uiConfirm('Excluir a categoria "' + category.name + '"? Os canais serão movidos para CANAIS.')) return;
     try {
-      const r = await fetch('/api/servers/' + serverId + '/categories/' + encodeURIComponent(category.id), { method: 'DELETE', headers: authHeaders() });
+      const r = await fetch("/api/servers/" + serverId + "/categories/" + encodeURIComponent(category.id), { method: "DELETE", headers: authHeaders() });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Erro ao excluir categoria');
+      if (!r.ok) throw new Error(d.error || "Erro ao excluir categoria");
       await loadCategories();
-      const serverRes = await fetch('/api/servers/' + serverId, { headers: authHeaders() });
+      const serverRes = await fetch("/api/servers/" + serverId, { headers: authHeaders() });
       if (serverRes.ok) {
         const serverData = await serverRes.json();
         channels = serverData.channels || channels;
         currentServer = { ...currentServer, ...serverData };
       }
       window.renderChannelList?.();
-      toast('Categoria excluída.', 'success');
-    } catch (e) { toast(e.message, 'error'); }
+      toast("Categoria excluída.", "success");
+    } catch (e) {
+      toast(e.message, "error");
+    }
   }
-
   function enhancedRenderChannelList() {
-    const root = document.getElementById('channelList');
+    const root = document.getElementById("channelList");
     if (!root) return;
-    const grouped = new Map();
-    (categories || []).forEach(c => grouped.set(c.name, { category: c, channels: [] }));
-    (channels || []).forEach(c => {
+    const grouped = /* @__PURE__ */ new Map();
+    (categories || []).forEach((c) => grouped.set(c.name, { category: c, channels: [] }));
+    (channels || []).forEach((c) => {
       const name = categoryForChannel(c);
       if (!grouped.has(name)) grouped.set(name, { category: { id: null, name, position: 999 }, channels: [] });
       grouped.get(name).channels.push(c);
     });
     const list = [...grouped.values()].sort((a, b) => Number(a.category.position || 0) - Number(b.category.position || 0) || String(a.category.name).localeCompare(String(b.category.name)));
-
-    root.innerHTML = list.map(group => {
+    root.innerHTML = list.map((group) => {
       const cat = group.category;
-      const items = group.channels.map(c => {
-        const icon = c.type === 'voice' ? '🔊' : '#';
-        const activeText = activeMainView === 'text' && c.id === selectedTextChannelId;
-        const activeVoice = activeMainView === 'voice' && c.id === voiceChannelId;
-        const unread = c.type === 'text' && unreadChannels.has(c.id) ? ' has-unread' : '';
-        return `<div class="channel-item ${activeText || activeVoice ? 'active' : ''}${unread}" data-id="${escapeHtml(c.id)}" data-type="${escapeHtml(c.type)}">
+      const items = group.channels.map((c) => {
+        const icon = c.type === "voice" ? "🔊" : "#";
+        const activeText = activeMainView === "text" && c.id === selectedTextChannelId;
+        const activeVoice = activeMainView === "voice" && c.id === voiceChannelId;
+        const unread = c.type === "text" && unreadChannels.has(c.id) ? " has-unread" : "";
+        return `<div class="channel-item ${activeText || activeVoice ? "active" : ""}${unread}" data-id="${escapeHtml(c.id)}" data-type="${escapeHtml(c.type)}">
           <span class="icon">${icon}</span><span class="cname">${escapeHtml(c.name)}</span>
-          ${unread ? '<span class="unread-dot"></span>' : ''}
-          ${c.type === 'voice' && c.id === voiceChannelId ? '<span class="live-dot"></span>' : ''}
-          ${myRole === 'admin' ? `<button class="del-btn" data-id="${escapeHtml(c.id)}" title="Excluir">✕</button>` : ''}
+          ${unread ? '<span class="unread-dot"></span>' : ""}
+          ${c.type === "voice" && c.id === voiceChannelId ? '<span class="live-dot"></span>' : ""}
+          ${myRole === "admin" ? `<button class="del-btn" data-id="${escapeHtml(c.id)}" title="Excluir">✕</button>` : ""}
         </div>`;
-      }).join('') || '<div class="category-empty">Nenhum canal ainda</div>';
-      return `<div class="channel-category" data-category-empty="${group.channels.length ? 'false' : 'true'}">
+      }).join("") || '<div class="category-empty">Nenhum canal ainda</div>';
+      return `<div class="channel-category" data-category-empty="${group.channels.length ? "false" : "true"}">
         <div class="channel-cat-header">
           <span>${escapeHtml(cat.name)}</span>
           <div class="channel-cat-actions">
-            ${myRole === 'admin' ? `<button class="channel-cat-action add-cat-channel" data-category="${escapeHtml(cat.name)}" title="Criar canal">＋</button>` : ''}
-            ${myRole === 'admin' && cat.id ? `<button class="channel-cat-action edit-cat-btn" data-category-id="${escapeHtml(cat.id)}" title="Editar categoria">✎</button><button class="channel-cat-action delete-cat-btn" data-category-id="${escapeHtml(cat.id)}" title="Excluir categoria">🗑</button>` : ''}
+            ${myRole === "admin" ? `<button class="channel-cat-action add-cat-channel" data-category="${escapeHtml(cat.name)}" title="Criar canal">＋</button>` : ""}
+            ${myRole === "admin" && cat.id ? `<button class="channel-cat-action edit-cat-btn" data-category-id="${escapeHtml(cat.id)}" title="Editar categoria">✎</button><button class="channel-cat-action delete-cat-btn" data-category-id="${escapeHtml(cat.id)}" title="Excluir categoria">🗑</button>` : ""}
           </div>
         </div>${items}
       </div>`;
-    }).join('') + (myRole === 'admin' ? '<button type="button" class="create-category-bar" id="createCategoryBtn">＋ Criar categoria</button>' : '');
-
-    root.querySelectorAll('.channel-item').forEach(el => {
+    }).join("") + (myRole === "admin" ? '<button type="button" class="create-category-bar" id="createCategoryBtn">＋ Criar categoria</button>' : "");
+    root.querySelectorAll(".channel-item").forEach((el) => {
       el.onclick = (e) => {
-        if (e.target.closest('.del-btn')) return;
-        if (el.dataset.type === 'voice') window.joinVoiceChannel?.(el.dataset.id);
+        if (e.target.closest(".del-btn")) return;
+        if (el.dataset.type === "voice") window.joinVoiceChannel?.(el.dataset.id);
         else window.openTextChannel?.(el.dataset.id);
         window.closeMobileSidebar?.();
       };
     });
-    root.querySelectorAll('.del-btn').forEach(el => {
+    root.querySelectorAll(".del-btn").forEach((el) => {
       el.onclick = async (e) => {
         e.stopPropagation();
-        if (!(await uiConfirm('Excluir este canal?'))) return;
+        if (!await uiConfirm("Excluir este canal?")) return;
         try {
-          const r = await fetch('/api/servers/' + serverId + '/channels/' + encodeURIComponent(el.dataset.id), { method: 'DELETE', headers: authHeaders() });
+          const r = await fetch("/api/servers/" + serverId + "/channels/" + encodeURIComponent(el.dataset.id), { method: "DELETE", headers: authHeaders() });
           const d = await r.json();
-          if (!r.ok) throw new Error(d.error || 'Erro ao excluir canal');
-          channels = channels.filter(c => c.id !== el.dataset.id);
+          if (!r.ok) throw new Error(d.error || "Erro ao excluir canal");
+          channels = channels.filter((c) => c.id !== el.dataset.id);
           window.renderChannelList?.();
-        } catch (err) { toast(err.message, 'error'); }
+        } catch (err) {
+          toast(err.message, "error");
+        }
       };
     });
-    root.querySelectorAll('.add-cat-channel').forEach(el => {
-      el.onclick = (e) => { e.stopPropagation(); window.openCreateChannelModal?.('text', el.dataset.category); };
+    root.querySelectorAll(".add-cat-channel").forEach((el) => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        window.openCreateChannelModal?.("text", el.dataset.category);
+      };
     });
-    root.querySelectorAll('.edit-cat-btn').forEach(el => {
-      el.onclick = () => openCategoryEditor(categories.find(c => c.id === el.dataset.categoryId), false);
+    root.querySelectorAll(".edit-cat-btn").forEach((el) => {
+      el.onclick = () => openCategoryEditor(categories.find((c) => c.id === el.dataset.categoryId), false);
     });
-    root.querySelectorAll('.delete-cat-btn').forEach(el => {
-      el.onclick = () => deleteCategory(categories.find(c => c.id === el.dataset.categoryId));
+    root.querySelectorAll(".delete-cat-btn").forEach((el) => {
+      el.onclick = () => deleteCategory(categories.find((c) => c.id === el.dataset.categoryId));
     });
-    root.querySelector('#createCategoryBtn')?.addEventListener('click', () => openCategoryEditor(null, true));
+    root.querySelector("#createCategoryBtn")?.addEventListener("click", () => openCategoryEditor(null, true));
   }
-
   function installChannelCreateOverride() {
     const originalOpen = window.openCreateChannelModal;
-    if (typeof originalOpen !== 'function' || originalOpen.__catEnhanced) return;
-    const wrappedOpen = function (type, categoryName) {
-      originalOpen(type || 'text');
-      const modal = document.getElementById('createChannelModal');
+    if (typeof originalOpen !== "function" || originalOpen.__catEnhanced) return;
+    const wrappedOpen = function(type, categoryName) {
+      originalOpen(type || "text");
+      const modal = document.getElementById("createChannelModal");
       if (!modal) return;
-      let wrap = document.getElementById('channelCategoryPickerWrap');
+      let wrap = document.getElementById("channelCategoryPickerWrap");
       if (!wrap) {
-        wrap = document.createElement('div');
-        wrap.id = 'channelCategoryPickerWrap';
+        wrap = document.createElement("div");
+        wrap.id = "channelCategoryPickerWrap";
         wrap.innerHTML = '<label class="kv-label" style="display:block;margin:12px 0 6px">CATEGORIA</label><select id="channelCategoryPicker"></select>';
-        const typeToggle = modal.querySelector('.type-toggle');
+        const typeToggle = modal.querySelector(".type-toggle");
         typeToggle?.parentNode.insertBefore(wrap, typeToggle);
       }
-      const select = document.getElementById('channelCategoryPicker');
-      select.innerHTML = categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+      const select = document.getElementById("channelCategoryPicker");
+      select.innerHTML = categories.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
       if (categoryName) select.value = categoryName;
       if (!select.value && categories[0]) select.value = categories[0].name;
     };
     wrappedOpen.__catEnhanced = true;
     window.openCreateChannelModal = wrappedOpen;
-
-    const confirm = document.getElementById('confirmChannelBtn');
+    const confirm = document.getElementById("confirmChannelBtn");
     if (confirm && !confirm.dataset.catEnhanced) {
-      confirm.dataset.catEnhanced = '1';
+      confirm.dataset.catEnhanced = "1";
       confirm.onclick = async () => {
-        const name = document.getElementById('newChannelName')?.value.trim();
-        const type = document.getElementById('typeVoiceBtn')?.classList.contains('active') ? 'voice' : 'text';
-        const category = document.getElementById('channelCategoryPicker')?.value || (type === 'voice' ? 'CANAIS DE VOZ' : 'CANAIS');
-        if (!name) return toast('Digite um nome para o canal.', 'error');
+        const name = document.getElementById("newChannelName")?.value.trim();
+        const type = document.getElementById("typeVoiceBtn")?.classList.contains("active") ? "voice" : "text";
+        const category = document.getElementById("channelCategoryPicker")?.value || (type === "voice" ? "CANAIS DE VOZ" : "CANAIS");
+        if (!name) return toast("Digite um nome para o canal.", "error");
         try {
-          const r = await fetch('/api/servers/' + serverId + '/channels', {
-            method: 'POST', headers: authHeaders(),
+          const r = await fetch("/api/servers/" + serverId + "/channels", {
+            method: "POST",
+            headers: authHeaders(),
             body: JSON.stringify({ name, type, category })
           });
           const d = await r.json();
-          if (!r.ok) throw new Error(d.error || 'Erro ao criar canal');
+          if (!r.ok) throw new Error(d.error || "Erro ao criar canal");
           channels.push(d);
-          document.getElementById('createChannelModal').classList.remove('open');
+          document.getElementById("createChannelModal").classList.remove("open");
           window.renderChannelList?.();
-        } catch (e) { toast(e.message, 'error'); }
+        } catch (e) {
+          toast(e.message, "error");
+        }
       };
     }
   }
-
   function roleMarkup(roles) {
     if (!roles?.length) return '<div class="profile-roles"><div class="profile-roles-title">CARGOS</div><div class="profile-role-list"><span class="profile-role-badge" style="color:#9a86bd">MEMBRO</span></div></div>';
-    return `<div class="profile-roles"><div class="profile-roles-title">CARGOS</div><div class="profile-role-list">${roles.map(r => `<span class="profile-role-badge" style="color:${escapeHtml(r.color)};border-color:${escapeHtml(r.color)}">${escapeHtml(r.name)}</span>`).join('')}</div></div>`;
+    return `<div class="profile-roles"><div class="profile-roles-title">CARGOS</div><div class="profile-role-list">${roles.map((r) => `<span class="profile-role-badge" style="color:${escapeHtml(r.color)};border-color:${escapeHtml(r.color)}">${escapeHtml(r.name)}</span>`).join("")}</div></div>`;
   }
-
   function ensureProfileExtraUI() {
-    const modal = document.getElementById('viewProfileModal');
+    const modal = document.getElementById("viewProfileModal");
     if (!modal) return;
-    const box = modal.querySelector('.modal-box');
-    if (!box || box.querySelector('#viewProfileMeta')) return;
-    const meta = document.createElement('div');
-    meta.id = 'viewProfileMeta';
+    const box = modal.querySelector(".modal-box");
+    if (!box || box.querySelector("#viewProfileMeta")) return;
+    const meta = document.createElement("div");
+    meta.id = "viewProfileMeta";
     meta.innerHTML = `
       <div class="profile-meta-grid">
         <div class="profile-meta-card"><div class="label">CONTA CRIADA</div><div class="value" id="viewProfileCreatedAt">—</div></div>
@@ -355,76 +344,71 @@
         <button type="button" class="btn btn-primary" id="editOwnProfileBtn">✎ Editar perfil</button>
         <button type="button" class="btn" id="closeOwnProfileBtn">Fechar</button>
       </div>`;
-    const actions = box.querySelector('.modal-actions');
+    const actions = box.querySelector(".modal-actions");
     actions?.parentNode.insertBefore(meta, actions);
-    document.getElementById('editOwnProfileBtn')?.addEventListener('click', () => {
-      modal.classList.remove('open');
+    document.getElementById("editOwnProfileBtn")?.addEventListener("click", () => {
+      modal.classList.remove("open");
       window.openMyProfileEditor?.();
     });
-    document.getElementById('closeOwnProfileBtn')?.addEventListener('click', () => modal.classList.remove('open'));
+    document.getElementById("closeOwnProfileBtn")?.addEventListener("click", () => modal.classList.remove("open"));
   }
-
   async function showServerProfile(targetUserId, own) {
     try {
       ensureProfileExtraUI();
-      const r = await fetch('/api/users/' + encodeURIComponent(targetUserId) + '/server-profile?serverId=' + encodeURIComponent(serverId), { headers: authHeaders() });
+      const r = await fetch("/api/users/" + encodeURIComponent(targetUserId) + "/server-profile?serverId=" + encodeURIComponent(serverId), { headers: authHeaders() });
       const p = await r.json();
-      if (!r.ok) throw new Error(p.error || 'Erro ao carregar perfil');
+      if (!r.ok) throw new Error(p.error || "Erro ao carregar perfil");
       viewingProfileId = targetUserId;
-      applyBannerStyle(document.getElementById('viewProfileBanner'), p.banner_color || '#5865f2');
-      document.getElementById('viewProfileAvatar').src = p.avatar || '/logo.svg';
-      document.getElementById('viewProfileName').textContent = p.display_name || p.username;
-      document.getElementById('viewProfileUsername').textContent = '@' + (p.username || 'usuario');
-      document.getElementById('viewProfileBio').textContent = p.bio || 'Sem bio.';
-      document.getElementById('viewProfileCreatedAt').textContent = formatDate(p.created_at);
-      document.getElementById('viewProfileJoinedAt').textContent = formatDate(p.server_joined_at);
-      document.getElementById('viewProfileRoles').innerHTML = roleMarkup(p.roles);
-      const ownActions = document.getElementById('viewProfileOwnActions');
-      const normalActions = document.getElementById('viewProfileModal').querySelector('.modal-box > .modal-actions');
+      applyBannerStyle(document.getElementById("viewProfileBanner"), p.banner_color || "#5865f2");
+      document.getElementById("viewProfileAvatar").src = p.avatar || "/logo.svg";
+      document.getElementById("viewProfileName").textContent = p.display_name || p.username;
+      document.getElementById("viewProfileUsername").textContent = "@" + (p.username || "usuario");
+      document.getElementById("viewProfileBio").textContent = p.bio || "Sem bio.";
+      document.getElementById("viewProfileCreatedAt").textContent = formatDate(p.created_at);
+      document.getElementById("viewProfileJoinedAt").textContent = formatDate(p.server_joined_at);
+      document.getElementById("viewProfileRoles").innerHTML = roleMarkup(p.roles);
+      const ownActions = document.getElementById("viewProfileOwnActions");
+      const normalActions = document.getElementById("viewProfileModal").querySelector(".modal-box > .modal-actions");
       if (ownActions) ownActions.hidden = !own;
       if (normalActions) normalActions.hidden = !!own;
-      document.getElementById('viewProfileModal').classList.add('open');
-    } catch (e) { toast(e.message, 'error'); }
+      document.getElementById("viewProfileModal").classList.add("open");
+    } catch (e) {
+      toast(e.message, "error");
+    }
   }
-
   function openMyProfileEditor() {
-    // Preserva o editor já existente em room.js. Só muda o ponto de entrada
-    // do próprio perfil para a visualização pequena + "Editar perfil".
     const original = window.__catOriginalOpenMyProfile;
-    if (typeof original === 'function') return original();
+    if (typeof original === "function") return original();
   }
-
   function installProfileOverrides() {
     ensureProfileExtraUI();
-    if (!window.__catOriginalOpenMyProfile && typeof window.openMyProfile === 'function') {
+    if (!window.__catOriginalOpenMyProfile && typeof window.openMyProfile === "function") {
       window.__catOriginalOpenMyProfile = window.openMyProfile;
       window.openMyProfile = () => showServerProfile(userId, true);
     }
-    if (!window.__catOriginalOpenProfile && typeof window.openProfile === 'function') {
+    if (!window.__catOriginalOpenProfile && typeof window.openProfile === "function") {
       window.__catOriginalOpenProfile = window.openProfile;
       window.openProfile = (targetId) => {
         if (targetId === userId) return showServerProfile(userId, true);
         return showServerProfile(targetId, false);
       };
     }
-    document.getElementById('myAvatarBtn')?.addEventListener('click', () => showServerProfile(userId, true));
-    document.getElementById('myInfoBtn')?.addEventListener('click', () => showServerProfile(userId, true));
-    document.getElementById('userSettingsBtn')?.addEventListener('click', () => showServerProfile(userId, true));
+    document.getElementById("myAvatarBtn")?.addEventListener("click", () => showServerProfile(userId, true));
+    document.getElementById("myInfoBtn")?.addEventListener("click", () => showServerProfile(userId, true));
+    document.getElementById("userSettingsBtn")?.addEventListener("click", () => showServerProfile(userId, true));
   }
-
   function installCallTimer() {
-    const header = document.getElementById('voiceChannelName');
-    if (!header || header.parentElement.querySelector('#callDuration')) return;
-    const duration = document.createElement('span');
-    duration.id = 'callDuration';
-    duration.className = 'call-duration';
-    duration.textContent = '00:00';
+    const header = document.getElementById("voiceChannelName");
+    if (!header || header.parentElement.querySelector("#callDuration")) return;
+    const duration = document.createElement("span");
+    duration.id = "callDuration";
+    duration.className = "call-duration";
+    duration.textContent = "00:00";
     header.parentElement.appendChild(duration);
-
     const originalJoin = window.joinVoiceChannel;
-    if (typeof originalJoin === 'function' && !originalJoin.__catTimerWrapped) {
-      const wrappedJoin = async function (channelId) {
-        const wasSame = typeof voiceChannelId !== 'undefined' && voiceChannelId === channelId;
+    if (typeof originalJoin === "function" && !originalJoin.__catTimerWrapped) {
+      const wrappedJoin = async function(channelId) {
+        const wasSame = typeof voiceChannelId !== "undefined" && voiceChannelId === channelId;
         const result = await originalJoin(channelId);
         if (!wasSame) startCallTimer();
         return result;
@@ -433,8 +417,8 @@
       window.joinVoiceChannel = wrappedJoin;
     }
     const originalLeave = window.leaveVoiceChannel;
-    if (typeof originalLeave === 'function' && !originalLeave.__catTimerWrapped) {
-      const wrappedLeave = function () {
+    if (typeof originalLeave === "function" && !originalLeave.__catTimerWrapped) {
+      const wrappedLeave = function() {
         stopCallTimer();
         return originalLeave.apply(this, arguments);
       };
@@ -442,82 +426,75 @@
       window.leaveVoiceChannel = wrappedLeave;
     }
   }
-
   function startCallTimer() {
     if (callTimer) return;
     callStartedAt = Date.now();
-    const el = document.getElementById('callDuration');
+    const el = document.getElementById("callDuration");
     const tick = () => {
-      const target = document.getElementById('callDuration');
+      const target = document.getElementById("callDuration");
       if (target) target.textContent = formatDuration(Date.now() - callStartedAt);
     };
     tick();
-    callTimer = setInterval(tick, 1000);
+    callTimer = setInterval(tick, 1e3);
   }
-
   function stopCallTimer() {
     if (callTimer) clearInterval(callTimer);
     callTimer = null;
-    const el = document.getElementById('callDuration');
-    if (el) el.textContent = '00:00';
+    const el = document.getElementById("callDuration");
+    if (el) el.textContent = "00:00";
   }
-
   function installGifSupport() {
-    const input = document.getElementById('fileInput');
+    const input = document.getElementById("fileInput");
     if (input) {
-      input.accept = 'image/jpeg,image/png,image/gif,image/webp';
-      input.setAttribute('data-gif-supported', 'true');
+      input.accept = "image/jpeg,image/png,image/gif,image/webp";
+      input.setAttribute("data-gif-supported", "true");
     }
-    const attach = document.getElementById('attachBtn');
-    if (attach) attach.title = 'Enviar imagem ou GIF';
+    const attach = document.getElementById("attachBtn");
+    if (attach) attach.title = "Enviar imagem ou GIF";
   }
-
   function installNativeCastGuard() {
-    const btn = document.getElementById('mobileCastBtn');
+    const btn = document.getElementById("mobileCastBtn");
     if (!btn || btn.dataset.castGuardInstalled) return;
-    btn.dataset.castGuardInstalled = '1';
+    btn.dataset.castGuardInstalled = "1";
     const original = btn.onclick;
-    btn.onclick = async function () {
-      if (window.CatEmpireNative && typeof window.CatEmpireNative.startBroadcast === 'function' && !window.__catNativeBroadcasting) {
+    btn.onclick = async function() {
+      if (window.CatEmpireNative && typeof window.CatEmpireNative.startBroadcast === "function" && !window.__catNativeBroadcasting) {
         try {
-          const r = await fetch('/api/channels/' + encodeURIComponent(voiceChannelId) + '/cast-credentials', { headers: authHeaders() });
+          const r = await fetch("/api/channels/" + encodeURIComponent(voiceChannelId) + "/cast-credentials", { headers: authHeaders() });
           const d = await r.json();
-          if (!r.ok) throw new Error(d.error || 'Erro ao gerar credenciais.');
-          if (!d.configured || !d.rtmpUrl || d.rtmpUrl.includes('SEU_HOST_DE_MIDIA')) {
-            toast('Transmissão de tela do APK indisponível: o servidor RTMP ainda não está configurado.', 'error');
+          if (!r.ok) throw new Error(d.error || "Erro ao gerar credenciais.");
+          if (!d.configured || !d.rtmpUrl || d.rtmpUrl.includes("SEU_HOST_DE_MIDIA")) {
+            toast("Transmissão de tela do APK indisponível: o servidor RTMP ainda não está configurado.", "error");
             return;
           }
           window.CatEmpireNative.startBroadcast(d.rtmpUrl, d.streamKey, videoSettings?.quality || 720, videoSettings?.fps || 30);
           return;
         } catch (e) {
-          toast(e.message, 'error');
+          toast(e.message, "error");
           return;
         }
       }
-      if (typeof original === 'function') return original.call(this);
+      if (typeof original === "function") return original.call(this);
     };
   }
-
   function installInviteFix() {
-    const btn = document.getElementById('serverInviteBtn');
+    const btn = document.getElementById("serverInviteBtn");
     if (!btn || btn.dataset.inviteGuardInstalled) return;
-    btn.dataset.inviteGuardInstalled = '1';
+    btn.dataset.inviteGuardInstalled = "1";
     btn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (typeof window.openInviteModal === 'function') window.openInviteModal();
-      else document.getElementById('inviteModal')?.classList.add('open');
+      if (typeof window.openInviteModal === "function") window.openInviteModal();
+      else document.getElementById("inviteModal")?.classList.add("open");
     };
   }
-
   function installCategorySocket() {
-    if (typeof socket === 'undefined' || socket.__catCategoryEnhanced) return;
+    if (typeof socket === "undefined" || socket.__catCategoryEnhanced) return;
     socket.__catCategoryEnhanced = true;
-    socket.on('category-updated', ({ serverId: changed }) => {
+    socket.on("category-updated", ({ serverId: changed }) => {
       if (changed === serverId) loadCategories();
     });
   }
-
   function bootstrap() {
     injectStyle();
     installGifSupport();
@@ -528,24 +505,18 @@
     installCategorySocket();
     installChannelCreateOverride();
     loadCategories();
-
-    // room.js já carregou o servidor. Re-renderiza os membros com a hierarquia
-    // visual sem mexer na API de permissões existente.
-    if (typeof window.renderMembers === 'function') window.renderMembers = enhancedRenderMembers;
+    if (typeof window.renderMembers === "function") window.renderMembers = enhancedRenderMembers;
     enhancedRenderMembers();
     enhancedRenderChannelList();
-
-    // Se room.js atualizar membros/canais por socket, reaplica a apresentação.
     const observer = new MutationObserver(() => {
-      if (document.getElementById('membersList') && !document.getElementById('membersList').dataset.catEnhanced) {
-        document.getElementById('membersList').dataset.catEnhanced = '1';
+      if (document.getElementById("membersList") && !document.getElementById("membersList").dataset.catEnhanced) {
+        document.getElementById("membersList").dataset.catEnhanced = "1";
         enhancedRenderMembers();
       }
     });
-    const memberRoot = document.getElementById('membersList');
+    const memberRoot = document.getElementById("membersList");
     if (memberRoot) observer.observe(memberRoot, { childList: true });
   }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootstrap, { once: true });
   else bootstrap();
 })();

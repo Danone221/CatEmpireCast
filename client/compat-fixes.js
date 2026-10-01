@@ -1,91 +1,91 @@
-/*
- * CAT EMPIRE — compatibilidade mobile / WebView
- *
- * Esta camada agora é deliberadamente pequena.
- * O boot canônico é: room.js + runtime-v5 + interação v6.
- * As camadas antigas enhancements/features-v2/features-v3 não são mais
- * injetadas porque duplicavam listeners, modais e handlers de interação.
- */
-(function () {
-  'use strict';
-
+(function() {
+  "use strict";
   const mediaDevices = navigator.mediaDevices;
-  if (mediaDevices && typeof mediaDevices.getUserMedia === 'function') {
-    const originalGetUserMedia = mediaDevices.getUserMedia.bind(mediaDevices);
-    let activeCameraStream = null;
-    let activeCameraDeviceId = null;
-
-    function hasVideoRequest(constraints) {
-      return !!constraints && !!constraints.video && typeof constraints.video === 'object';
-    }
-    function copyVideoConstraints(video) {
-      if (!video || typeof video !== 'object') return {};
+  if (mediaDevices && typeof mediaDevices.getUserMedia === "function") {
+    let hasVideoRequest = function(constraints) {
+      return !!constraints && !!constraints.video && typeof constraints.video === "object";
+    }, copyVideoConstraints = function(video) {
+      if (!video || typeof video !== "object") return {};
       return { ...video };
-    }
-    function rememberCameraStream(stream) {
+    }, rememberCameraStream = function(stream) {
       const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
       if (!track) return stream;
       activeCameraStream = stream;
-      try { activeCameraDeviceId = track.getSettings().deviceId || null; } catch (_) { activeCameraDeviceId = null; }
-      track.addEventListener('ended', () => {
+      try {
+        activeCameraDeviceId = track.getSettings().deviceId || null;
+      } catch (_) {
+        activeCameraDeviceId = null;
+      }
+      track.addEventListener("ended", () => {
         if (activeCameraStream === stream) activeCameraStream = null;
       }, { once: true });
       return stream;
-    }
+    };
+    const originalGetUserMedia = mediaDevices.getUserMedia.bind(mediaDevices);
+    let activeCameraStream = null;
+    let activeCameraDeviceId = null;
     async function requestSpecificCamera(constraints, deviceId) {
       const video = copyVideoConstraints(constraints.video);
       delete video.facingMode;
       video.deviceId = { exact: deviceId };
       return originalGetUserMedia({ ...constraints, video });
     }
-
-    mediaDevices.getUserMedia = async function (constraints) {
+    mediaDevices.getUserMedia = async function(constraints) {
       if (!hasVideoRequest(constraints)) return originalGetUserMedia(constraints);
       const previousStream = activeCameraStream;
       const previousDeviceId = activeCameraDeviceId;
       if (previousStream) {
-        previousStream.getVideoTracks().forEach(track => { try { track.stop(); } catch (_) {} });
+        previousStream.getVideoTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch (_) {
+          }
+        });
         activeCameraStream = null;
       }
       try {
         return rememberCameraStream(await originalGetUserMedia(constraints));
       } catch (firstError) {
         const facing = constraints.video.facingMode;
-        const desiredFacing = typeof facing === 'string' ? facing : (facing && (facing.exact || facing.ideal));
+        const desiredFacing = typeof facing === "string" ? facing : facing && (facing.exact || facing.ideal);
         try {
           const devices = await mediaDevices.enumerateDevices();
-          const cameras = devices.filter(d => d.kind === 'videoinput');
-          const candidates = cameras.filter(d => !previousDeviceId || d.deviceId !== previousDeviceId);
-          const labels = candidates.map(d => ({ device: d, label: (d.label || '').toLowerCase() }));
-          const preferred = desiredFacing === 'environment'
-            ? labels.find(x => /back|rear|traseira|environment|c[aâ]mera\s*2/.test(x.label))
-            : labels.find(x => /front|user|frontal|selfie|c[aâ]mera\s*1/.test(x.label));
-          const target = (preferred && preferred.device) || candidates[0];
+          const cameras = devices.filter((d) => d.kind === "videoinput");
+          const candidates = cameras.filter((d) => !previousDeviceId || d.deviceId !== previousDeviceId);
+          const labels = candidates.map((d) => ({ device: d, label: (d.label || "").toLowerCase() }));
+          const preferred = desiredFacing === "environment" ? labels.find((x) => /back|rear|traseira|environment|c[aâ]mera\s*2/.test(x.label)) : labels.find((x) => /front|user|frontal|selfie|c[aâ]mera\s*1/.test(x.label));
+          const target = preferred && preferred.device || candidates[0];
           if (target) {
-            try { return rememberCameraStream(await requestSpecificCamera(constraints, target.deviceId)); } catch (_) {}
+            try {
+              return rememberCameraStream(await requestSpecificCamera(constraints, target.deviceId));
+            } catch (_) {
+            }
           }
-        } catch (_) {}
-        if (desiredFacing === 'user' || desiredFacing === 'environment') {
+        } catch (_) {
+        }
+        if (desiredFacing === "user" || desiredFacing === "environment") {
           try {
             const video = copyVideoConstraints(constraints.video);
             video.facingMode = { exact: desiredFacing };
             return rememberCameraStream(await originalGetUserMedia({ ...constraints, video }));
-          } catch (_) {}
+          } catch (_) {
+          }
         }
         if (previousDeviceId) {
-          try { return rememberCameraStream(await requestSpecificCamera(constraints, previousDeviceId)); } catch (_) {}
+          try {
+            return rememberCameraStream(await requestSpecificCamera(constraints, previousDeviceId));
+          } catch (_) {
+          }
         }
         throw firstError;
       }
     };
   }
-
-  // Convite: o modal precisa existir antes do room.js registrar os handlers.
   function ensureInviteModal() {
-    if (document.getElementById('inviteModal')) return;
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.id = 'inviteModal';
+    if (document.getElementById("inviteModal")) return;
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    modal.id = "inviteModal";
     modal.innerHTML = `
       <div class="modal-box invite-modal-box" style="width:min(620px,94vw)">
         <h2>🔗 Convidar para o servidor</h2>
@@ -104,8 +104,7 @@
       </div>`;
     document.body.appendChild(modal);
   }
-
   const boot = () => ensureInviteModal();
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
 })();
