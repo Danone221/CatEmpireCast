@@ -1,13 +1,13 @@
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
-const userId = q.get('userId') || localStorage.getItem('cat_user_id');
-const userName = q.get('userName') || localStorage.getItem('cat_user_name') || 'Membro';
-const token = q.get('token') || localStorage.getItem('cat_token');
+const userId = localStorage.getItem('cat_user_id');
+const userName = localStorage.getItem('cat_user_name') || 'Membro';
+const token = localStorage.getItem('cat_token');
 const openWith = q.get('with'); // pra abrir direto numa conversa (ex: veio do botão "Enviar mensagem" no perfil)
 
 if (!userId || !token) { location.href = '/'; }
 
-const socket = io();
+const socket = io({ auth: { token } });
 
 let conversations = [];
 let currentOtherId = null;
@@ -64,7 +64,7 @@ async function loadServersRail() {
 }
 
 socket.on('connect', () => {
-  socket.emit('register', { userId, token });
+  socket.emit('register', {});
   loadServersRail();
 });
 socket.on('error', d => { if (d?.message) toast(d.message, 'error'); });
@@ -561,7 +561,10 @@ function fileToDataUrl(file, maxBytes) {
   });
 }
 
-function logout() {
+async function logout() {
+  try {
+    await fetch('/auth/logout', { method: 'POST', headers: headers() });
+  } catch (_) {}
   localStorage.removeItem('cat_user_id');
   localStorage.removeItem('cat_user_name');
   localStorage.removeItem('cat_token');
@@ -672,7 +675,7 @@ $('copyUserIdBtn')?.addEventListener('click', () => {
 
 $('accountLogoutBtn')?.addEventListener('click', async () => {
   if (!(await uiConfirm('Deseja realmente sair da sua conta?'))) return;
-  logout();
+  await logout();
 });
 
 $('saveEditProfileBtn').onclick = async () => {
