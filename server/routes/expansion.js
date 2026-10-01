@@ -71,7 +71,7 @@ router.patch('/servers/:serverId/profile', async (req, res) => {
     const values = [];
     const add = (key, value) => {
       values.push(value);
-      fields.push(`${key}=${values.length}`);
+      fields.push(`${key}=$${values.length}`);
     };
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
@@ -95,7 +95,7 @@ router.patch('/servers/:serverId/profile', async (req, res) => {
 
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
     values.push(req.params.serverId);
-    const server = await queryOne(`UPDATE servers SET ${fields.join(', ')} WHERE id=${values.length} RETURNING *`, values);
+    const server = await queryOne(`UPDATE servers SET ${fields.join(', ')} WHERE id=$${values.length} RETURNING *`, values);
     res.json(server);
   } catch (e) { fail(res, e, 'Erro ao salvar perfil do servidor'); }
 });
@@ -243,7 +243,33 @@ router.post('/servers/:serverId/stickers', async (req,res)=>{
 // ===== MODERATION / AUDIT =====
 router.get('/servers/:serverId/moderation', async (req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query(`SELECT m.*,u.username,m2.username AS moderator_username FROM moderation_actions m JOIN users u ON u.id=m.user_id JOIN users m2 ON m2.id=m.moderator_id WHERE m.server_id=$1 ORDER BY m.started_at DESC`,[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar moderação');}});
 router.post('/servers/:serverId/moderation', async(req,res)=>{
-  try{await requireManage(req.params.serverId,req.user.id);const action=String(req.body.action||'warning');if(!['warning','kick','ban','timeout'].includes(action))return res.status(400).json({error:'Ação inválida'});const row=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,req.body.userId,req.user.id,action,String(req.body.reason||'').slice(0,1000),req.body.expiresAt?Number(req.body.expiresAt):null]);await query(`INSERT INTO audit_logs(id,server_id,actor_id,action,target_type,target_id,reason,changes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[uuidv4(),req.params.serverId,req.user.id,`moderation.${action}`,'user',req.body.userId,row.reason,JSON.stringify(row)]);res.json(row);}catch(e){fail(res,e,'Erro ao executar moderação');}
+  try {
+    await requireManage(req.params.serverId, req.user.id);
+    const action = String(req.body.action || 'warning');
+    if (!['warning','kick','ban','timeout'].includes(action)) return res.status(400).json({ error: 'Ação inválida' });
+    const targetUserId = String(req.body.userId || '').trim();
+    if (!targetUserId || targetUserId === req.user.id) return res.status(400).json({ error: 'Alvo de moderação inválido' });
+    const target = await queryOne('SELECT role FROM server_members WHERE server_id=$1 AND user_id=$2', [req.params.serverId, targetUserId]);
+    if (!target) return res.status(404).json({ error: 'Usuário não é membro deste servidor' });
+    const server = await queryOne('SELECT creator_id, owner_id FROM servers WHERE id=$1', [req.params.serverId]);
+    if (targetUserId === server?.creator_id || targetUserId === server?.owner_id || String(target.role || '').toLowerCase() === 'owner') {
+      return res.status(403).json({ error: 'O proprietário do servidor não pode ser moderado por esta ação' });
+    }
+    const reason = sanitizePlainText(req.body.reason || '', 1000);
+    const expiresAt = req.body.expiresAt == null || req.body.expiresAt === '' ? null : Math.trunc(Number(req.body.expiresAt));
+    if (expiresAt != null && (!Number.isFinite(expiresAt) || expiresAt <= Math.floor(Date.now() / 1000))) {
+      return res.status(400).json({ error: 'Expiração de moderação inválida' });
+    }
+    const row = await queryOne(
+      `INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [uuidv4(), req.params.serverId, targetUserId, req.user.id, action, reason || null, expiresAt]
+    );
+    await query(
+      `INSERT INTO audit_logs(id,server_id,actor_id,action,target_type,target_id,reason,changes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [uuidv4(), req.params.serverId, req.user.id, `moderation.${action}`, 'user', targetUserId, row.reason, JSON.stringify(row)]
+    );
+    res.json(row);
+  } catch(e) { fail(res,e,'Erro ao executar moderação'); }
 });
 router.get('/servers/:serverId/audit-log',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query(`SELECT a.*,u.username AS actor_username FROM audit_logs a JOIN users u ON u.id=a.actor_id WHERE a.server_id=$1 ORDER BY a.created_at DESC LIMIT 500`,[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar audit log');}});
 
