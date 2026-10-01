@@ -44,7 +44,7 @@ async function loadMessage(messageId) {
 // Histórico de mensagens com paginação. A API não altera o visual existente.
 router.get('/channels/:channelId/messages', async (req, res) => {
   try {
-    const { channel } = await requireMemberByChannel(req.params.channelId, req.user.id);
+    const { channel, role } = await requireMemberByChannel(req.params.channelId, req.user.id);
     if (channel.type !== 'text') return res.status(400).json({ error: 'O canal não é de texto' });
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
     const before = req.query.before ? Number(req.query.before) : null;
@@ -93,9 +93,7 @@ router.post('/channels/:channelId/messages', async (req, res) => {
       const thread = await queryOne('SELECT id FROM threads WHERE id=$1 AND channel_id=$2 AND archived=false AND locked=false', [threadId, channel.id]);
       if (!thread) return res.status(400).json({ error: 'Thread inválida ou bloqueada' });
     }
-    const message = await queryOne(`INSERT INTO messages(id,channel_id,user_id,content,created_at,reply_to,thread_id,embeds,mentions,stickers)
-      VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [uuidv4(), channel.id, req.user.id, content, replyTo, threadId, JSON.stringify(embeds), JSON.stringify(mentions), JSON.stringify(stickers)]);
-
+    const safeAttachments = [];
     for (const attachment of Array.isArray(req.body.attachments) ? req.body.attachments.slice(0, 10) : []) {
       const name = String(attachment.fileName || 'arquivo').replace(/[\\/\0\r\n]/g, '_').slice(0, 160);
       const type = String(attachment.fileType || '').trim().toLowerCase();
@@ -119,18 +117,50 @@ router.post('/channels/:channelId/messages', async (req, res) => {
       }
       const metadata = JSON.stringify(attachment.metadata || {});
       if (metadata.length > 8000) return res.status(413).json({ error: 'Metadados do anexo muito grandes' });
-      await query(`INSERT INTO message_attachments(id,message_id,file_name,file_type,file_size,url,metadata)
-        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, name, type, storedSize || null, storedUrl, metadata]);
+      safeAttachments.push({ name, type, size: storedSize || null, url: storedUrl, metadata });
     }
 
+    const safeMentions = [];
     for (const mention of mentions) {
-      const type = ['user','role','everyone','here'].includes(mention.type) ? mention.type : 'user';
-      if (type === 'user' && mention.userId) {
-        await query(`INSERT INTO message_mentions(message_id,user_id,mention_type) VALUES($1,$2,'user') ON CONFLICT DO NOTHING`, [message.id, mention.userId]);
-      } else if (type === 'role' && mention.roleId) {
-        await query(`INSERT INTO message_mentions(message_id,role_id,mention_type) VALUES($1,$2,'role')`, [message.id, mention.roleId]);
+      const type = ['user','role','everyone','here'].includes(mention?.type) ? mention.type : 'user';
+      if (type === 'user' && mention?.userId) {
+        const member = await queryOne('SELECT user_id FROM server_members WHERE server_id=$1 AND user_id=$2', [channel.server_id, String(mention.userId)]);
+        if (!member) return res.status(400).json({ error: 'Menção de usuário inválida para este servidor' });
+        safeMentions.push({ type:'user', userId:String(mention.userId) });
+      } else if (type === 'role' && mention?.roleId) {
+        const mentionedRole = await queryOne('SELECT id FROM server_roles WHERE server_id=$1 AND id=$2', [channel.server_id, String(mention.roleId)]);
+        if (!mentionedRole) return res.status(400).json({ error: 'Menção de cargo inválida para este servidor' });
+        safeMentions.push({ type:'role', roleId:String(mention.roleId) });
       } else if (type === 'everyone' || type === 'here') {
-        await query(`INSERT INTO message_mentions(message_id,mention_type) VALUES($1,$2)`, [message.id, type]);
+        if (!['admin','owner'].includes(String(role || '').toLowerCase())) {
+          return res.status(403).json({ error: 'Sem permissão para mencionar todos' });
+        }
+        safeMentions.push({ type });
+      }
+    }
+
+    const embedsJson = JSON.stringify(embeds);
+    const mentionsJson = JSON.stringify(safeMentions);
+    const stickersJson = JSON.stringify(stickers);
+    if (embedsJson.length > 30000 || mentionsJson.length > 20000 || stickersJson.length > 10000) {
+      return res.status(413).json({ error: 'Metadados da mensagem muito grandes' });
+    }
+
+    const message = await queryOne(`INSERT INTO messages(id,channel_id,user_id,content,created_at,reply_to,thread_id,embeds,mentions,stickers)
+      VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [uuidv4(), channel.id, req.user.id, content, replyTo, threadId, embedsJson, mentionsJson, stickersJson]);
+
+    for (const attachment of safeAttachments) {
+      await query(`INSERT INTO message_attachments(id,message_id,file_name,file_type,file_size,url,metadata)
+        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, attachment.name, attachment.type, attachment.size, attachment.url, attachment.metadata]);
+    }
+
+    for (const mention of safeMentions) {
+      if (mention.type === 'user') {
+        await query(`INSERT INTO message_mentions(message_id,user_id,mention_type) VALUES($1,$2,'user') ON CONFLICT DO NOTHING`, [message.id, mention.userId]);
+      } else if (mention.type === 'role') {
+        await query(`INSERT INTO message_mentions(message_id,role_id,mention_type) VALUES($1,$2,'role')`, [message.id, mention.roleId]);
+      } else {
+        await query(`INSERT INTO message_mentions(message_id,mention_type) VALUES($1,$2)`, [message.id, mention.type]);
       }
     }
 
