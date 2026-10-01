@@ -18,7 +18,7 @@ let pendingBlockedProfileUser = null;
 
 $('myName').textContent = userName;
 const cachedAvatar = localStorage.getItem('cat_avatar');
-if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
+if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = safeMediaUrl(cachedAvatar) || '/logo.svg';
 
 (async function loadMyProfileOnStartup() {
   try {
@@ -27,7 +27,7 @@ if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
     const me = await r.json();
     if (me) {
       if (me.display_name && $('myName')) $('myName').textContent = me.display_name;
-      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = me.avatar;
+      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = safeMediaUrl(me.avatar) || '/logo.svg';
       if (me.avatar) localStorage.setItem('cat_avatar', me.avatar);
       if (me.display_name) localStorage.setItem('cat_user_name', me.display_name);
     }
@@ -39,6 +39,26 @@ function headers() {
 }
 function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+function safeMediaUrl(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (/^\/(?!\/)/.test(text)) return text;
+  if (/^https:\/\//i.test(text)) {
+    try { return new URL(text).protocol === 'https:' ? text : ''; } catch { return ''; }
+  }
+  if (/^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=\r\n]+$/i.test(text)) return text;
+  return '';
+}
+function safeAttachmentData(value, type) {
+  const text = String(value || '');
+  const mime = String(type || '').toLowerCase();
+  const allowed = new Set(['image/jpeg','image/png','image/gif','image/webp','video/mp4','video/webm','audio/mpeg','audio/wav','audio/ogg','application/pdf']);
+  if (!allowed.has(mime)) return '';
+  const prefix = 'data:' + mime + ';base64,';
+  if (!text.startsWith(prefix)) return '';
+  const encoded = text.slice(prefix.length).replace(/[\r\n]/g, '');
+  return /^[a-z0-9+/]*={0,2}$/i.test(encoded) ? text : '';
 }
 function renderMarkdown(escapedText) {
   let t = escapedText;
@@ -139,7 +159,7 @@ function renderConversationList() {
     const text = blocked ? 'Conversa bloqueada' : (c.last_message ? (c.last_message.length > 34 ? c.last_message.slice(0, 34) + '…' : c.last_message) : (c.last_has_file ? '📄 Arquivo' : ''));
     const active = c.id === currentOtherId ? ' active' : '';
     return `<div class="channel-item dm-item${active}${blocked ? ' dm-item-blocked' : ''}" data-id="${esc(c.id)}">
-      <div class="dm-avatar"><img src="${c.avatar || '/logo.svg'}" alt=""></div>
+      <div class="dm-avatar"><img src="${esc(safeMediaUrl(c.avatar) || '/logo.svg')}" alt=""></div>
       <div class="dm-info">
         <div class="cname">${esc(c.display_name || c.username)}</div>
         <div class="dm-preview">${esc(preview + text)}</div>
@@ -164,7 +184,7 @@ async function openConversation(otherId) {
     currentOtherUser = d.user;
     currentBlockState = d.blockState || { blocked_by_me:false, blocked_me:false };
     revealBlockedMessages = false;
-    $('dmHeader').innerHTML = `<button type="button" class="dm-header-user" data-open-dm-profile><img src="${d.user.avatar || '/logo.svg'}" alt=""><span><strong>${esc(d.user.display_name || d.user.username)}</strong><small>@${esc(d.user.username)}</small></span><span class="dm-header-chevron">›</span></button><div class="dm-header-actions"><button type="button" class="dm-head-icon" title="Buscar">⌕</button></div>`;
+    $('dmHeader').innerHTML = `<button type="button" class="dm-header-user" data-open-dm-profile><img src="${esc(safeMediaUrl(d.user.avatar) || '/logo.svg')}" alt=""><span><strong>${esc(d.user.display_name || d.user.username)}</strong><small>@${esc(d.user.username)}</small></span><span class="dm-header-chevron">›</span></button><div class="dm-header-actions"><button type="button" class="dm-head-icon" title="Buscar">⌕</button></div>`;
     $('mobileTitle').textContent = d.user.display_name || d.user.username;
     updateDmComposerState();
     renderMessages(d.messages);
@@ -184,7 +204,7 @@ function dmIntroHtml() {
   const u=currentOtherUser;
   if(!u) return '';
   const blocked=currentBlockState.blocked_by_me;
-  return `<section class="dm-profile-intro"><img class="dm-intro-avatar" src="${u.avatar || '/logo.svg'}" alt=""><h1>${esc(u.display_name || u.username)}</h1><div class="dm-intro-username">@${esc(u.username)}</div><p>Este é o começo da sua conversa com ${esc(u.display_name || u.username)}.</p><div class="dm-intro-actions"><button type="button" class="btn btn-primary" data-dm-friend>Enviar pedido de amizade</button><button type="button" class="btn ${blocked ? 'btn-primary' : ''}" data-dm-block>${blocked ? 'Desbloquear' : 'Bloquear'}</button></div></section>`;
+  return `<section class="dm-profile-intro"><img class="dm-intro-avatar" src="${esc(safeMediaUrl(u.avatar) || '/logo.svg')}" alt=""><h1>${esc(u.display_name || u.username)}</h1><div class="dm-intro-username">@${esc(u.username)}</div><p>Este é o começo da sua conversa com ${esc(u.display_name || u.username)}.</p><div class="dm-intro-actions"><button type="button" class="btn btn-primary" data-dm-friend>Enviar pedido de amizade</button><button type="button" class="btn ${blocked ? 'btn-primary' : ''}" data-dm-block>${blocked ? 'Desbloquear' : 'Bloquear'}</button></div></section>`;
 }
 function renderMessages(msgs) {
   const intro=dmIntroHtml();
@@ -207,10 +227,11 @@ function updateDmComposerState(){
 function messageHtml(m) {
   const time = new Date((m.created_at || 0) * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   let fileHtml = '';
-  if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
-    fileHtml = `<img class="message-image" src="${m.file_data}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${m.file_data}">`;
-  } else if (m.file_data) {
-    fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
+  const safeFileUrl = safeAttachmentData(m.file_data, m.file_type);
+  if (safeFileUrl && String(m.file_type || '').startsWith('image/')) {
+    fileHtml = `<img class="message-image" src="${esc(safeFileUrl)}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${esc(safeFileUrl)}">`;
+  } else if (safeFileUrl) {
+    fileHtml = `<a class="message-file" href="${esc(safeFileUrl)}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
   const isMine = m.sender_id === userId;
   const editedTag = m.edited_at ? '<span class="message-edited-tag">(editado)</span>' : '';
@@ -425,7 +446,7 @@ function showDmUserProfile(u){
   const modal=$('dmUserProfileModal');
   modal.dataset.profileId=viewingDmProfileId;
   applyBannerStyle($('dmProfileBanner'),u.banner||u.banner_color||'#8b2bff');
-  $('dmProfileAvatar').src=u.avatar||'/logo.svg';
+  $('dmProfileAvatar').src=safeMediaUrl(u.avatar)||'/logo.svg';
   $('dmProfileName').textContent=u.display_name||u.username;
   $('dmProfileUsername').textContent='@'+u.username;
   $('dmProfileBio').textContent=u.bio||'Sem bio.';
@@ -444,7 +465,7 @@ $('dmProfileMessageBtn')?.addEventListener('click',()=>{
 });
 async function loadBlockedAccounts(){
  const list=$('blockedAccountsList');if(!list)return;
- try{const r=await fetch('/api/social/blocks',{headers:headers()});const rows=await r.json();if(!r.ok)throw new Error(rows.error||'Erro ao carregar bloqueios');list.innerHTML=rows.length?rows.map(u=>`<div class="blocked-account-row"><img src="${u.avatar||'/logo.svg'}" alt=""><div><strong>${esc(u.display_name||u.username)}</strong><small>@${esc(u.username)}</small></div><button type="button" class="btn" data-unblock-id="${esc(u.id)}">Desbloquear</button></div>`).join(''):'<p class="empty-hint">Nenhuma conta bloqueada.</p>';}catch(e){list.innerHTML='<p class="empty-hint">'+esc(e.message)+'</p>';}
+ try{const r=await fetch('/api/social/blocks',{headers:headers()});const rows=await r.json();if(!r.ok)throw new Error(rows.error||'Erro ao carregar bloqueios');list.innerHTML=rows.length?rows.map(u=>`<div class="blocked-account-row"><img src="${esc(safeMediaUrl(u.avatar)||'/logo.svg')}" alt=""><div><strong>${esc(u.display_name||u.username)}</strong><small>@${esc(u.username)}</small></div><button type="button" class="btn" data-unblock-id="${esc(u.id)}">Desbloquear</button></div>`).join(''):'<p class="empty-hint">Nenhuma conta bloqueada.</p>';}catch(e){list.innerHTML='<p class="empty-hint">'+esc(e.message)+'</p>';}
 }
 $('refreshBlockedBtn')?.addEventListener('click',loadBlockedAccounts);
 $('blockedAccountsList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-unblock-id]');if(!b)return;await fetch('/api/social/blocks/'+encodeURIComponent(b.dataset.unblockId),{method:'DELETE',headers:headers()});loadBlockedAccounts();if(currentOtherId===b.dataset.unblockId)openConversation(currentOtherId);});
@@ -601,7 +622,7 @@ async function openMyProfile() {
     pendingAvatarData = null;
     pendingProfileBannerData = null;
     editSelectedColor = me.banner_color || '#5865f2';
-    $('editAvatarPreview').src = me.avatar || '/logo.svg';
+    $('editAvatarPreview').src = safeMediaUrl(me.avatar) || '/logo.svg';
     $('editDisplayName').value = me.display_name || me.username || '';
     $('editBio').value = me.bio || '';
     $('editBioCount').textContent = (me.bio || '').length;
@@ -697,7 +718,7 @@ $('saveEditProfileBtn').onclick = async () => {
     if (!r.ok) throw new Error(d.error || 'Erro ao salvar perfil');
     $('myName').textContent = d.display_name || d.username;
     if (d.avatar) {
-      $('myAvatarImg').src = d.avatar;
+      $('myAvatarImg').src = safeMediaUrl(d.avatar) || '/logo.svg';
       localStorage.setItem('cat_avatar', d.avatar);
     }
     $('editProfileModal').classList.remove('open');
