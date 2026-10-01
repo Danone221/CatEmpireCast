@@ -9,7 +9,7 @@ const { configuredOrigins, verifyAccessToken } = require('./security');
 function setupSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: configuredOrigins(),
+      origin: config.nodeEnv !== 'production' && configuredOrigins().includes('*') ? '*' : configuredOrigins(),
       methods: ['GET', 'POST']
     },
     // Padrão do Socket.IO é 1MB — muito pouco pra imagem em base64 (até ~11MB
