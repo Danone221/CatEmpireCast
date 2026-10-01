@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
+const { isSafeImageRef, isSafeBannerValue } = require('../security/input');
 
 const router = express.Router();
 router.use(authenticate);
@@ -46,14 +47,31 @@ router.get('/servers/:serverId/full', async (req, res) => {
 router.patch('/servers/:serverId/profile', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
-    const allowed = ['name', 'description', 'icon', 'banner'];
     const fields = [];
     const values = [];
-    for (const key of allowed) if (Object.prototype.hasOwnProperty.call(req.body, key)) {
-      values.push(req.body[key]); fields.push(`${key}=$${values.length}`);
+    if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
+      const name = String(req.body.name || '').trim().slice(0, 100);
+      if (!name) return res.status(400).json({ error: 'Nome inválido' });
+      values.push(name); fields.push(`name=${values.length}`);
     }
-    if (req.body.settings && typeof req.body.settings === 'object') {
-      values.push(JSON.stringify(req.body.settings)); fields.push(`settings=$${values.length}`);
+    if (Object.prototype.hasOwnProperty.call(req.body, 'description')) {
+      values.push(String(req.body.description || '').slice(0, 1000)); fields.push(`description=${values.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'icon')) {
+      const icon = req.body.icon == null ? null : String(req.body.icon);
+      const emojiIcon = icon && Array.from(icon).length <= 12 && !/[<>"'\\]/.test(icon);
+      if (icon && !emojiIcon && !isSafeImageRef(icon, 700000)) return res.status(400).json({ error: 'Ícone inválido' });
+      values.push(icon); fields.push(`icon=${values.length}`);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'banner')) {
+      const banner = req.body.banner == null ? null : String(req.body.banner);
+      if (banner && !isSafeBannerValue(banner, 900000)) return res.status(400).json({ error: 'Banner inválido' });
+      values.push(banner); fields.push(`banner=${values.length}`);
+    }
+    if (req.body.settings && typeof req.body.settings === 'object' && !Array.isArray(req.body.settings)) {
+      const settingsJson = JSON.stringify(req.body.settings);
+      if (settingsJson.length > 20000) return res.status(413).json({ error: 'Configurações muito grandes' });
+      values.push(settingsJson); fields.push(`settings=${values.length}`);
     }
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
     values.push(req.params.serverId);
