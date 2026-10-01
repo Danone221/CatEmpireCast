@@ -1,13 +1,10 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { LiquidMetal, liquidMetalPresets } from "@paper-design/shaders-react";
-
 const mount = document.getElementById("liquidMetalReactRoot");
-
 if (mount) {
   const source = liquidMetalPresets[2];
   const preset = source?.params ? { ...source.params } : { ...source };
-
   createRoot(mount).render(
     React.createElement(LiquidMetal, {
       ...preset,
@@ -20,8 +17,8 @@ if (mount) {
         inset: 0,
         width: "100%",
         height: "100%",
-        display: "block",
-      },
-    }),
+        display: "block"
+      }
+    })
   );
 }
