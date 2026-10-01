@@ -1,29 +1,29 @@
 (() => {
-  'use strict';
+  "use strict";
   if (window.__catEmpireRuntimeV5) return;
   window.__catEmpireRuntimeV5 = true;
-
-  const $ = id => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
   const q = new URLSearchParams(location.search);
-  const token = localStorage.getItem('cat_token') || q.get('token') || '';
-  const userId = localStorage.getItem('cat_user_id') || q.get('userId') || '';
-  const serverId = q.get('serverId') || '';
-  const isServer = !!$('serverSettingsBtn');
-  const isDm = !!$('dmSidebar');
+  const token = localStorage.getItem("cat_token") || q.get("token") || "";
+  const userId = localStorage.getItem("cat_user_id") || q.get("userId") || "";
+  const serverId = q.get("serverId") || "";
+  const isServer = !!$("serverSettingsBtn");
+  const isDm = !!$("dmSidebar");
   if (!token || !userId) return;
-
-  const auth = () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + token });
+  const auth = () => ({ "Content-Type": "application/json", Authorization: "Bearer " + token });
   const api = async (url, options = {}) => {
-    const res = await fetch(url, { ...options, headers: { ...auth(), ...(options.headers || {}) } });
+    const res = await fetch(url, { ...options, headers: { ...auth(), ...options.headers || {} } });
     let data = null;
-    try { data = await res.json(); } catch (_) {}
-    if (!res.ok) throw new Error(data?.error || 'Erro na requisição');
+    try {
+      data = await res.json();
+    } catch (_) {
+    }
+    if (!res.ok) throw new Error(data?.error || "Erro na requisição");
     return data;
   };
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
-  const emojis = ['❤️','😂','😮','😢','🔥','👍','👏','🎉','💜','💖','👀','💯','😍','😎','🤔','😭','😡','🥳','🤝','🙏','✨','⭐','💀','🐱'];
-
-  const style = document.createElement('style');
+  const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+  const emojis = ["❤️", "😂", "😮", "😢", "🔥", "👍", "👏", "🎉", "💜", "💖", "👀", "💯", "😍", "😎", "🤔", "😭", "😡", "🥳", "🤝", "🙏", "✨", "⭐", "💀", "🐱"];
+  const style = document.createElement("style");
   style.textContent = `
     .cat-v5-actions{position:absolute;right:8px;top:-14px;display:none;gap:2px;padding:3px;background:#10051d;border:2px solid #4a1f92;box-shadow:4px 4px #050007;z-index:20}
     .message:hover .cat-v5-actions,.message.cat-v5-hold .cat-v5-actions{display:flex}
@@ -44,80 +44,512 @@
     .gif-row,.gif-hint,.feature-gif-btn,.feature-emoji-btn,#featureGifUrl,#featureGifInsert,.feature-picker,#gifBtn,.gif-btn,[data-action="gif"]{display:none!important}
   `;
   document.head.appendChild(style);
-
-  function toastMsg(text, type='error') { if (typeof window.toast === 'function') return window.toast(text, type); console[type === 'error' ? 'error' : 'log'](text); }
-
-  function renderReactions(messageId, reactions) {
-    const message = document.querySelector(`.message[data-message-id="${CSS.escape(messageId)}"]`); if (!message) return;
-    let box = message.querySelector('.cat-v5-rx');
-    if (!reactions?.length) { box?.remove(); return; }
-    if (!box) { box=document.createElement('div');box.className='cat-v5-rx';message.querySelector('.message-body')?.appendChild(box); }
-    box.innerHTML=reactions.map(r=>`<button type="button" class="${r.reacted?'active':''}" data-rx="${esc(r.emoji)}">${esc(r.emoji)} ${r.count}</button>`).join('');
-    box.querySelectorAll('[data-rx]').forEach(btn=>btn.onclick=e=>{e.stopPropagation();toggleReaction(messageId,btn.dataset.rx);});
+  function toastMsg(text, type = "error") {
+    if (typeof window.toast === "function") return window.toast(text, type);
+    console[type === "error" ? "error" : "log"](text);
   }
-  async function toggleReaction(messageId,emoji){try{const type=isDm?'dm':'server';const data=await api('/api/features/reactions/toggle',{method:'POST',body:JSON.stringify({type,messageId,emoji})});renderReactions(messageId,data.reactions||[]);}catch(e){toastMsg(e.message);}}
-  async function hydrateReactions(){const ids=[...document.querySelectorAll('#messagesList .message[data-message-id]')].map(x=>x.dataset.messageId);if(!ids.length)return;try{const data=await api('/api/features/reactions?type='+(isDm?'dm':'server')+'&ids='+encodeURIComponent(ids.join(',')));Object.entries(data||{}).forEach(([id,reactions])=>renderReactions(id,reactions));}catch(_) {}}
-  function openReactionPicker(message,x,y){document.querySelector('.cat-v5-picker')?.remove();const picker=document.createElement('div');picker.className='cat-v5-picker';picker.style.left=Math.max(8,Math.min(innerWidth-348,x))+'px';picker.style.top=Math.max(8,Math.min(innerHeight-260,y))+'px';picker.innerHTML=emojis.map(e=>`<button type="button" data-e="${esc(e)}">${esc(e)}</button>`).join('');document.body.appendChild(picker);picker.onclick=e=>{const b=e.target.closest('[data-e]');if(b){toggleReaction(message.dataset.messageId,b.dataset.e);picker.remove();}};setTimeout(()=>document.addEventListener('pointerdown',function close(ev){if(!picker.contains(ev.target)){picker.remove();document.removeEventListener('pointerdown',close);}}, {once:true}),0);}
-  function wireMessageActions(){const list=$('messagesList');if(!list)return;list.querySelectorAll('.message[data-message-id]').forEach(message=>{if(message.querySelector('.cat-v5-actions'))return;message.style.position='relative';const actions=document.createElement('div');actions.className='cat-v5-actions';actions.innerHTML=emojis.slice(0,6).map(e=>`<button type="button" data-e="${esc(e)}">${esc(e)}</button>`).join('')+'<button type="button" data-more>＋</button>';message.appendChild(actions);actions.onclick=e=>{const b=e.target.closest('button');if(!b)return;e.stopPropagation();if(b.hasAttribute('data-more')){const r=message.getBoundingClientRect();openReactionPicker(message,r.right-340,r.bottom+5);}else toggleReaction(message.dataset.messageId,b.dataset.e);};let hold;message.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;hold=setTimeout(()=>message.classList.add('cat-v5-hold'),500);});['pointerup','pointercancel','pointerleave'].forEach(ev=>message.addEventListener(ev,()=>clearTimeout(hold)));});hydrateReactions();}
-  const messagesList=$('messagesList');if(messagesList){new MutationObserver(()=>setTimeout(wireMessageActions,0)).observe(messagesList,{childList:true,subtree:true});setTimeout(wireMessageActions,200);}
-
-  function mentionSource(){if(isServer&&Array.isArray(window.members))return window.members;return[];}
-  function ensureMentionBox(input){if(!input||input.dataset.catMentionReady)return;input.dataset.catMentionReady='1';const wrap=input.parentElement;if(!wrap)return;if(getComputedStyle(wrap).position==='static')wrap.style.position='relative';const box=document.createElement('div');box.className='cat-v5-mention-box';wrap.appendChild(box);const update=()=>{const value=input.value;const cursor=input.selectionStart??value.length;const left=value.slice(0,cursor);const match=left.match(/(?:^|\s)@([\w.-]{0,32})$/);if(!match){box.classList.remove('open');return;}const term=match[1].toLowerCase();const list=mentionSource().filter(m=>m.id!==userId&&((m.username||'').toLowerCase().includes(term)||(m.display_name||'').toLowerCase().includes(term))).slice(0,8);if(!list.length){box.classList.remove('open');return;}box.innerHTML=list.map(m=>`<div class="cat-v5-mention-item" data-user="${esc(m.username||'')}">${esc(m.display_name||m.username)} <small>@${esc(m.username||'')}</small></div>`).join('');box.classList.add('open');box.querySelectorAll('[data-user]').forEach(item=>item.onclick=()=>{const before=value.slice(0,cursor),after=value.slice(cursor),replaced=before.replace(/@([\w.-]{0,32})$/,'@'+item.dataset.user+' ');input.value=replaced+after;input.focus();input.setSelectionRange(replaced.length,replaced.length);box.classList.remove('open');});};input.addEventListener('input',update);input.addEventListener('keyup',update);input.addEventListener('click',update);input.addEventListener('blur',()=>setTimeout(()=>box.classList.remove('open'),150));}
-  ensureMentionBox($('messageInput'));
-
-  let callTimeStats={};
-  async function fetchCallTimes(){if(!isServer||!serverId||document.hidden)return;try{callTimeStats=await api('/api/features/servers/'+encodeURIComponent(serverId)+'/voice-stats')||{};renderCallTimes();}catch(_){}}
-  function renderCallTimes(){document.querySelectorAll('.channel-item[data-type="voice"]').forEach(item=>{const started=callTimeStats?.[item.dataset.id]?.startedAt;let time=item.querySelector('.cat-v5-call-time');if(!started){time?.remove();return;}if(!time){time=document.createElement('span');time.className='cat-v5-call-time';item.querySelector('.cname')?.after(time);}const sec=Math.max(0,Math.floor(Date.now()/1000-Number(started))),h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),x=sec%60;time.textContent=h?`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`;});}
-  if(isServer){fetchCallTimes();setInterval(renderCallTimes,1000);setInterval(fetchCallTimes,15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)fetchCallTimes();});}
-
-  let settingsOverlay=null,settingsData=null;
-  const pages=[['overview','VISÃO GERAL'],['roles','CARGOS'],['members','MEMBROS'],['channels','CANAIS & CATEGORIAS']];
-  function makeSettings(){if(settingsOverlay)return settingsOverlay;settingsOverlay=document.createElement('section');settingsOverlay.className='cat-v5-settings';settingsOverlay.hidden=true;settingsOverlay.innerHTML='<aside class="cat-v5-settings-nav"><h3>CAT EMPIRE<small>CONFIGURAÇÕES DO SERVIDOR</small></h3><div id="catV5Nav"></div></aside><main class="cat-v5-settings-main"><button class="cat-v5-settings-close" id="catV5Close">×</button><div class="cat-v5-settings-content" id="catV5Content"></div></main>';document.body.appendChild(settingsOverlay);const nav=$('catV5Nav');pages.forEach(([id,label])=>{const b=document.createElement('button');b.textContent=label;b.dataset.page=id;b.onclick=()=>renderSettingsPage(id);nav.appendChild(b);});$('catV5Close').onclick=()=>settingsOverlay.hidden=true;return settingsOverlay;}
-  async function loadFull(){settingsData=await api('/api/v4/servers/'+encodeURIComponent(serverId)+'/full');return settingsData;}
-  function navActive(id){document.querySelectorAll('#catV5Nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===id));}
-  function content(title,sub,body){$('catV5Content').innerHTML='<div class="cat-v5-settings-title">'+esc(title)+'</div><div class="cat-v5-settings-sub">'+esc(sub)+'</div>'+body;}
-  const button=(label,action,cls='')=>'<button type="button" class="cat-v5-btn '+cls+'" data-v5-action="'+esc(action)+'">'+esc(label)+'</button>';
-  function wireButtons(){document.querySelectorAll('#catV5Content [data-v5-action]').forEach(b=>b.onclick=()=>{const fn=window.__catV5Actions?.[b.dataset.v5Action];if(fn)fn(b);});}
-  let pendingServerIcon, pendingServerBanner;
-  function readServerImage(file,maxBytes,label){return new Promise((resolve,reject)=>{if(!file||!file.type.startsWith('image/'))return reject(new Error(label+' deve ser uma imagem.'));if(file.size>maxBytes)return reject(new Error(label+' muito grande. Limite: '+Math.round(maxBytes/1024)+' KB.'));const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('Não foi possível ler '+label.toLowerCase()+'.'));reader.readAsDataURL(file);});}
-  function setServerPreview(id,value,emptyText){const box=$(id);if(!box)return;box.innerHTML=value?'<img src="'+esc(value)+'" alt="">':'<span>'+esc(emptyText)+'</span>';}
-  function syncServerIdentity(data){if($('serverName')){$('serverName').textContent=data.name;$('serverName').title=data.name;}if($('serverProfileName'))$('serverProfileName').textContent=data.name;if($('serverProfileIconImg'))$('serverProfileIconImg').src=data.icon&&/^(data:|https?:)/.test(data.icon)?data.icon:'/logo.svg';if($('serverHead')&&data.banner)$('serverHead').style.backgroundImage='url("'+String(data.banner).replace(/"/g,'%22')+'")';}
-  async function renderSettingsPage(id){makeSettings();navActive(id);window.__catV5Actions={};try{if(!settingsData)await loadFull();const s=settingsData.server;
-    if(id==='overview'){
-      pendingServerIcon=undefined;pendingServerBanner=undefined;
-      content('Visão geral','Altere nome, descrição, imagem e banner do servidor.','<div class="cat-v5-card"><div class="cat-v5-field"><label>NOME</label><input id="v5ServerName" maxlength="50" value="'+esc(s.name||'')+'"></div><div class="cat-v5-field"><label>DESCRIÇÃO</label><textarea id="v5ServerDescription" maxlength="300">'+esc(s.description||'')+'</textarea></div><div class="cat-v5-upload-grid"><div class="cat-v5-field"><label>IMAGEM DO SERVIDOR</label><div class="cat-v5-image-preview square" id="v5ServerIconPreview"></div><input type="file" id="v5ServerIconFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden><div class="cat-v5-toolbar">'+button('Escolher imagem','pickServerIcon','primary')+button('Remover','removeServerIcon')+'</div><small>PNG, JPG, WEBP ou GIF — máximo 500 KB.</small></div><div class="cat-v5-field"><label>BANNER DO SERVIDOR</label><div class="cat-v5-image-preview banner" id="v5ServerBannerPreview"></div><input type="file" id="v5ServerBannerFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden><div class="cat-v5-toolbar">'+button('Escolher banner','pickServerBanner','primary')+button('Remover','removeServerBanner')+'</div><small>PNG, JPG, WEBP ou GIF — máximo 900 KB.</small></div></div><div class="cat-v5-toolbar">'+button('Salvar alterações','saveServer','primary')+'</div></div>');
-      setServerPreview('v5ServerIconPreview',s.icon,'Nenhuma imagem salva.');setServerPreview('v5ServerBannerPreview',s.banner,'Nenhum banner salvo.');
-      window.__catV5Actions.pickServerIcon=()=>$('v5ServerIconFile').click();
-      window.__catV5Actions.pickServerBanner=()=>$('v5ServerBannerFile').click();
-      window.__catV5Actions.removeServerIcon=()=>{pendingServerIcon=null;setServerPreview('v5ServerIconPreview',null,'Imagem removida ao salvar.');};
-      window.__catV5Actions.removeServerBanner=()=>{pendingServerBanner=null;setServerPreview('v5ServerBannerPreview',null,'Banner removido ao salvar.');};
-      $('v5ServerIconFile').onchange=async()=>{try{pendingServerIcon=await readServerImage($('v5ServerIconFile').files[0],500*1024,'Imagem do servidor');setServerPreview('v5ServerIconPreview',pendingServerIcon,'');}catch(e){toastMsg(e.message);}finally{$('v5ServerIconFile').value='';}};
-      $('v5ServerBannerFile').onchange=async()=>{try{pendingServerBanner=await readServerImage($('v5ServerBannerFile').files[0],900*1024,'Banner do servidor');setServerPreview('v5ServerBannerPreview',pendingServerBanner,'');}catch(e){toastMsg(e.message);}finally{$('v5ServerBannerFile').value='';}};
-      window.__catV5Actions.saveServer=async btn=>{const name=$('v5ServerName').value.trim();if(!name)return toastMsg('Digite um nome para o servidor.');btn.disabled=true;const label=btn.textContent;btn.textContent='Salvando…';try{const body={name:name.slice(0,50),description:$('v5ServerDescription').value.slice(0,300)};if(pendingServerIcon!==undefined)body.icon=pendingServerIcon;if(pendingServerBanner!==undefined)body.banner=pendingServerBanner;const data=await api('/api/features/servers/'+serverId+'/settings',{method:'PUT',body:JSON.stringify(body)});settingsData.server=data;syncServerIdentity(data);pendingServerIcon=undefined;pendingServerBanner=undefined;toastMsg('Visão geral salva.','success');}catch(e){toastMsg(e.message);}finally{btn.disabled=false;btn.textContent=label;}};
+  function renderReactions(messageId, reactions) {
+    const message = document.querySelector(`.message[data-message-id="${CSS.escape(messageId)}"]`);
+    if (!message) return;
+    let box = message.querySelector(".cat-v5-rx");
+    if (!reactions?.length) {
+      box?.remove();
+      return;
     }
-    else if(id==='channels'){const cats=settingsData.categories||[],chans=settingsData.channels||[];content('Canais & categorias','Crie, renomeie, mova, recolha e exclua canais/categorias.','<div class="cat-v5-toolbar">'+button('＋ Categoria','newCategory','primary')+button('＋ Canal','newChannel')+'</div><div class="cat-v5-card">'+(cats.length?cats.map(c=>'<div class="cat-v5-row"><span class="cat-v5-grow">▾ '+esc(c.name)+'</span><span class="cat-v5-muted">'+chans.filter(x=>x.category_id===c.id).length+' canais</span><button class="cat-v5-btn" data-edit-cat="'+esc(c.id)+'">Editar</button><button class="cat-v5-btn danger" data-del-cat="'+esc(c.id)+'">Excluir</button></div>').join(''):'<div class="cat-v5-empty">Nenhuma categoria criada.</div>')+'</div><div class="cat-v5-card">'+(chans.length?chans.map(c=>'<div class="cat-v5-row"><span>'+({voice:'🔊',stage:'◉',forum:'▤',text:'#'}[c.type]||'#')+' '+esc(c.name)+'</span><span class="cat-v5-muted">'+esc(c.category||'Sem categoria')+'</span><span class="cat-v5-grow"></span><button class="cat-v5-btn" data-edit-ch="'+esc(c.id)+'">Editar</button><button class="cat-v5-btn danger" data-del-ch="'+esc(c.id)+'">Excluir</button></div>').join(''):'<div class="cat-v5-empty">Nenhum canal.</div>')+'</div>');window.__catV5Actions.newCategory=async()=>{const name=prompt('Nome da categoria');if(!name)return;await api('/api/platform/servers/'+serverId+'/categories',{method:'POST',body:JSON.stringify({name})});settingsData=null;renderSettingsPage('channels');};window.__catV5Actions.newChannel=async()=>{const name=prompt('Nome do canal');if(!name)return;const type=(prompt('Tipo: text, voice, forum ou stage','text')||'text').toLowerCase();const categoryId=(settingsData.categories||[])[0]?.id||null;await api('/api/platform/servers/'+serverId+'/channels',{method:'POST',body:JSON.stringify({name,type,categoryId})});settingsData=null;renderSettingsPage('channels');};document.querySelectorAll('#catV5Content [data-edit-cat]').forEach(b=>b.onclick=async()=>{const c=cats.find(x=>x.id===b.dataset.editCat);const name=prompt('Novo nome',c?.name||'');if(name){await api('/api/platform/servers/'+serverId+'/categories/'+b.dataset.editCat,{method:'PATCH',body:JSON.stringify({name})});settingsData=null;renderSettingsPage('channels');}});document.querySelectorAll('#catV5Content [data-del-cat]').forEach(b=>b.onclick=async()=>{if(!confirm('Excluir categoria? Os canais serão preservados.'))return;await api('/api/platform/servers/'+serverId+'/categories/'+b.dataset.delCat,{method:'DELETE'});settingsData=null;renderSettingsPage('channels');});document.querySelectorAll('#catV5Content [data-edit-ch]').forEach(b=>b.onclick=async()=>{const c=chans.find(x=>x.id===b.dataset.editCh);const name=prompt('Novo nome',c?.name||'');if(name){await api('/api/platform/servers/'+serverId+'/channels/'+b.dataset.editCh,{method:'PATCH',body:JSON.stringify({name})});settingsData=null;renderSettingsPage('channels');}});document.querySelectorAll('#catV5Content [data-del-ch]').forEach(b=>b.onclick=async()=>{if(!confirm('Excluir canal?'))return;await api('/api/platform/servers/'+serverId+'/channels/'+b.dataset.delCh,{method:'DELETE'});settingsData=null;renderSettingsPage('channels');});}
-    else if(id==='members'){const members=settingsData.members||[],roles=settingsData.roles||[];content('Membros','Visualize membros e a hierarquia atual.','<div class="cat-v5-card">'+(members.length?members.map(m=>'<div class="cat-v5-row"><span class="cat-v5-grow">'+esc(m.display_name||m.username)+' <span class="cat-v5-muted">@'+esc(m.username)+'</span></span><span class="cat-v5-chip">'+esc(m.role||'member')+'</span></div>').join(''):'<div class="cat-v5-empty">Nenhum membro.</div>')+'</div><div class="cat-v5-card"><div class="cat-v5-muted">Cargos disponíveis</div>'+roles.map(r=>'<span class="cat-v5-chip" style="color:'+esc(r.color||'#fff')+'">'+esc(r.name)+'</span>').join('')+'</div>');}
-    else if(id==='roles'){const roles=settingsData.roles||[];content('Cargos','Hierarquia, criação e edição de cargos.','<div class="cat-v5-toolbar">'+button('＋ Criar cargo','newRole','primary')+'</div><div class="cat-v5-card">'+roles.map(r=>'<div class="cat-v5-row"><span class="cat-v5-grow"><span class="cat-v5-chip" style="color:'+esc(r.color||'#fff')+'">'+esc(r.name)+'</span></span><span class="cat-v5-muted">posição '+Number(r.position||0)+'</span><button class="cat-v5-btn" data-edit-role="'+esc(r.id)+'">Editar</button></div>').join('')+'</div>');window.__catV5Actions.newRole=async()=>{const name=prompt('Nome do cargo');if(!name)return;await api('/api/platform/servers/'+serverId+'/roles',{method:'POST',body:JSON.stringify({name,color:'#b56bff',permissions:{view_channel:true,send_messages:true}})});settingsData=null;renderSettingsPage('roles');};document.querySelectorAll('#catV5Content [data-edit-role]').forEach(b=>b.onclick=async()=>{const r=roles.find(x=>x.id===b.dataset.editRole);const name=prompt('Nome do cargo',r?.name||'');if(name){await api('/api/platform/servers/'+serverId+'/roles/'+b.dataset.editRole,{method:'PATCH',body:JSON.stringify({name})});settingsData=null;renderSettingsPage('roles');}});}
-    else if(id==='security'){const d=await api('/api/v4/servers/'+serverId+'/security');content('Segurança','Controles de segurança persistidos no banco.','<div class="cat-v5-card"><div class="cat-v5-field"><label>NÍVEL DE VERIFICAÇÃO</label><select id="v5Verification"><option value="low" '+(d.verification_level==='low'?'selected':'')+'>Baixo</option><option value="medium" '+(d.verification_level==='medium'?'selected':'')+'>Médio</option><option value="high" '+(d.verification_level==='high'?'selected':'')+'>Alto</option></select></div><div class="cat-v5-field"><label>FILTRO DE MÍDIA EXPLÍCITA</label><select id="v5Explicit"><option value="false" '+(!d.explicit_media_filter?'selected':'')+'>Desativado</option><option value="true" '+(d.explicit_media_filter?'selected':'')+'>Ativado</option></select></div><div class="cat-v5-field"><label>PROTEÇÃO CONTRA RAID</label><select id="v5Raid"><option value="false" '+(!d.raid_protection?'selected':'')+'>Desativado</option><option value="true" '+(d.raid_protection?'selected':'')+'>Ativado</option></select></div><div class="cat-v5-toolbar">'+button('Salvar segurança','saveSecurity','primary')+'</div></div>');window.__catV5Actions.saveSecurity=async()=>{await api('/api/v4/servers/'+serverId+'/security',{method:'PUT',body:JSON.stringify({verificationLevel:$('v5Verification').value,explicitMediaFilter:$('v5Explicit').value==='true',raidProtection:$('v5Raid').value==='true',twoFactorModeration:false})});toastMsg('Segurança salva.','success');};}
-    else if(id==='community'){const d=await api('/api/v4/servers/'+serverId+'/community');content('Comunidade','Ative recursos de comunidade.','<div class="cat-v5-card"><div class="cat-v5-field"><label>COMUNIDADE</label><select id="v5Community"><option value="false" '+(!d.enabled?'selected':'')+'>Desativada</option><option value="true" '+(d.enabled?'selected':'')+'>Ativada</option></select></div><div class="cat-v5-toolbar">'+button('Salvar','saveCommunity','primary')+'</div></div>');window.__catV5Actions.saveCommunity=async()=>{await api('/api/v4/servers/'+serverId+'/community',{method:'PUT',body:JSON.stringify({enabled:$('v5Community').value==='true'})});toastMsg('Comunidade salva.','success');};}
-    else if(id==='onboarding'){const d=await api('/api/v4/servers/'+serverId+'/onboarding');content('Onboarding','Boas-vindas, perguntas, cargos e canais de entrada.','<div class="cat-v5-card"><div class="cat-v5-field"><label>ATIVO</label><select id="v5On"><option value="false" '+(!d.enabled?'selected':'')+'>Não</option><option value="true" '+(d.enabled?'selected':'')+'>Sim</option></select></div><div class="cat-v5-field"><label>MENSAGEM DE BOAS-VINDAS</label><textarea id="v5Welcome">'+esc(d.welcome_text||'Bem-vindo ao CAT EMPIRE!')+'</textarea></div><div class="cat-v5-toolbar">'+button('Salvar onboarding','saveOnboarding','primary')+'</div></div>');window.__catV5Actions.saveOnboarding=async()=>{await api('/api/v4/servers/'+serverId+'/onboarding',{method:'PUT',body:JSON.stringify({enabled:$('v5On').value==='true',welcomeText:$('v5Welcome').value,questions:[],defaultRoles:[],defaultChannels:[]})});toastMsg('Onboarding salvo.','success');};}
-    else if(id==='moderation'){const rows=await api('/api/v4/servers/'+serverId+'/moderation');content('Moderação','Warnings, kicks, bans e timeouts persistidos.','<div class="cat-v5-card">'+(rows?.length?rows.map(r=>'<div class="cat-v5-row"><span class="cat-v5-grow">'+esc(r.action)+' — '+esc(r.username||r.user_id)+'</span><span class="cat-v5-muted">'+esc(r.reason||'sem motivo')+'</span></div>').join(''):'<div class="cat-v5-empty">Nenhuma ação registrada.</div>')+'</div>');}
-    else if(id==='audit'){const rows=await api('/api/v4/servers/'+serverId+'/audit-log');content('Audit log','Histórico de ações administrativas.','<div class="cat-v5-card">'+(rows?.length?rows.map(r=>'<div class="cat-v5-row"><span class="cat-v5-grow">'+esc(r.action)+' → '+esc(r.target_type||'')+'</span><span class="cat-v5-muted">'+esc(r.actor_username||r.actor_id)+'</span></div>').join(''):'<div class="cat-v5-empty">Nenhuma ação registrada.</div>')+'</div>');}
-    else if(id==='emojis'||id==='stickers'){const kind=id==='emojis'?'emojis':'stickers';const rows=await api('/api/v4/servers/'+serverId+'/'+kind);content(kind.toUpperCase(),'Recursos personalizados do servidor.','<div class="cat-v5-card">'+(rows?.length?rows.map(r=>'<div class="cat-v5-row"><span class="cat-v5-grow">'+esc(r.name)+'</span><span class="cat-v5-muted">'+esc(r.description||'')+'</span></div>').join(''):'<div class="cat-v5-empty">Nenhum recurso cadastrado.</div>')+'</div>');}
-    else if(id==='events'){const rows=await api('/api/v4/servers/'+serverId+'/events');content('Eventos','Eventos agendados do servidor.','<div class="cat-v5-card">'+(rows?.length?rows.map(r=>'<div class="cat-v5-row"><span class="cat-v5-grow">'+esc(r.name)+'</span><span class="cat-v5-muted">'+esc(r.status||'scheduled')+'</span></div>').join(''):'<div class="cat-v5-empty">Nenhum evento.</div>')+'</div>');}
-    else if(id==='invites'){const rows=await api('/api/v4/servers/'+serverId+'/invites');content('Convites','Convites ativos e históricos.','<div class="cat-v5-toolbar">'+button('＋ Criar convite','newInvite','primary')+'</div><div class="cat-v5-card">'+(rows?.length?rows.map(r=>'<div class="cat-v5-row"><span class="cat-v5-grow">'+esc(r.code)+'</span><span class="cat-v5-muted">'+(r.uses||0)+' usos</span></div>').join(''):'<div class="cat-v5-empty">Nenhum convite.</div>')+'</div>');window.__catV5Actions.newInvite=async()=>{const d=await api('/api/v4/servers/'+serverId+'/invites',{method:'POST',body:JSON.stringify({})});toastMsg('Convite: '+d.code,'success');renderSettingsPage('invites');};}
-    else if(id==='danger'){content('Zona de perigo','Ações destrutivas ficam separadas das configurações normais.','<div class="cat-v5-card"><p class="cat-v5-muted">A exclusão do servidor é permanente e só ocorre após confirmação explícita.</p>'+button('Excluir servidor','deleteServer','danger')+'</div>');window.__catV5Actions.deleteServer=async()=>{if(!confirm('EXCLUIR SERVIDOR? Esta ação não pode ser desfeita.'))return;await api('/api/servers/'+serverId,{method:'DELETE'});location.href='/dms.html';};}
-    wireButtons();
-  }catch(e){content('Erro','Não foi possível carregar esta seção.','<div class="cat-v5-card"><div class="cat-v5-empty">'+esc(e.message)+'</div></div>');}}
-  async function openServerSettings(){if(!isServer||!serverId)return;makeSettings();settingsOverlay.hidden=false;settingsData=null;await renderSettingsPage('overview');}
-  $('serverSettingsBtn')?.addEventListener('click',openServerSettings);
-
-  function installFriends(){if(!isDm||!$('dmList'))return;if($('openAddFriendBtn')){loadFriends();return;}let panel=$('catV5Friends');if(!panel){panel=document.createElement('div');panel.id='catV5Friends';panel.className='cat-v5-friends';panel.innerHTML='<div class="cat-v5-friends-title">AMIGOS</div><div class="cat-v5-friends-row"><input id="catV5FriendInput" placeholder="@username" autocomplete="off" maxlength="30"><button type="button" class="btn" id="catV5FriendSearch">Adicionar</button></div><div class="cat-v5-friends-list" id="catV5FriendsList"></div>';$('dmList').parentElement.insertBefore(panel,$('dmList'));}if(panel.dataset.ready==='1')return;panel.dataset.ready='1';const input=$('catV5FriendInput'),button=$('catV5FriendSearch');const submit=async()=>{const username=input?.value.trim().replace(/^@/,'');if(!username||button.disabled)return;button.disabled=true;const label=button.textContent;button.textContent='Enviando…';try{const result=await api('/api/social/friends/request',{method:'POST',body:JSON.stringify({username})});toastMsg(result.message||'Solicitação enviada.','success');input.value='';await loadFriends();}catch(error){toastMsg(error.message);}finally{button.disabled=false;button.textContent=label;}};button?.addEventListener('click',submit);input?.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();submit();}});loadFriends();}
-  async function loadFriends(){if(!isDm)return;try{const list=await api('/api/social/friends');const box=$('catV5FriendsList');if(!box)return;box.innerHTML=list.length?list.map(f=>'<div class="cat-v5-friend"><img src="'+esc(f.avatar||'/logo.svg')+'" alt=""><span>'+esc(f.display_name||f.username)+' <small>@'+esc(f.username)+'</small></span><button class="btn" data-open-friend="'+esc(f.id)+'">DM</button></div>').join(''):'<span class="cat-v5-muted">Nenhum amigo adicionado.</span>';box.querySelectorAll('[data-open-friend]').forEach(b=>b.onclick=()=>window.openConversation?.(b.dataset.openFriend));}catch(_) {}}
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "cat-v5-rx";
+      message.querySelector(".message-body")?.appendChild(box);
+    }
+    box.innerHTML = reactions.map((r) => `<button type="button" class="${r.reacted ? "active" : ""}" data-rx="${esc(r.emoji)}">${esc(r.emoji)} ${r.count}</button>`).join("");
+    box.querySelectorAll("[data-rx]").forEach((btn) => btn.onclick = (e) => {
+      e.stopPropagation();
+      toggleReaction(messageId, btn.dataset.rx);
+    });
+  }
+  async function toggleReaction(messageId, emoji) {
+    try {
+      const type = isDm ? "dm" : "server";
+      const data = await api("/api/features/reactions/toggle", { method: "POST", body: JSON.stringify({ type, messageId, emoji }) });
+      renderReactions(messageId, data.reactions || []);
+    } catch (e) {
+      toastMsg(e.message);
+    }
+  }
+  async function hydrateReactions() {
+    const ids = [...document.querySelectorAll("#messagesList .message[data-message-id]")].map((x) => x.dataset.messageId);
+    if (!ids.length) return;
+    try {
+      const data = await api("/api/features/reactions?type=" + (isDm ? "dm" : "server") + "&ids=" + encodeURIComponent(ids.join(",")));
+      Object.entries(data || {}).forEach(([id, reactions]) => renderReactions(id, reactions));
+    } catch (_) {
+    }
+  }
+  function openReactionPicker(message, x, y) {
+    document.querySelector(".cat-v5-picker")?.remove();
+    const picker = document.createElement("div");
+    picker.className = "cat-v5-picker";
+    picker.style.left = Math.max(8, Math.min(innerWidth - 348, x)) + "px";
+    picker.style.top = Math.max(8, Math.min(innerHeight - 260, y)) + "px";
+    picker.innerHTML = emojis.map((e) => `<button type="button" data-e="${esc(e)}">${esc(e)}</button>`).join("");
+    document.body.appendChild(picker);
+    picker.onclick = (e) => {
+      const b = e.target.closest("[data-e]");
+      if (b) {
+        toggleReaction(message.dataset.messageId, b.dataset.e);
+        picker.remove();
+      }
+    };
+    setTimeout(() => document.addEventListener("pointerdown", function close(ev) {
+      if (!picker.contains(ev.target)) {
+        picker.remove();
+        document.removeEventListener("pointerdown", close);
+      }
+    }, { once: true }), 0);
+  }
+  function wireMessageActions() {
+    const list = $("messagesList");
+    if (!list) return;
+    list.querySelectorAll(".message[data-message-id]").forEach((message) => {
+      if (message.querySelector(".cat-v5-actions")) return;
+      message.style.position = "relative";
+      const actions = document.createElement("div");
+      actions.className = "cat-v5-actions";
+      actions.innerHTML = emojis.slice(0, 6).map((e) => `<button type="button" data-e="${esc(e)}">${esc(e)}</button>`).join("") + '<button type="button" data-more>＋</button>';
+      message.appendChild(actions);
+      actions.onclick = (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        e.stopPropagation();
+        if (b.hasAttribute("data-more")) {
+          const r = message.getBoundingClientRect();
+          openReactionPicker(message, r.right - 340, r.bottom + 5);
+        } else toggleReaction(message.dataset.messageId, b.dataset.e);
+      };
+      let hold;
+      message.addEventListener("pointerdown", (e) => {
+        if (e.pointerType !== "touch") return;
+        hold = setTimeout(() => message.classList.add("cat-v5-hold"), 500);
+      });
+      ["pointerup", "pointercancel", "pointerleave"].forEach((ev) => message.addEventListener(ev, () => clearTimeout(hold)));
+    });
+    hydrateReactions();
+  }
+  const messagesList = $("messagesList");
+  if (messagesList) {
+    new MutationObserver(() => setTimeout(wireMessageActions, 0)).observe(messagesList, { childList: true, subtree: true });
+    setTimeout(wireMessageActions, 200);
+  }
+  function mentionSource() {
+    if (isServer && Array.isArray(window.members)) return window.members;
+    return [];
+  }
+  function ensureMentionBox(input) {
+    if (!input || input.dataset.catMentionReady) return;
+    input.dataset.catMentionReady = "1";
+    const wrap = input.parentElement;
+    if (!wrap) return;
+    if (getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
+    const box = document.createElement("div");
+    box.className = "cat-v5-mention-box";
+    wrap.appendChild(box);
+    const update = () => {
+      const value = input.value;
+      const cursor = input.selectionStart ?? value.length;
+      const left = value.slice(0, cursor);
+      const match = left.match(/(?:^|\s)@([\w.-]{0,32})$/);
+      if (!match) {
+        box.classList.remove("open");
+        return;
+      }
+      const term = match[1].toLowerCase();
+      const list = mentionSource().filter((m) => m.id !== userId && ((m.username || "").toLowerCase().includes(term) || (m.display_name || "").toLowerCase().includes(term))).slice(0, 8);
+      if (!list.length) {
+        box.classList.remove("open");
+        return;
+      }
+      box.innerHTML = list.map((m) => `<div class="cat-v5-mention-item" data-user="${esc(m.username || "")}">${esc(m.display_name || m.username)} <small>@${esc(m.username || "")}</small></div>`).join("");
+      box.classList.add("open");
+      box.querySelectorAll("[data-user]").forEach((item) => item.onclick = () => {
+        const before = value.slice(0, cursor), after = value.slice(cursor), replaced = before.replace(/@([\w.-]{0,32})$/, "@" + item.dataset.user + " ");
+        input.value = replaced + after;
+        input.focus();
+        input.setSelectionRange(replaced.length, replaced.length);
+        box.classList.remove("open");
+      });
+    };
+    input.addEventListener("input", update);
+    input.addEventListener("keyup", update);
+    input.addEventListener("click", update);
+    input.addEventListener("blur", () => setTimeout(() => box.classList.remove("open"), 150));
+  }
+  ensureMentionBox($("messageInput"));
+  let callTimeStats = {};
+  async function fetchCallTimes() {
+    if (!isServer || !serverId || document.hidden) return;
+    try {
+      callTimeStats = await api("/api/features/servers/" + encodeURIComponent(serverId) + "/voice-stats") || {};
+      renderCallTimes();
+    } catch (_) {
+    }
+  }
+  function renderCallTimes() {
+    document.querySelectorAll('.channel-item[data-type="voice"]').forEach((item) => {
+      const started = callTimeStats?.[item.dataset.id]?.startedAt;
+      let time = item.querySelector(".cat-v5-call-time");
+      if (!started) {
+        time?.remove();
+        return;
+      }
+      if (!time) {
+        time = document.createElement("span");
+        time.className = "cat-v5-call-time";
+        item.querySelector(".cname")?.after(time);
+      }
+      const sec = Math.max(0, Math.floor(Date.now() / 1e3 - Number(started))), h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), x = sec % 60;
+      time.textContent = h ? `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}`;
+    });
+  }
+  if (isServer) {
+    fetchCallTimes();
+    setInterval(renderCallTimes, 1e3);
+    setInterval(fetchCallTimes, 15e3);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) fetchCallTimes();
+    });
+  }
+  let settingsOverlay = null, settingsData = null;
+  const pages = [["overview", "VISÃO GERAL"], ["roles", "CARGOS"], ["members", "MEMBROS"], ["channels", "CANAIS & CATEGORIAS"]];
+  function makeSettings() {
+    if (settingsOverlay) return settingsOverlay;
+    settingsOverlay = document.createElement("section");
+    settingsOverlay.className = "cat-v5-settings";
+    settingsOverlay.hidden = true;
+    settingsOverlay.innerHTML = '<aside class="cat-v5-settings-nav"><h3>CAT EMPIRE<small>CONFIGURAÇÕES DO SERVIDOR</small></h3><div id="catV5Nav"></div></aside><main class="cat-v5-settings-main"><button class="cat-v5-settings-close" id="catV5Close">×</button><div class="cat-v5-settings-content" id="catV5Content"></div></main>';
+    document.body.appendChild(settingsOverlay);
+    const nav = $("catV5Nav");
+    pages.forEach(([id, label]) => {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.dataset.page = id;
+      b.onclick = () => renderSettingsPage(id);
+      nav.appendChild(b);
+    });
+    $("catV5Close").onclick = () => settingsOverlay.hidden = true;
+    return settingsOverlay;
+  }
+  async function loadFull() {
+    settingsData = await api("/api/v4/servers/" + encodeURIComponent(serverId) + "/full");
+    return settingsData;
+  }
+  function navActive(id) {
+    document.querySelectorAll("#catV5Nav button").forEach((b) => b.classList.toggle("active", b.dataset.page === id));
+  }
+  function content(title, sub, body) {
+    $("catV5Content").innerHTML = '<div class="cat-v5-settings-title">' + esc(title) + '</div><div class="cat-v5-settings-sub">' + esc(sub) + "</div>" + body;
+  }
+  const button = (label, action, cls = "") => '<button type="button" class="cat-v5-btn ' + cls + '" data-v5-action="' + esc(action) + '">' + esc(label) + "</button>";
+  function wireButtons() {
+    document.querySelectorAll("#catV5Content [data-v5-action]").forEach((b) => b.onclick = () => {
+      const fn = window.__catV5Actions?.[b.dataset.v5Action];
+      if (fn) fn(b);
+    });
+  }
+  let pendingServerIcon, pendingServerBanner;
+  function readServerImage(file, maxBytes, label) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith("image/")) return reject(new Error(label + " deve ser uma imagem."));
+      if (file.size > maxBytes) return reject(new Error(label + " muito grande. Limite: " + Math.round(maxBytes / 1024) + " KB."));
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Não foi possível ler " + label.toLowerCase() + "."));
+      reader.readAsDataURL(file);
+    });
+  }
+  function setServerPreview(id, value, emptyText) {
+    const box = $(id);
+    if (!box) return;
+    box.innerHTML = value ? '<img src="' + esc(value) + '" alt="">' : "<span>" + esc(emptyText) + "</span>";
+  }
+  function syncServerIdentity(data) {
+    if ($("serverName")) {
+      $("serverName").textContent = data.name;
+      $("serverName").title = data.name;
+    }
+    if ($("serverProfileName")) $("serverProfileName").textContent = data.name;
+    if ($("serverProfileIconImg")) $("serverProfileIconImg").src = data.icon && /^(data:|https?:)/.test(data.icon) ? data.icon : "/logo.svg";
+    if ($("serverHead") && data.banner) $("serverHead").style.backgroundImage = 'url("' + String(data.banner).replace(/"/g, "%22") + '")';
+  }
+  async function renderSettingsPage(id) {
+    makeSettings();
+    navActive(id);
+    window.__catV5Actions = {};
+    try {
+      if (!settingsData) await loadFull();
+      const s = settingsData.server;
+      if (id === "overview") {
+        pendingServerIcon = void 0;
+        pendingServerBanner = void 0;
+        content("Visão geral", "Altere nome, descrição, imagem e banner do servidor.", '<div class="cat-v5-card"><div class="cat-v5-field"><label>NOME</label><input id="v5ServerName" maxlength="50" value="' + esc(s.name || "") + '"></div><div class="cat-v5-field"><label>DESCRIÇÃO</label><textarea id="v5ServerDescription" maxlength="300">' + esc(s.description || "") + '</textarea></div><div class="cat-v5-upload-grid"><div class="cat-v5-field"><label>IMAGEM DO SERVIDOR</label><div class="cat-v5-image-preview square" id="v5ServerIconPreview"></div><input type="file" id="v5ServerIconFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden><div class="cat-v5-toolbar">' + button("Escolher imagem", "pickServerIcon", "primary") + button("Remover", "removeServerIcon") + '</div><small>PNG, JPG, WEBP ou GIF — máximo 500 KB.</small></div><div class="cat-v5-field"><label>BANNER DO SERVIDOR</label><div class="cat-v5-image-preview banner" id="v5ServerBannerPreview"></div><input type="file" id="v5ServerBannerFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden><div class="cat-v5-toolbar">' + button("Escolher banner", "pickServerBanner", "primary") + button("Remover", "removeServerBanner") + '</div><small>PNG, JPG, WEBP ou GIF — máximo 900 KB.</small></div></div><div class="cat-v5-toolbar">' + button("Salvar alterações", "saveServer", "primary") + "</div></div>");
+        setServerPreview("v5ServerIconPreview", s.icon, "Nenhuma imagem salva.");
+        setServerPreview("v5ServerBannerPreview", s.banner, "Nenhum banner salvo.");
+        window.__catV5Actions.pickServerIcon = () => $("v5ServerIconFile").click();
+        window.__catV5Actions.pickServerBanner = () => $("v5ServerBannerFile").click();
+        window.__catV5Actions.removeServerIcon = () => {
+          pendingServerIcon = null;
+          setServerPreview("v5ServerIconPreview", null, "Imagem removida ao salvar.");
+        };
+        window.__catV5Actions.removeServerBanner = () => {
+          pendingServerBanner = null;
+          setServerPreview("v5ServerBannerPreview", null, "Banner removido ao salvar.");
+        };
+        $("v5ServerIconFile").onchange = async () => {
+          try {
+            pendingServerIcon = await readServerImage($("v5ServerIconFile").files[0], 500 * 1024, "Imagem do servidor");
+            setServerPreview("v5ServerIconPreview", pendingServerIcon, "");
+          } catch (e) {
+            toastMsg(e.message);
+          } finally {
+            $("v5ServerIconFile").value = "";
+          }
+        };
+        $("v5ServerBannerFile").onchange = async () => {
+          try {
+            pendingServerBanner = await readServerImage($("v5ServerBannerFile").files[0], 900 * 1024, "Banner do servidor");
+            setServerPreview("v5ServerBannerPreview", pendingServerBanner, "");
+          } catch (e) {
+            toastMsg(e.message);
+          } finally {
+            $("v5ServerBannerFile").value = "";
+          }
+        };
+        window.__catV5Actions.saveServer = async (btn) => {
+          const name = $("v5ServerName").value.trim();
+          if (!name) return toastMsg("Digite um nome para o servidor.");
+          btn.disabled = true;
+          const label = btn.textContent;
+          btn.textContent = "Salvando…";
+          try {
+            const body = { name: name.slice(0, 50), description: $("v5ServerDescription").value.slice(0, 300) };
+            if (pendingServerIcon !== void 0) body.icon = pendingServerIcon;
+            if (pendingServerBanner !== void 0) body.banner = pendingServerBanner;
+            const data = await api("/api/features/servers/" + serverId + "/settings", { method: "PUT", body: JSON.stringify(body) });
+            settingsData.server = data;
+            syncServerIdentity(data);
+            pendingServerIcon = void 0;
+            pendingServerBanner = void 0;
+            toastMsg("Visão geral salva.", "success");
+          } catch (e) {
+            toastMsg(e.message);
+          } finally {
+            btn.disabled = false;
+            btn.textContent = label;
+          }
+        };
+      } else if (id === "channels") {
+        const cats = settingsData.categories || [], chans = settingsData.channels || [];
+        content("Canais & categorias", "Crie, renomeie, mova, recolha e exclua canais/categorias.", '<div class="cat-v5-toolbar">' + button("＋ Categoria", "newCategory", "primary") + button("＋ Canal", "newChannel") + '</div><div class="cat-v5-card">' + (cats.length ? cats.map((c) => '<div class="cat-v5-row"><span class="cat-v5-grow">▾ ' + esc(c.name) + '</span><span class="cat-v5-muted">' + chans.filter((x) => x.category_id === c.id).length + ' canais</span><button class="cat-v5-btn" data-edit-cat="' + esc(c.id) + '">Editar</button><button class="cat-v5-btn danger" data-del-cat="' + esc(c.id) + '">Excluir</button></div>').join("") : '<div class="cat-v5-empty">Nenhuma categoria criada.</div>') + '</div><div class="cat-v5-card">' + (chans.length ? chans.map((c) => '<div class="cat-v5-row"><span>' + ({ voice: "🔊", stage: "◉", forum: "▤", text: "#" }[c.type] || "#") + " " + esc(c.name) + '</span><span class="cat-v5-muted">' + esc(c.category || "Sem categoria") + '</span><span class="cat-v5-grow"></span><button class="cat-v5-btn" data-edit-ch="' + esc(c.id) + '">Editar</button><button class="cat-v5-btn danger" data-del-ch="' + esc(c.id) + '">Excluir</button></div>').join("") : '<div class="cat-v5-empty">Nenhum canal.</div>') + "</div>");
+        window.__catV5Actions.newCategory = async () => {
+          const name = prompt("Nome da categoria");
+          if (!name) return;
+          await api("/api/platform/servers/" + serverId + "/categories", { method: "POST", body: JSON.stringify({ name }) });
+          settingsData = null;
+          renderSettingsPage("channels");
+        };
+        window.__catV5Actions.newChannel = async () => {
+          const name = prompt("Nome do canal");
+          if (!name) return;
+          const type = (prompt("Tipo: text, voice, forum ou stage", "text") || "text").toLowerCase();
+          const categoryId = (settingsData.categories || [])[0]?.id || null;
+          await api("/api/platform/servers/" + serverId + "/channels", { method: "POST", body: JSON.stringify({ name, type, categoryId }) });
+          settingsData = null;
+          renderSettingsPage("channels");
+        };
+        document.querySelectorAll("#catV5Content [data-edit-cat]").forEach((b) => b.onclick = async () => {
+          const c = cats.find((x) => x.id === b.dataset.editCat);
+          const name = prompt("Novo nome", c?.name || "");
+          if (name) {
+            await api("/api/platform/servers/" + serverId + "/categories/" + b.dataset.editCat, { method: "PATCH", body: JSON.stringify({ name }) });
+            settingsData = null;
+            renderSettingsPage("channels");
+          }
+        });
+        document.querySelectorAll("#catV5Content [data-del-cat]").forEach((b) => b.onclick = async () => {
+          if (!confirm("Excluir categoria? Os canais serão preservados.")) return;
+          await api("/api/platform/servers/" + serverId + "/categories/" + b.dataset.delCat, { method: "DELETE" });
+          settingsData = null;
+          renderSettingsPage("channels");
+        });
+        document.querySelectorAll("#catV5Content [data-edit-ch]").forEach((b) => b.onclick = async () => {
+          const c = chans.find((x) => x.id === b.dataset.editCh);
+          const name = prompt("Novo nome", c?.name || "");
+          if (name) {
+            await api("/api/platform/servers/" + serverId + "/channels/" + b.dataset.editCh, { method: "PATCH", body: JSON.stringify({ name }) });
+            settingsData = null;
+            renderSettingsPage("channels");
+          }
+        });
+        document.querySelectorAll("#catV5Content [data-del-ch]").forEach((b) => b.onclick = async () => {
+          if (!confirm("Excluir canal?")) return;
+          await api("/api/platform/servers/" + serverId + "/channels/" + b.dataset.delCh, { method: "DELETE" });
+          settingsData = null;
+          renderSettingsPage("channels");
+        });
+      } else if (id === "members") {
+        const members = settingsData.members || [], roles = settingsData.roles || [];
+        content("Membros", "Visualize membros e a hierarquia atual.", '<div class="cat-v5-card">' + (members.length ? members.map((m) => '<div class="cat-v5-row"><span class="cat-v5-grow">' + esc(m.display_name || m.username) + ' <span class="cat-v5-muted">@' + esc(m.username) + '</span></span><span class="cat-v5-chip">' + esc(m.role || "member") + "</span></div>").join("") : '<div class="cat-v5-empty">Nenhum membro.</div>') + '</div><div class="cat-v5-card"><div class="cat-v5-muted">Cargos disponíveis</div>' + roles.map((r) => '<span class="cat-v5-chip" style="color:' + esc(r.color || "#fff") + '">' + esc(r.name) + "</span>").join("") + "</div>");
+      } else if (id === "roles") {
+        const roles = settingsData.roles || [];
+        content("Cargos", "Hierarquia, criação e edição de cargos.", '<div class="cat-v5-toolbar">' + button("＋ Criar cargo", "newRole", "primary") + '</div><div class="cat-v5-card">' + roles.map((r) => '<div class="cat-v5-row"><span class="cat-v5-grow"><span class="cat-v5-chip" style="color:' + esc(r.color || "#fff") + '">' + esc(r.name) + '</span></span><span class="cat-v5-muted">posição ' + Number(r.position || 0) + '</span><button class="cat-v5-btn" data-edit-role="' + esc(r.id) + '">Editar</button></div>').join("") + "</div>");
+        window.__catV5Actions.newRole = async () => {
+          const name = prompt("Nome do cargo");
+          if (!name) return;
+          await api("/api/platform/servers/" + serverId + "/roles", { method: "POST", body: JSON.stringify({ name, color: "#b56bff", permissions: { view_channel: true, send_messages: true } }) });
+          settingsData = null;
+          renderSettingsPage("roles");
+        };
+        document.querySelectorAll("#catV5Content [data-edit-role]").forEach((b) => b.onclick = async () => {
+          const r = roles.find((x) => x.id === b.dataset.editRole);
+          const name = prompt("Nome do cargo", r?.name || "");
+          if (name) {
+            await api("/api/platform/servers/" + serverId + "/roles/" + b.dataset.editRole, { method: "PATCH", body: JSON.stringify({ name }) });
+            settingsData = null;
+            renderSettingsPage("roles");
+          }
+        });
+      } else if (id === "security") {
+        const d = await api("/api/v4/servers/" + serverId + "/security");
+        content("Segurança", "Controles de segurança persistidos no banco.", '<div class="cat-v5-card"><div class="cat-v5-field"><label>NÍVEL DE VERIFICAÇÃO</label><select id="v5Verification"><option value="low" ' + (d.verification_level === "low" ? "selected" : "") + '>Baixo</option><option value="medium" ' + (d.verification_level === "medium" ? "selected" : "") + '>Médio</option><option value="high" ' + (d.verification_level === "high" ? "selected" : "") + '>Alto</option></select></div><div class="cat-v5-field"><label>FILTRO DE MÍDIA EXPLÍCITA</label><select id="v5Explicit"><option value="false" ' + (!d.explicit_media_filter ? "selected" : "") + '>Desativado</option><option value="true" ' + (d.explicit_media_filter ? "selected" : "") + '>Ativado</option></select></div><div class="cat-v5-field"><label>PROTEÇÃO CONTRA RAID</label><select id="v5Raid"><option value="false" ' + (!d.raid_protection ? "selected" : "") + '>Desativado</option><option value="true" ' + (d.raid_protection ? "selected" : "") + '>Ativado</option></select></div><div class="cat-v5-toolbar">' + button("Salvar segurança", "saveSecurity", "primary") + "</div></div>");
+        window.__catV5Actions.saveSecurity = async () => {
+          await api("/api/v4/servers/" + serverId + "/security", { method: "PUT", body: JSON.stringify({ verificationLevel: $("v5Verification").value, explicitMediaFilter: $("v5Explicit").value === "true", raidProtection: $("v5Raid").value === "true", twoFactorModeration: false }) });
+          toastMsg("Segurança salva.", "success");
+        };
+      } else if (id === "community") {
+        const d = await api("/api/v4/servers/" + serverId + "/community");
+        content("Comunidade", "Ative recursos de comunidade.", '<div class="cat-v5-card"><div class="cat-v5-field"><label>COMUNIDADE</label><select id="v5Community"><option value="false" ' + (!d.enabled ? "selected" : "") + '>Desativada</option><option value="true" ' + (d.enabled ? "selected" : "") + '>Ativada</option></select></div><div class="cat-v5-toolbar">' + button("Salvar", "saveCommunity", "primary") + "</div></div>");
+        window.__catV5Actions.saveCommunity = async () => {
+          await api("/api/v4/servers/" + serverId + "/community", { method: "PUT", body: JSON.stringify({ enabled: $("v5Community").value === "true" }) });
+          toastMsg("Comunidade salva.", "success");
+        };
+      } else if (id === "onboarding") {
+        const d = await api("/api/v4/servers/" + serverId + "/onboarding");
+        content("Onboarding", "Boas-vindas, perguntas, cargos e canais de entrada.", '<div class="cat-v5-card"><div class="cat-v5-field"><label>ATIVO</label><select id="v5On"><option value="false" ' + (!d.enabled ? "selected" : "") + '>Não</option><option value="true" ' + (d.enabled ? "selected" : "") + '>Sim</option></select></div><div class="cat-v5-field"><label>MENSAGEM DE BOAS-VINDAS</label><textarea id="v5Welcome">' + esc(d.welcome_text || "Bem-vindo ao CAT EMPIRE!") + '</textarea></div><div class="cat-v5-toolbar">' + button("Salvar onboarding", "saveOnboarding", "primary") + "</div></div>");
+        window.__catV5Actions.saveOnboarding = async () => {
+          await api("/api/v4/servers/" + serverId + "/onboarding", { method: "PUT", body: JSON.stringify({ enabled: $("v5On").value === "true", welcomeText: $("v5Welcome").value, questions: [], defaultRoles: [], defaultChannels: [] }) });
+          toastMsg("Onboarding salvo.", "success");
+        };
+      } else if (id === "moderation") {
+        const rows = await api("/api/v4/servers/" + serverId + "/moderation");
+        content("Moderação", "Warnings, kicks, bans e timeouts persistidos.", '<div class="cat-v5-card">' + (rows?.length ? rows.map((r) => '<div class="cat-v5-row"><span class="cat-v5-grow">' + esc(r.action) + " — " + esc(r.username || r.user_id) + '</span><span class="cat-v5-muted">' + esc(r.reason || "sem motivo") + "</span></div>").join("") : '<div class="cat-v5-empty">Nenhuma ação registrada.</div>') + "</div>");
+      } else if (id === "audit") {
+        const rows = await api("/api/v4/servers/" + serverId + "/audit-log");
+        content("Audit log", "Histórico de ações administrativas.", '<div class="cat-v5-card">' + (rows?.length ? rows.map((r) => '<div class="cat-v5-row"><span class="cat-v5-grow">' + esc(r.action) + " → " + esc(r.target_type || "") + '</span><span class="cat-v5-muted">' + esc(r.actor_username || r.actor_id) + "</span></div>").join("") : '<div class="cat-v5-empty">Nenhuma ação registrada.</div>') + "</div>");
+      } else if (id === "emojis" || id === "stickers") {
+        const kind = id === "emojis" ? "emojis" : "stickers";
+        const rows = await api("/api/v4/servers/" + serverId + "/" + kind);
+        content(kind.toUpperCase(), "Recursos personalizados do servidor.", '<div class="cat-v5-card">' + (rows?.length ? rows.map((r) => '<div class="cat-v5-row"><span class="cat-v5-grow">' + esc(r.name) + '</span><span class="cat-v5-muted">' + esc(r.description || "") + "</span></div>").join("") : '<div class="cat-v5-empty">Nenhum recurso cadastrado.</div>') + "</div>");
+      } else if (id === "events") {
+        const rows = await api("/api/v4/servers/" + serverId + "/events");
+        content("Eventos", "Eventos agendados do servidor.", '<div class="cat-v5-card">' + (rows?.length ? rows.map((r) => '<div class="cat-v5-row"><span class="cat-v5-grow">' + esc(r.name) + '</span><span class="cat-v5-muted">' + esc(r.status || "scheduled") + "</span></div>").join("") : '<div class="cat-v5-empty">Nenhum evento.</div>') + "</div>");
+      } else if (id === "invites") {
+        const rows = await api("/api/v4/servers/" + serverId + "/invites");
+        content("Convites", "Convites ativos e históricos.", '<div class="cat-v5-toolbar">' + button("＋ Criar convite", "newInvite", "primary") + '</div><div class="cat-v5-card">' + (rows?.length ? rows.map((r) => '<div class="cat-v5-row"><span class="cat-v5-grow">' + esc(r.code) + '</span><span class="cat-v5-muted">' + (r.uses || 0) + " usos</span></div>").join("") : '<div class="cat-v5-empty">Nenhum convite.</div>') + "</div>");
+        window.__catV5Actions.newInvite = async () => {
+          const d = await api("/api/v4/servers/" + serverId + "/invites", { method: "POST", body: JSON.stringify({}) });
+          toastMsg("Convite: " + d.code, "success");
+          renderSettingsPage("invites");
+        };
+      } else if (id === "danger") {
+        content("Zona de perigo", "Ações destrutivas ficam separadas das configurações normais.", '<div class="cat-v5-card"><p class="cat-v5-muted">A exclusão do servidor é permanente e só ocorre após confirmação explícita.</p>' + button("Excluir servidor", "deleteServer", "danger") + "</div>");
+        window.__catV5Actions.deleteServer = async () => {
+          if (!confirm("EXCLUIR SERVIDOR? Esta ação não pode ser desfeita.")) return;
+          await api("/api/servers/" + serverId, { method: "DELETE" });
+          location.href = "/dms.html";
+        };
+      }
+      wireButtons();
+    } catch (e) {
+      content("Erro", "Não foi possível carregar esta seção.", '<div class="cat-v5-card"><div class="cat-v5-empty">' + esc(e.message) + "</div></div>");
+    }
+  }
+  async function openServerSettings() {
+    if (!isServer || !serverId) return;
+    makeSettings();
+    settingsOverlay.hidden = false;
+    settingsData = null;
+    await renderSettingsPage("overview");
+  }
+  $("serverSettingsBtn")?.addEventListener("click", openServerSettings);
+  function installFriends() {
+    if (!isDm || !$("dmList")) return;
+    if ($("openAddFriendBtn")) {
+      loadFriends();
+      return;
+    }
+    let panel = $("catV5Friends");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "catV5Friends";
+      panel.className = "cat-v5-friends";
+      panel.innerHTML = '<div class="cat-v5-friends-title">AMIGOS</div><div class="cat-v5-friends-row"><input id="catV5FriendInput" placeholder="@username" autocomplete="off" maxlength="30"><button type="button" class="btn" id="catV5FriendSearch">Adicionar</button></div><div class="cat-v5-friends-list" id="catV5FriendsList"></div>';
+      $("dmList").parentElement.insertBefore(panel, $("dmList"));
+    }
+    if (panel.dataset.ready === "1") return;
+    panel.dataset.ready = "1";
+    const input = $("catV5FriendInput"), button2 = $("catV5FriendSearch");
+    const submit = async () => {
+      const username = input?.value.trim().replace(/^@/, "");
+      if (!username || button2.disabled) return;
+      button2.disabled = true;
+      const label = button2.textContent;
+      button2.textContent = "Enviando…";
+      try {
+        const result = await api("/api/social/friends/request", { method: "POST", body: JSON.stringify({ username }) });
+        toastMsg(result.message || "Solicitação enviada.", "success");
+        input.value = "";
+        await loadFriends();
+      } catch (error) {
+        toastMsg(error.message);
+      } finally {
+        button2.disabled = false;
+        button2.textContent = label;
+      }
+    };
+    button2?.addEventListener("click", submit);
+    input?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        submit();
+      }
+    });
+    loadFriends();
+  }
+  async function loadFriends() {
+    if (!isDm) return;
+    try {
+      const list = await api("/api/social/friends");
+      const box = $("catV5FriendsList");
+      if (!box) return;
+      box.innerHTML = list.length ? list.map((f) => '<div class="cat-v5-friend"><img src="' + esc(f.avatar || "/logo.svg") + '" alt=""><span>' + esc(f.display_name || f.username) + " <small>@" + esc(f.username) + '</small></span><button class="btn" data-open-friend="' + esc(f.id) + '">DM</button></div>').join("") : '<span class="cat-v5-muted">Nenhum amigo adicionado.</span>';
+      box.querySelectorAll("[data-open-friend]").forEach((b) => b.onclick = () => window.openConversation?.(b.dataset.openFriend));
+    } catch (_) {
+    }
+  }
   installFriends();
-
-  const oldOpenMyProfile=window.openMyProfile;
-  if(oldOpenMyProfile&&!window.__catV5ProfilePatched){window.__catV5ProfilePatched=true;window.openMyProfile=()=>{document.querySelector('#viewProfileModal')?.classList.remove('open');return oldOpenMyProfile.apply(window,arguments);};}
-  if($('viewProfileModal'))$('viewProfileModal').addEventListener('click',e=>{if(e.target===$('viewProfileModal'))$('viewProfileModal').classList.remove('open');});
-  setTimeout(()=>{wireMessageActions();fetchCallTimes();installFriends();},500);
+  const oldOpenMyProfile = window.openMyProfile;
+  if (oldOpenMyProfile && !window.__catV5ProfilePatched) {
+    window.__catV5ProfilePatched = true;
+    window.openMyProfile = () => {
+      document.querySelector("#viewProfileModal")?.classList.remove("open");
+      return oldOpenMyProfile.apply(window, arguments);
+    };
+  }
+  if ($("viewProfileModal")) $("viewProfileModal").addEventListener("click", (e) => {
+    if (e.target === $("viewProfileModal")) $("viewProfileModal").classList.remove("open");
+  });
+  setTimeout(() => {
+    wireMessageActions();
+    fetchCallTimes();
+    installFriends();
+  }, 500);
 })();
