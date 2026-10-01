@@ -5,14 +5,13 @@
 
   const $ = id => document.getElementById(id);
   const q = new URLSearchParams(location.search);
-  const token = localStorage.getItem('cat_token') || q.get('token') || '';
-  const userId = localStorage.getItem('cat_user_id') || q.get('userId') || '';
+  const userId = localStorage.getItem('cat_user_id') || '';
   const serverId = q.get('serverId') || '';
   const isServer = !!$('serverSettingsBtn');
   const isDm = !!$('dmSidebar');
-  if (!token || !userId) return;
+  if (!userId) return;
 
-  const auth = () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + token });
+  const auth = () => ({ 'Content-Type': 'application/json' });
   const api = async (url, options = {}) => {
     const res = await fetch(url, { ...options, headers: { ...auth(), ...(options.headers || {}) } });
     let data = null;
