@@ -1,8 +1,8 @@
 const User = require('../database/models/User');
-const { bearerToken, verifyAccessToken } = require('../security');
+const { accessTokenFromRequest, verifyAccessToken } = require('../security');
 
 async function authenticate(req, res, next) {
-  const token = bearerToken(req);
+  const token = accessTokenFromRequest(req);
   if (!token) {
     return res.status(401).json({ error: 'Token não fornecido' });
   }
@@ -25,7 +25,7 @@ async function authenticate(req, res, next) {
 }
 
 async function optionalAuth(req, res, next) {
-  const token = bearerToken(req);
+  const token = accessTokenFromRequest(req);
   if (token) {
     try {
       const decoded = await verifyAccessToken(token);
