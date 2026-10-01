@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const token = () => localStorage.getItem('token') || localStorage.getItem('catEmpireToken');
+  const token = () => localStorage.getItem('cat_token') || localStorage.getItem('token') || localStorage.getItem('catEmpireToken');
 
   const request = async (path, options = {}) => {
     const headers = new Headers(options.headers || {});
