@@ -2,8 +2,8 @@
   const $ = (id) => document.getElementById(id);
   const q = new URLSearchParams(location.search);
   const serverId = q.get('serverId');
-  const token = localStorage.getItem('cat_token') || q.get('token');
-  const userId = localStorage.getItem('cat_user_id') || q.get('userId');
+  const token = localStorage.getItem('cat_token') || '';
+  const userId = localStorage.getItem('cat_user_id') || '';
   const isServerPage = !!$('serverSettingsBtn');
   const isDmPage = !!$('dmSidebar');
   const apiHeaders = () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + token });
