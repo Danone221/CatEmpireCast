@@ -137,6 +137,14 @@ async function initSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id, blocker_id);
     CREATE INDEX IF NOT EXISTS idx_invites_server ON invites(server_id);
+
+    CREATE TABLE IF NOT EXISTS revoked_tokens (
+      jti TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      expires_at BIGINT NOT NULL,
+      revoked_at BIGINT NOT NULL DEFAULT extract(epoch FROM now())::bigint
+    );
+    CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);
   `);
 
   const col = await pool.query(`
@@ -161,6 +169,18 @@ async function initSchema() {
   await addColumnIfMissing('dm_messages', 'read_at', 'BIGINT');
   await addColumnIfMissing('invites', 'max_uses', 'INTEGER');
   await addColumnIfMissing('invites', 'expires_at', 'BIGINT');
+
+  await pool.query(`
+    DELETE FROM revoked_tokens WHERE expires_at <= extract(epoch FROM now())::bigint;
+    UPDATE users
+      SET bio = CASE WHEN bio IS NULL THEN NULL ELSE regexp_replace(bio, '[<>]', '', 'g') END,
+          display_name = CASE WHEN display_name IS NULL THEN NULL ELSE regexp_replace(display_name, '[<>]', '', 'g') END,
+          avatar = CASE WHEN avatar ~* '^(file|javascript|http):' THEN NULL ELSE avatar END;
+    UPDATE servers
+      SET name = regexp_replace(name, '[<>]', '', 'g'),
+          description = CASE WHEN description IS NULL THEN NULL ELSE regexp_replace(description, '[<>]', '', 'g') END,
+          icon = CASE WHEN icon ~* '^(file|javascript|http):' THEN '🐱' ELSE icon END;
+  `);
 
   // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
   // depender de extensões como pgcrypto só para gerar IDs de categorias.

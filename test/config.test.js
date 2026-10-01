@@ -20,8 +20,19 @@ test('produção rejeita segredo composto apenas por espaços', () => {
 test('produção aceita um segredo JWT forte', () => {
   const result = spawnSync(process.execPath, ['-e', "require('./server/config')"], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32) },
+    env: { ...process.env, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), CORS_ORIGIN: 'https://cat-empire-n6qv.onrender.com' },
     encoding: 'utf8'
   });
   assert.equal(result.status, 0, result.stderr);
+});
+
+
+test('produção rejeita CORS wildcard', () => {
+  const result = spawnSync(process.execPath, ['-e', "require('./server/config')"], {
+    cwd: process.cwd(),
+    env: { ...process.env, NODE_ENV: 'production', JWT_SECRET: 'x'.repeat(32), CORS_ORIGIN: '*' },
+    encoding: 'utf8'
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CORS_ORIGIN/);
 });

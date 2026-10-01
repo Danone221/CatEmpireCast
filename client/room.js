@@ -1,13 +1,13 @@
 const $ = id => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 const serverId = q.get('serverId') || localStorage.getItem('cat_last_server');
-const userId = localStorage.getItem('cat_user_id') || q.get('userId');
-const userName = localStorage.getItem('cat_user_name') || q.get('userName') || 'Membro';
-const token = localStorage.getItem('cat_token') || q.get('token');
+const userId = localStorage.getItem('cat_user_id');
+const userName = localStorage.getItem('cat_user_name') || 'Membro';
+const token = localStorage.getItem('cat_token');
 
 if (!userId || !token) { location.href = '/'; }
 
-const socket = io();
+const socket = io({ auth: { token } });
 
 let channels = [];
 let members = [];
@@ -104,7 +104,7 @@ async function loadServersRail() {
 
 let hadConnectedBefore = false;
 socket.on('connect', () => {
-  socket.emit('register', { userId, token, serverId });
+  socket.emit('register', { serverId });
   loadServersRail();
   if (selectedTextChannelId) socket.emit('join-text-channel', { channelId: selectedTextChannelId });
   
@@ -1767,7 +1767,10 @@ function fileToDataUrl(file, maxBytes) {
   });
 }
 
-function logout() {
+async function logout() {
+  try {
+    await fetch('/auth/logout', { method: 'POST', headers: headers() });
+  } catch (_) {}
   localStorage.removeItem('cat_user_id');
   localStorage.removeItem('cat_user_name');
   localStorage.removeItem('cat_token');
@@ -1824,7 +1827,7 @@ $('userTabProfileBtn')?.addEventListener('click', () => switchUserTab('profile')
 $('userTabAccountBtn')?.addEventListener('click', () => switchUserTab('account'));
 $('accountLogoutBtn')?.addEventListener('click', async () => {
   if (!(await uiConfirm('Deseja realmente sair da sua conta?'))) return;
-  logout();
+  await logout();
 });
 $('closeAccountTabBtn')?.addEventListener('click', () => $('editProfileModal').classList.remove('open'));
 

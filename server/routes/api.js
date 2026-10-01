@@ -6,6 +6,7 @@ const User = require('../database/models/User');
 const Invite = require('../database/models/Invite');
 const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
+const { sanitizePlainText, validateImageValue, verifyAccessToken } = require('../security');
 
 // Endpoint público usado pela tela inicial.
 router.get('/servers/active', async (req, res) => {
@@ -31,17 +32,18 @@ router.put('/me/profile', authenticate, async (req, res) => {
     const { displayName, avatar, bio, bannerColor } = req.body;
     const data = {};
     if (typeof displayName === 'string') {
-      const trimmed = displayName.trim().slice(0, 32);
+      const trimmed = sanitizePlainText(displayName, 32);
       if (trimmed) data.display_name = trimmed;
     }
-    if (typeof bio === 'string') data.bio = bio.slice(0, 190);
-    if (typeof bannerColor === 'string' || bannerColor === null) data.banner_color = bannerColor || null;
-    if (typeof avatar === 'string') {
-      // Base64 data URL — limite de ~500KB pra não pesar no banco.
-      if (avatar.length > 700000) {
-        return res.status(400).json({ error: 'Imagem muito grande (máx. ~500KB).' });
-      }
-      data.avatar = avatar;
+    if (typeof bio === 'string') data.bio = sanitizePlainText(bio, 190);
+    if (bannerColor !== undefined) {
+      const rawBanner = bannerColor == null ? '' : String(bannerColor).trim();
+      data.banner_color = !rawBanner ? null : (/^#[0-9a-f]{6}$/i.test(rawBanner)
+        ? rawBanner
+        : validateImageValue(rawBanner, { maxLength: 900000 }));
+    }
+    if (avatar !== undefined) {
+      data.avatar = validateImageValue(avatar, { maxLength: 700000 });
     }
     const user = await User.update(req.user.id, data);
 
@@ -158,14 +160,20 @@ router.get('/dms/:userId', authenticate, async (req, res) => {
 router.post('/servers', authenticate, async (req, res) => {
   try {
     const { name, icon } = req.body;
-    const cleanName = String(name || 'Servidor do Cat').trim().slice(0, 50);
+    const cleanName = sanitizePlainText(name || 'Servidor do Cat', 50) || 'Servidor do Cat';
+    const cleanIcon = icon === undefined
+      ? '🐱'
+      : validateImageValue(icon, { allowShortText: true, maxLength: 700000 });
     const server = await Server.create({
-      name: cleanName || 'Servidor do Cat',
-      icon: icon || '🐱',
+      name: cleanName,
+      icon: cleanIcon || '🐱',
       creatorId: req.user.id
     });
     res.json(server);
   } catch (error) {
+    if (/imagem|URL/i.test(String(error.message || ''))) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error('Erro ao criar servidor:', error);
     res.status(500).json({ error: 'Erro ao criar servidor' });
   }
@@ -186,12 +194,11 @@ router.get('/servers', authenticate, async (req, res) => {
 router.get('/servers/:serverId', authenticate, async (req, res) => {
   try {
     const server = await Server.findById(req.params.serverId);
-    if (!server) {
-      return res.status(404).json({ error: 'Servidor não encontrado' });
-    }
+    if (!server) return res.status(404).json({ error: 'Servidor não encontrado' });
+    const myRole = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (!myRole) return res.status(403).json({ error: 'Você não participa deste servidor' });
     const channels = await Server.getChannels(req.params.serverId);
     const members = await Server.getMembers(req.params.serverId);
-    const myRole = await Server.getMemberRole(req.params.serverId, req.user.id);
     res.json({ ...server, channels, members, myRole });
   } catch (error) {
     console.error('Erro ao buscar servidor:', error);
@@ -288,11 +295,9 @@ router.get('/invites/:code', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
-        const jwt = require('jsonwebtoken');
-        const config = require('../config');
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, config.jwtSecret);
-        if (decoded && decoded.id) {
+        const decoded = await verifyAccessToken(token);
+        if (decoded?.id) {
           const role = await Server.getMemberRole(invite.server_id, decoded.id);
           isMember = !!role;
         }
@@ -356,21 +361,14 @@ router.post('/invites/:code/join', authenticate, async (req, res) => {
 // Entrar em servidor direto (se já tiver permissão)
 router.post('/servers/:serverId/join', authenticate, async (req, res) => {
   try {
-    await Server.addMember(req.params.serverId, req.user.id);
-
-    const io = req.app.get('io');
-    if (io) {
-      const members = await Server.getMembers(req.params.serverId);
-      const newMember = members.find(m => m.id === req.user.id);
-      if (newMember) {
-        io.to(`server-${req.params.serverId}`).emit('member-joined', newMember);
-      }
+    const role = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (!role) {
+      return res.status(403).json({ error: 'Use um convite válido para entrar neste servidor' });
     }
-
     res.json({ success: true, serverId: req.params.serverId });
   } catch (error) {
-    console.error('Erro ao entrar no servidor:', error);
-    res.status(500).json({ error: 'Erro ao entrar no servidor' });
+    console.error('Erro ao validar entrada no servidor:', error);
+    res.status(500).json({ error: 'Erro ao validar entrada no servidor' });
   }
 });
 
@@ -384,24 +382,19 @@ router.put('/servers/:serverId', authenticate, async (req, res) => {
     const { name, icon, bannerColor, description } = req.body;
     const data = {};
     if (typeof name === 'string') {
-      const trimmed = name.trim().slice(0, 40);
+      const trimmed = sanitizePlainText(name, 40);
       if (trimmed) data.name = trimmed;
     }
-    if (typeof icon === 'string') {
-      // Emoji curto OU imagem (data URL/URL) — limite generoso só pra
-      // barrar payloads absurdos, a validação de tipo fica pro cliente.
-      if (icon.length > 700000) {
-        return res.status(400).json({ error: 'Ícone muito grande (máx. ~500KB).' });
-      }
-      data.icon = icon;
+    if (icon !== undefined) {
+      data.icon = validateImageValue(icon, { allowShortText: true, maxLength: 700000 });
     }
-    if (typeof bannerColor === 'string' || bannerColor === null) {
-      if (typeof bannerColor === 'string' && bannerColor.length > 700000) {
-        return res.status(400).json({ error: 'Banner muito grande (máx. ~500KB).' });
-      }
-      data.banner_color = bannerColor || null;
+    if (bannerColor !== undefined) {
+      const rawBanner = bannerColor == null ? '' : String(bannerColor).trim();
+      data.banner_color = !rawBanner ? null : (/^#[0-9a-f]{6}$/i.test(rawBanner)
+        ? rawBanner
+        : validateImageValue(rawBanner, { maxLength: 900000 }));
     }
-    if (typeof description === 'string') data.description = description.slice(0, 300);
+    if (typeof description === 'string') data.description = sanitizePlainText(description, 300);
 
     const server = await Server.update(req.params.serverId, data);
 
@@ -410,6 +403,9 @@ router.put('/servers/:serverId', authenticate, async (req, res) => {
 
     res.json(server);
   } catch (error) {
+    if (/imagem|URL/i.test(String(error.message || ''))) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error('Erro ao editar servidor:', error);
     res.status(500).json({ error: 'Erro ao editar servidor' });
   }
@@ -538,6 +534,10 @@ router.delete('/servers/:serverId/channels/:channelId', authenticate, async (req
     if (role !== 'admin') {
       return res.status(403).json({ error: 'Apenas administradores podem excluir canais' });
     }
+    const channel = await Channel.findById(req.params.channelId);
+    if (!channel || channel.server_id !== req.params.serverId) {
+      return res.status(404).json({ error: 'Canal não encontrado neste servidor' });
+    }
     await Channel.delete(req.params.channelId);
     res.json({ success: true });
   } catch (error) {
@@ -550,9 +550,9 @@ router.delete('/servers/:serverId/channels/:channelId', authenticate, async (req
 router.get('/channels/:channelId', authenticate, async (req, res) => {
   try {
     const channel = await Channel.findById(req.params.channelId);
-    if (!channel) {
-      return res.status(404).json({ error: 'Canal não encontrado' });
-    }
+    if (!channel) return res.status(404).json({ error: 'Canal não encontrado' });
+    const role = await Server.getMemberRole(channel.server_id, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Acesso ao canal negado' });
     res.json(channel);
   } catch (error) {
     console.error('Erro ao buscar canal:', error);
@@ -563,7 +563,11 @@ router.get('/channels/:channelId', authenticate, async (req, res) => {
 // Buscar mensagens do canal
 router.get('/channels/:channelId/messages', authenticate, async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 100;
+    const channel = await Channel.findById(req.params.channelId);
+    if (!channel) return res.status(404).json({ error: 'Canal não encontrado' });
+    const role = await Server.getMemberRole(channel.server_id, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Acesso ao canal negado' });
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 200);
     const messages = await Channel.getMessages(req.params.channelId, limit);
     res.json(messages);
   } catch (error) {
@@ -575,6 +579,10 @@ router.get('/channels/:channelId/messages', authenticate, async (req, res) => {
 // Buscar membros no canal de voz
 router.get('/channels/:channelId/voice', authenticate, async (req, res) => {
   try {
+    const channel = await Channel.findById(req.params.channelId);
+    if (!channel || channel.type !== 'voice') return res.status(404).json({ error: 'Canal de voz não encontrado' });
+    const role = await Server.getMemberRole(channel.server_id, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Acesso ao canal negado' });
     const members = await Channel.getVoiceMembers(req.params.channelId);
     res.json(members);
   } catch (error) {

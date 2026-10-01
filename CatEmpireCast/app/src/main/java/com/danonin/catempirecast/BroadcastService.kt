@@ -194,11 +194,11 @@ class BroadcastService : Service() {
             .setReconnectionDelay(1_000)
             .setTimeout(15_000)
             .build()
+        options.auth = mapOf("token" to token)
         val client = IO.socket(URI(baseUrl), options)
         socket = client
         client.on(Socket.EVENT_CONNECT) {
-            client.emit("register-native-screen", JSONObject()
-                .put("token", token).put("userId", userId).put("channelId", channelId))
+            client.emit("register-native-screen", JSONObject().put("channelId", channelId))
         }
         client.on("native-screen-registered") { args ->
             val payload = args.firstOrNull() as? JSONObject ?: return@on
