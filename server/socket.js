@@ -493,6 +493,7 @@ function setupSocket(server) {
     socket.on('send-message', async ({ channelId, message, file } = {}) => {
       try {
         if (rateLimited(socket, 'send-message', 30, 10_000)) return;
+        if (file && rateLimited(socket, 'send-attachment', 4, 60_000)) return;
         const channel = await getAuthorizedChannel(socket, channelId, 'text');
         if (!channel) {
           socket.emit('error', { message: 'Canal não encontrado ou acesso negado' });
@@ -528,6 +529,7 @@ function setupSocket(server) {
     // ========== EDITAR MENSAGEM ==========
     socket.on('edit-message', async ({ messageId, content }) => {
       try {
+        if (rateLimited(socket, 'edit-message', 30, 10_000)) return;
         const original = await Channel.getMessage(messageId);
         if (!original) return socket.emit('error', { message: 'Mensagem não encontrada' });
         if (original.user_id !== socket.userId) {
@@ -546,6 +548,7 @@ function setupSocket(server) {
     // ========== EXCLUIR MENSAGEM ==========
     socket.on('delete-message', async ({ messageId }) => {
       try {
+        if (rateLimited(socket, 'delete-message', 20, 10_000)) return;
         const original = await Channel.getMessage(messageId);
         if (!original) return;
         const channel = await Channel.findById(original.channel_id);
@@ -582,6 +585,7 @@ function setupSocket(server) {
     socket.on('send-dm', async ({ toUserId, message, file } = {}) => {
       try {
         if (rateLimited(socket, 'send-dm', 30, 10_000)) return;
+        if (file && rateLimited(socket, 'send-dm-attachment', 4, 60_000)) return;
         if (!toUserId || toUserId === socket.userId) return;
         const target = await User.findById(toUserId);
         if (!target) return socket.emit('error', { message: 'Usuário não encontrado' });
