@@ -100,3 +100,10 @@ test('message mutations re-check current access and blocked DMs cannot be edited
   assert.match(socket, /if \(block\) return socket\.emit\('error', \{ message: 'Esta conversa está bloqueada' \}\)/);
 });
 
+test('reserved system role names cannot be spoofed by custom roles', () => {
+  const role = source('server/database/models/Role.js');
+  assert.match(role, /isSystemRoleName/);
+  assert.match(role, /Nome do cargo inválido ou reservado/);
+  assert.match(role, /trim\(\)\.toLowerCase\(\)/);
+});
+
