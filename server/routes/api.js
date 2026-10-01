@@ -6,7 +6,7 @@ const User = require('../database/models/User');
 const Invite = require('../database/models/Invite');
 const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
-const { sanitizePlainText, validateImageValue, verifyAccessToken } = require('../security');
+const { sanitizePlainText, validateImageValue, verifyAccessToken, accessTokenFromRequest } = require('../security');
 
 // Endpoint público usado pela tela inicial.
 router.get('/servers/active', async (req, res) => {
@@ -26,46 +26,7 @@ router.get('/me', authenticate, async (req, res) => {
   res.json(req.user);
 });
 
-// Editar meu perfil: nome de exibição, avatar, bio, cor do banner
-router.put('/me/profile', authenticate, async (req, res) => {
-  try {
-    const { displayName, avatar, bio, bannerColor } = req.body;
-    const data = {};
-    if (typeof displayName === 'string') {
-      const trimmed = sanitizePlainText(displayName, 32);
-      if (trimmed) data.display_name = trimmed;
-    }
-    if (typeof bio === 'string') data.bio = sanitizePlainText(bio, 190);
-    if (bannerColor !== undefined) {
-      const rawBanner = bannerColor == null ? '' : String(bannerColor).trim();
-      data.banner_color = !rawBanner ? null : (/^#[0-9a-f]{6}$/i.test(rawBanner)
-        ? rawBanner
-        : validateImageValue(rawBanner, { maxLength: 900000 }));
-    }
-    if (avatar !== undefined) {
-      data.avatar = validateImageValue(avatar, { maxLength: 700000 });
-    }
-    const user = await User.update(req.user.id, data);
-
-    // Propaga em tempo real pra quem estiver com a página aberta em
-    // qualquer servidor que essa pessoa participa — sem isso, nomes e
-    // avatares atualizados só apareceriam pros outros membros depois de
-    // um refresh manual da página.
-    const io = req.app.get('io');
-    if (io) {
-      const servers = await User.getServers(req.user.id);
-      const publicUser = await User.getPublicProfile(req.user.id);
-      for (const s of servers) {
-        io.to(`server-${s.id}`).emit('member-profile-updated', publicUser);
-      }
-    }
-
-    res.json(user);
-  } catch (error) {
-    console.error('Erro ao editar perfil:', error);
-    res.status(500).json({ error: 'Erro ao editar perfil' });
-  }
-});
+// A edição de perfil é atendida por routes/profile.js, montada antes deste router.
 
 // Alterar senha da conta
 router.put('/me/password', authenticate, async (req, res) => {
@@ -292,16 +253,15 @@ router.get('/invites/:code', async (req, res) => {
     }
 
     let isMember = false;
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = accessTokenFromRequest(req);
+    if (token) {
       try {
-        const token = authHeader.split(' ')[1];
         const decoded = await verifyAccessToken(token);
         if (decoded?.id) {
           const role = await Server.getMemberRole(invite.server_id, decoded.id);
           isMember = !!role;
         }
-      } catch (e) {}
+      } catch (_) {}
     }
 
     res.json({
