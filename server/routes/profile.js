@@ -3,19 +3,23 @@ const router = express.Router();
 const User = require('../database/models/User');
 const { query } = require('../database');
 const { authenticate } = require('../middleware/auth');
+const { isSafeImageRef, isSafeBannerValue } = require('../security/input');
 
 router.put('/me/profile', authenticate, async (req, res) => {
   try {
     const data = {};
     if (typeof req.body?.displayName === 'string' && req.body.displayName.trim()) data.display_name = req.body.displayName.trim().slice(0, 32);
     if (typeof req.body?.bio === 'string') data.bio = req.body.bio.slice(0, 190);
-    if (typeof req.body?.bannerColor === 'string' || req.body?.bannerColor === null) data.banner_color = req.body.bannerColor || null;
+    if (typeof req.body?.bannerColor === 'string' || req.body?.bannerColor === null) {
+      if (req.body.bannerColor && !isSafeBannerValue(req.body.bannerColor, 900000)) return res.status(400).json({ error: 'Banner inválido.' });
+      data.banner_color = req.body.bannerColor || null;
+    }
     if (typeof req.body?.banner === 'string' || req.body?.banner === null) {
-      if (req.body.banner && req.body.banner.length > 900000) return res.status(400).json({ error: 'Banner muito grande (máx. ~650KB).' });
+      if (req.body.banner && !isSafeImageRef(req.body.banner, 900000)) return res.status(400).json({ error: 'Banner inválido.' });
       data.banner = req.body.banner || null;
     }
     if (typeof req.body?.avatar === 'string') {
-      if (req.body.avatar.length > 700000) return res.status(400).json({ error: 'Imagem muito grande (máx. ~500KB).' });
+      if (!isSafeImageRef(req.body.avatar, 700000)) return res.status(400).json({ error: 'Imagem de perfil inválida.' });
       data.avatar = req.body.avatar;
     }
     const user = await User.update(req.user.id, data);
