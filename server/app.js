@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const config = require('./config');
@@ -54,8 +55,33 @@ app.use((req, res, next) => {
   next();
 });
 app.use(cors({ origin: config.corsOrigin }));
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas requisições. Tente novamente em instantes.' }
+});
+const mutationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas alterações em pouco tempo.' }
+});
+app.use('/api', apiLimiter);
+app.use('/api', (req, res, next) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return mutationLimiter(req, res, next);
+  next();
+});
+
 app.use((req, res, next) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+  const fetchSite = String(req.headers['sec-fetch-site'] || '').toLowerCase();
+  if (fetchSite === 'cross-site') {
+    return res.status(403).json({ error: 'Origem não permitida' });
+  }
   const origin = String(req.headers.origin || '').trim();
   if (!origin) return next();
   const expected = config.appOrigin || (config.nodeEnv === 'production' ? '' : `${req.protocol}://${req.get('host')}`);
@@ -67,6 +93,32 @@ app.use((req, res, next) => {
 app.use(compression());
 app.use(express.json({ limit: '5mb', strict: true }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+function hasDangerousObjectKeys(value, depth = 0) {
+  if (!value || typeof value !== 'object') return false;
+  if (depth > 12) return true;
+  for (const key of Object.keys(value)) {
+    if (key === '__proto__' || key === 'prototype' || key === 'constructor') return true;
+    if (hasDangerousObjectKeys(value[key], depth + 1)) return true;
+  }
+  return false;
+}
+
+app.use((req, res, next) => {
+  if (hasDangerousObjectKeys(req.body) || hasDangerousObjectKeys(req.query)) {
+    return res.status(400).json({ error: 'Estrutura de entrada inválida' });
+  }
+  if (Object.values(req.query || {}).some(Array.isArray)) {
+    return res.status(400).json({ error: 'Parâmetros duplicados não são permitidos' });
+  }
+  if (req.path.startsWith('/api/') && ['POST', 'PUT', 'PATCH'].includes(req.method)) {
+    const length = Number(req.headers['content-length'] || 0);
+    if (length > 0 && !req.is('application/json')) {
+      return res.status(415).json({ error: 'Content-Type deve ser application/json' });
+    }
+  }
+  next();
+});
 
 // Toda mutação de servidor aprovada publica um evento único. Assim clientes
 // conectados atualizam somente os dados afetados, sem reload/F5.
