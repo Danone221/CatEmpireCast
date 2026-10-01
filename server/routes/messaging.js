@@ -4,6 +4,8 @@ const router = express.Router();
 const { query, queryOne } = require('../database');
 const Server = require('../database/models/Server');
 const { authenticate } = require('../middleware/auth');
+const config = require('../config');
+const { sanitizeAttachment } = require('../security/input');
 
 router.use(authenticate);
 
@@ -95,8 +97,30 @@ router.post('/channels/:channelId/messages', async (req, res) => {
       VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [uuidv4(), channel.id, req.user.id, content, replyTo, threadId, JSON.stringify(embeds), JSON.stringify(mentions), JSON.stringify(stickers)]);
 
     for (const attachment of Array.isArray(req.body.attachments) ? req.body.attachments.slice(0, 10) : []) {
+      const name = String(attachment.fileName || 'arquivo').replace(/[\\/\0\r\n]/g, '_').slice(0, 160);
+      const type = String(attachment.fileType || '').trim().toLowerCase();
+      if (!config.upload.allowedTypes.includes(type)) {
+        return res.status(400).json({ error: 'Tipo de anexo não permitido' });
+      }
+      const maxBytes = Math.min(Number(config.upload.maxSize) || 8 * 1024 * 1024, 8 * 1024 * 1024);
+      let storedUrl = '';
+      let storedSize = Math.max(0, Number(attachment.fileSize) || 0);
+      if (attachment.fileData) {
+        const safe = sanitizeAttachment({ name, type, size: storedSize, data: attachment.fileData }, maxBytes, config.upload.allowedTypes);
+        storedUrl = safe.data;
+        storedSize = safe.size;
+      } else {
+        const candidate = String(attachment.url || '').trim();
+        if (!candidate || candidate.length > 2048 || !(candidate.startsWith('/') || /^https:\/\//i.test(candidate))) {
+          return res.status(400).json({ error: 'URL de anexo inválida' });
+        }
+        if (storedSize > maxBytes) return res.status(413).json({ error: 'Anexo excede o limite permitido' });
+        storedUrl = candidate;
+      }
+      const metadata = JSON.stringify(attachment.metadata || {});
+      if (metadata.length > 8000) return res.status(413).json({ error: 'Metadados do anexo muito grandes' });
       await query(`INSERT INTO message_attachments(id,message_id,file_name,file_type,file_size,url,metadata)
-        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, String(attachment.fileName || 'arquivo').slice(0,255), attachment.fileType || null, Number(attachment.fileSize) || null, attachment.url || attachment.fileData || null, JSON.stringify(attachment.metadata || {})]);
+        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, name, type, storedSize || null, storedUrl, metadata]);
     }
 
     for (const mention of mentions) {
