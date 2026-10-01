@@ -261,28 +261,6 @@ router.post('/channels/:channelId/forum/posts', async(req,res)=>{
 });
 
 // ===== SOCIAL / NOTIFICATIONS =====
-router.get('/friends', async(req,res)=>{
-  try{ const rows=await query(`SELECT f.status,f.created_at,u.id,u.username,u.display_name,u.avatar FROM friends f JOIN users u ON u.id=f.friend_id WHERE f.user_id=$1 ORDER BY u.username`,[req.user.id]); res.json(rows); }
-  catch(e){fail(res,e,'Erro ao listar amigos');}
-});
-router.post('/friends/:username', async(req,res)=>{
-  try{
-    const other=await queryOne('SELECT id,username FROM users WHERE lower(username)=lower($1)',[req.params.username]);
-    if(!other) return res.status(404).json({error:'Usuário não encontrado'});
-    if(other.id===req.user.id) return res.status(400).json({error:'Você não pode adicionar a si mesmo'});
-    await query(`INSERT INTO friends(user_id,friend_id,status) VALUES($1,$2,'pending') ON CONFLICT(user_id,friend_id) DO UPDATE SET status='pending',updated_at=extract(epoch FROM now())::bigint`,[req.user.id,other.id]);
-    await query(`INSERT INTO notifications(id,user_id,type,title,description,target) VALUES($1,$2,'friend_request','Nova solicitação', $3, $4)`,[uuidv4(),other.id,`${req.user.username} enviou uma solicitação de amizade.`,JSON.stringify({userId:req.user.id})]);
-    res.json({success:true,user:other});
-  }catch(e){fail(res,e,'Erro ao enviar solicitação');}
-});
-router.post('/friends/:userId/accept',async(req,res)=>{
-  try{
-    const other=req.params.userId;
-    await query(`UPDATE friends SET status='accepted',updated_at=extract(epoch FROM now())::bigint WHERE user_id=$1 AND friend_id=$2`,[req.user.id,other]);
-    await query(`INSERT INTO friends(user_id,friend_id,status) VALUES($1,$2,'accepted') ON CONFLICT(user_id,friend_id) DO UPDATE SET status='accepted',updated_at=extract(epoch FROM now())::bigint`,[other,req.user.id]);
-    res.json({success:true});
-  }catch(e){fail(res,e,'Erro ao aceitar solicitação');}
-});
 router.get('/notifications',async(req,res)=>{try{res.json(await query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',[req.user.id]));}catch(e){fail(res,e,'Erro ao listar notificações');}});
 router.post('/notifications/:id/read',async(req,res)=>{try{await query('UPDATE notifications SET read=true WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);res.json({success:true});}catch(e){fail(res,e,'Erro ao marcar notificação');}});
 
