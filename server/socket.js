@@ -5,6 +5,7 @@ const User = require('./database/models/User');
 const Dm = require('./database/models/Dm');
 const jwt = require('jsonwebtoken');
 const config = require('./config');
+const { normalizeSocketFile } = require('./security');
 
 function setupSocket(server) {
   const io = new Server(server, {
@@ -101,63 +102,68 @@ function setupSocket(server) {
   io.on('connection', (socket) => {
     console.log('🔌 Conectado:', socket.id);
 
-    // ========== REGISTRO ==========
+    socket.use(([event], next) => {
+      if (event === 'register' || event === 'register-native-screen') return next();
+      if (socket.userId || socket.screenOwnerId) return next();
+      next(new Error('Não autenticado'));
+    });
+
     socket.on('register', async ({ userId, token, serverId }) => {
       try {
-        // Verificar token se necessário
-        const user = await User.findById(userId);
-        if (!user) {
-          socket.emit('error', { message: 'Usuário não encontrado' });
-          return;
+        const decoded = jwt.verify(String(token || ''), config.jwtSecret);
+        const authenticatedUserId = String(decoded.id || '');
+        if (!authenticatedUserId || (userId && String(userId) !== authenticatedUserId)) {
+          throw new Error('Token não corresponde ao usuário');
         }
+        const user = await User.findById(authenticatedUserId);
+        if (!user) throw new Error('Usuário não encontrado');
 
-        socketUsers.set(socket.id, userId);
-        userSockets.set(userId, socket.id);
-        socket.userId = userId;
+        socketUsers.set(socket.id, authenticatedUserId);
+        userSockets.set(authenticatedUserId, socket.id);
+        socket.userId = authenticatedUserId;
         socket.userName = user.display_name || user.username;
 
-        socket.join(`user-${userId}`);
-        console.log(`👤 ${socket.userName} (${userId}) registrado`);
+        socket.join(`user-${authenticatedUserId}`);
+        console.log(`👤 ${socket.userName} (${authenticatedUserId}) registrado`);
 
-        // Entra na "sala" do servidor (página) atual, se informado — é isso
-        // que permite avisar quem já está com a página aberta quando ALGUÉM
-        // NOVO entra no servidor (ver rota HTTP /api/servers/:id/join, que
-        // emite 'member-joined' pra essa sala). Sem isso o servidor nunca
-        // tinha como empurrar essa novidade pra quem já estava conectado —
-        // o array de membros no cliente só era carregado uma vez, no load()
-        // inicial, e ficava desatualizado (por isso membros novos apareciam
-        // como "MEMBRO" genérico nas chamadas de voz).
+        let joinedServerId = null;
         if (serverId) {
-          socket.join(`server-${serverId}`);
-          socket.serverId = serverId;
+          const role = await ServerModel.getMemberRole(serverId, authenticatedUserId);
+          if (role) {
+            joinedServerId = serverId;
+            socket.join(`server-${serverId}`);
+            socket.serverId = serverId;
+          }
         }
 
-        // ===== Presença online/offline (bolinha verde estilo Discord) =====
-        const wasOffline = !onlineUsers.has(userId);
-        onlineUsers.add(userId);
-        // Manda a lista atual pra quem acabou de entrar, pra ele já
-        // desenhar as bolinhas certas sem esperar um evento de outra pessoa.
+        const wasOffline = !onlineUsers.has(authenticatedUserId);
+        onlineUsers.add(authenticatedUserId);
         socket.emit('presence-list', Array.from(onlineUsers));
-        if (wasOffline && serverId) {
-          io.to(`server-${serverId}`).emit('presence-update', { userId, online: true });
+        if (wasOffline && joinedServerId) {
+          io.to(`server-${joinedServerId}`).emit('presence-update', { userId: authenticatedUserId, online: true });
         }
 
-        // Enviar servidores do usuário
-        const servers = await User.getServers(userId);
+        const servers = await User.getServers(authenticatedUserId);
         socket.emit('servers-list', servers);
-
       } catch (error) {
         console.error('❌ Erro no registro:', error);
-        socket.emit('error', { message: 'Erro ao registrar' });
+        socket.emit('error', { message: 'Autenticação inválida' });
+        socket.disconnect(true);
       }
     });
 
     // ========== ENTRAR NO CANAL DE VOZ ==========
     socket.on('join-voice-channel', async ({ channelId }) => {
       try {
+        if (!socket.userId) return;
         const channel = await Channel.findById(channelId);
         if (!channel) {
           socket.emit('error', { message: 'Canal não encontrado' });
+          return;
+        }
+        const role = await ServerModel.getMemberRole(channel.server_id, socket.userId);
+        if (!role) {
+          socket.emit('error', { message: 'Você não é membro deste servidor' });
           return;
         }
 
@@ -415,11 +421,14 @@ function setupSocket(server) {
     });
 
     // ========== ENTRAR NO CANAL DE TEXTO (necessário pro broadcast de mensagens) ==========
-    socket.on('join-text-channel', ({ channelId }) => {
+    socket.on('join-text-channel', async ({ channelId }) => {
       try {
-        if (socket.textChannel) {
-          socket.leave(`channel-${socket.textChannel}`);
-        }
+        if (!socket.userId) return;
+        const channel = await Channel.findById(channelId);
+        if (!channel || channel.type !== 'text') return;
+        const role = await ServerModel.getMemberRole(channel.server_id, socket.userId);
+        if (!role) return socket.emit('error', { message: 'Você não é membro deste servidor' });
+        if (socket.textChannel) socket.leave(`channel-${socket.textChannel}`);
         socket.textChannel = channelId;
         socket.join(`channel-${channelId}`);
       } catch (error) {
@@ -430,22 +439,24 @@ function setupSocket(server) {
     // ========== MENSAGEM ==========
     socket.on('send-message', async ({ channelId, message, file }) => {
       try {
+        if (!socket.userId) return;
         const channel = await Channel.findById(channelId);
-        if (!channel) {
+        if (!channel || channel.type !== 'text') {
           socket.emit('error', { message: 'Canal não encontrado' });
           return;
         }
+        const role = await ServerModel.getMemberRole(channel.server_id, socket.userId);
+        if (!role) return socket.emit('error', { message: 'Você não é membro deste servidor' });
+        const text = String(message || '').trim();
+        if (!text && !file) return;
+        if (text.length > 2000) return socket.emit('error', { message: 'Mensagem muito longa' });
+        const safeFile = normalizeSocketFile(file);
 
         const msgData = await Channel.saveMessage({
           channelId,
           userId: socket.userId,
-          content: message,
-          file: file ? {
-            name: file.name,
-            type: file.type,
-            size: file.size || null,
-            data: file.data || null
-          } : null
+          content: text,
+          file: safeFile
         });
 
         io.to(`channel-${channelId}`).emit('new-message', msgData);
@@ -496,9 +507,11 @@ function setupSocket(server) {
 
     // ========== INDICADOR "ESTÁ DIGITANDO…" ==========
     socket.on('typing-start', ({ channelId }) => {
+      if (!socket.userId || socket.textChannel !== channelId) return;
       socket.to(`channel-${channelId}`).emit('user-typing', { channelId, userId: socket.userId, userName: socket.userName });
     });
     socket.on('typing-stop', ({ channelId }) => {
+      if (!socket.userId || socket.textChannel !== channelId) return;
       socket.to(`channel-${channelId}`).emit('user-stop-typing', { channelId, userId: socket.userId });
     });
 
@@ -517,7 +530,8 @@ function setupSocket(server) {
         if (!text && !file) return;
         if (text.length > 2000) return socket.emit('error', { message: 'Mensagem muito longa' });
 
-        const dm = await Dm.send({ senderId: socket.userId, recipientId: toUserId, content: text, file });
+        const safeFile = normalizeSocketFile(file);
+        const dm = await Dm.send({ senderId: socket.userId, recipientId: toUserId, content: text, file: safeFile });
         io.to(`user-${toUserId}`).emit('new-dm', dm);
         io.to(`user-${socket.userId}`).emit('new-dm', dm); // ecoa pro remetente (multi-aba)
       } catch (error) {
@@ -571,6 +585,7 @@ function setupSocket(server) {
     // ========== GO LIVE ==========
     socket.on('start-go-live', ({ channelId }) => {
       try {
+        if (!socket.userId || userChannels.get(socket.userId) !== channelId) return;
         io.to(`channel-${channelId}`).emit('stream-started', {
           userId: socket.userId,
           userName: socket.userName
@@ -582,6 +597,7 @@ function setupSocket(server) {
 
     socket.on('stop-go-live', ({ channelId }) => {
       try {
+        if (!socket.userId || userChannels.get(socket.userId) !== channelId) return;
         io.to(`channel-${channelId}`).emit('stream-stopped', {
           userId: socket.userId
         });
