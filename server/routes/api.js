@@ -331,6 +331,11 @@ router.post('/invites/:code/join', authenticate, async (req, res) => {
     if (!invite) {
       return res.status(404).json({ error: 'Convite inválido ou inexistente' });
     }
+
+    const existingRole = await Server.getMemberRole(invite.server_id, req.user.id);
+    if (existingRole) {
+      return res.json({ success: true, serverId: invite.server_id, alreadyMember: true });
+    }
     if (invite.expired) {
       return res.status(410).json({ error: 'Este convite expirou' });
     }
@@ -338,10 +343,18 @@ router.post('/invites/:code/join', authenticate, async (req, res) => {
       return res.status(410).json({ error: 'Este convite atingiu o limite de usos' });
     }
 
-    await Server.addMember(invite.server_id, req.user.id);
-    await Invite.use(invite.code);
+    const consumed = await Invite.consumeForUser(invite.code, req.user.id);
+    if (!consumed) {
+      const roleAfterRace = await Server.getMemberRole(invite.server_id, req.user.id);
+      if (roleAfterRace) {
+        return res.json({ success: true, serverId: invite.server_id, alreadyMember: true });
+      }
+      const latest = await Invite.findByCode(invite.code);
+      if (!latest) return res.status(404).json({ error: 'Convite inválido ou inexistente' });
+      if (latest.expired) return res.status(410).json({ error: 'Este convite expirou' });
+      return res.status(410).json({ error: 'Este convite atingiu o limite de usos' });
+    }
 
-    // Avisa quem já está com o servidor aberto
     const io = req.app.get('io');
     if (io) {
       const members = await Server.getMembers(invite.server_id);
