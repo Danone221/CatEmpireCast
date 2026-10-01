@@ -23,6 +23,50 @@ const requireManage = async (serverId, userId) => {
   return member;
 };
 
+function boundedJson(value, maxBytes, label) {
+  const json = JSON.stringify(value);
+  if (Buffer.byteLength(json, 'utf8') > maxBytes) {
+    throw Object.assign(new Error(`${label} excede o limite permitido`), { status: 413 });
+  }
+  return json;
+}
+
+async function validateServerChannel(serverId, channelId, label) {
+  if (!channelId) return null;
+  const row = await queryOne('SELECT id FROM channels WHERE id=$1 AND server_id=$2', [channelId, serverId]);
+  if (!row) throw Object.assign(new Error(`${label} não pertence a este servidor`), { status: 400 });
+  return row.id;
+}
+
+async function requireModerationTarget(serverId, actorId, targetId) {
+  if (!targetId || typeof targetId !== 'string') {
+    throw Object.assign(new Error('Usuário alvo inválido'), { status: 400 });
+  }
+  if (targetId === actorId) {
+    throw Object.assign(new Error('Você não pode aplicar moderação em si mesmo'), { status: 400 });
+  }
+  const [server, actor, target] = await Promise.all([
+    queryOne('SELECT creator_id, owner_id FROM servers WHERE id=$1', [serverId]),
+    queryOne('SELECT role,is_owner FROM server_members WHERE server_id=$1 AND user_id=$2', [serverId, actorId]),
+    queryOne('SELECT role,is_owner FROM server_members WHERE server_id=$1 AND user_id=$2', [serverId, targetId])
+  ]);
+  if (!target) throw Object.assign(new Error('Membro alvo não pertence a este servidor'), { status: 404 });
+  const actorIsOwner = Boolean(
+    server && (server.creator_id === actorId || server.owner_id === actorId) ||
+    actor?.is_owner ||
+    String(actor?.role || '').toLowerCase() === 'owner'
+  );
+  const targetIsOwner = Boolean(
+    server && (server.creator_id === targetId || server.owner_id === targetId) ||
+    target.is_owner ||
+    String(target.role || '').toLowerCase() === 'owner'
+  );
+  if (targetIsOwner && !actorIsOwner) {
+    throw Object.assign(new Error('Somente o proprietário pode moderar outro proprietário'), { status: 403 });
+  }
+  return target;
+}
+
 // ===== SERVER PROFILE / SECURITY / COMMUNITY =====
 router.get('/servers/:serverId/full', async (req, res) => {
   try {
@@ -70,7 +114,7 @@ router.patch('/servers/:serverId/profile', async (req, res) => {
       add('banner', !raw ? null : validateImageValue(raw, { maxLength: 900000 }));
     }
     if (req.body.settings && typeof req.body.settings === 'object' && !Array.isArray(req.body.settings)) {
-      add('settings', JSON.stringify(req.body.settings));
+      add('settings', boundedJson(req.body.settings, 32768, 'Configurações do servidor'));
     }
 
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
@@ -104,11 +148,14 @@ router.get('/servers/:serverId/community', async (req, res) => {
 router.put('/servers/:serverId/community', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
+    const rulesChannelId = await validateServerChannel(req.params.serverId, req.body.rulesChannelId || null, 'Canal de regras');
+    const updatesChannelId = await validateServerChannel(req.params.serverId, req.body.updatesChannelId || null, 'Canal de atualizações');
+    const defaultNotifications = sanitizePlainText(req.body.defaultNotifications || 'all', 32) || 'all';
     const c = await queryOne(`INSERT INTO server_community(server_id,enabled,rules_channel_id,updates_channel_id,default_notifications)
       VALUES($1,COALESCE($2,false),$3,$4,COALESCE($5,'all'))
       ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules_channel_id=EXCLUDED.rules_channel_id,
       updates_channel_id=EXCLUDED.updates_channel_id,default_notifications=EXCLUDED.default_notifications,
-      updated_at=extract(epoch FROM now())::bigint RETURNING *`, [req.params.serverId, req.body.enabled, req.body.rulesChannelId || null, req.body.updatesChannelId || null, req.body.defaultNotifications]);
+      updated_at=extract(epoch FROM now())::bigint RETURNING *`, [req.params.serverId, req.body.enabled, rulesChannelId, updatesChannelId, defaultNotifications]);
     res.json(c);
   } catch (e) { fail(res, e, 'Erro ao salvar comunidade'); }
 });
@@ -185,7 +232,14 @@ router.get('/servers/:serverId/emojis', async (req, res) => {
   catch (e) { fail(res, e, 'Erro ao listar emojis'); }
 });
 router.post('/servers/:serverId/emojis', async (req, res) => {
-  try { await requireManage(req.params.serverId, req.user.id); const e=await queryOne(`INSERT INTO server_emojis(id,server_id,name,image,animated) VALUES($1,$2,$3,$4,$5) RETURNING *`, [uuidv4(),req.params.serverId,String(req.body.name||'emoji').slice(0,32),String(req.body.image||'').slice(0,200000),!!req.body.animated]); res.json(e); }
+  try {
+    await requireManage(req.params.serverId, req.user.id);
+    const name = sanitizePlainText(req.body.name || 'emoji', 32);
+    const image = validateImageValue(req.body.image, { maxLength: 200000 });
+    if (!name || !image) return res.status(400).json({ error: 'Emoji inválido' });
+    const e = await queryOne(`INSERT INTO server_emojis(id,server_id,name,image,animated) VALUES($1,$2,$3,$4,$5) RETURNING *`, [uuidv4(),req.params.serverId,name,image,!!req.body.animated]);
+    res.json(e);
+  }
   catch (e) { fail(res, e, 'Erro ao criar emoji'); }
 });
 router.delete('/servers/:serverId/emojis/:emojiId', async (req, res) => {
@@ -197,13 +251,21 @@ router.get('/servers/:serverId/stickers', async (req, res) => {
   catch(e){fail(res,e,'Erro ao listar stickers');}
 });
 router.post('/servers/:serverId/stickers', async (req,res)=>{
-  try{await requireManage(req.params.serverId,req.user.id);const s=await queryOne(`INSERT INTO server_stickers(id,server_id,name,description,image) VALUES($1,$2,$3,$4,$5) RETURNING *`,[uuidv4(),req.params.serverId,String(req.body.name||'sticker').slice(0,32),String(req.body.description||'').slice(0,200),String(req.body.image||'').slice(0,200000)]);res.json(s);}catch(e){fail(res,e,'Erro ao criar sticker');}
+  try{
+    await requireManage(req.params.serverId,req.user.id);
+    const name=sanitizePlainText(req.body.name||'sticker',32);
+    const description=sanitizePlainText(req.body.description||'',200);
+    const image=validateImageValue(req.body.image,{maxLength:200000});
+    if(!name||!image)return res.status(400).json({error:'Sticker inválido'});
+    const s=await queryOne(`INSERT INTO server_stickers(id,server_id,name,description,image) VALUES($1,$2,$3,$4,$5) RETURNING *`,[uuidv4(),req.params.serverId,name,description,image]);
+    res.json(s);
+  }catch(e){fail(res,e,'Erro ao criar sticker');}
 });
 
 // ===== MODERATION / AUDIT =====
 router.get('/servers/:serverId/moderation', async (req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query(`SELECT m.*,u.username,m2.username AS moderator_username FROM moderation_actions m JOIN users u ON u.id=m.user_id JOIN users m2 ON m2.id=m.moderator_id WHERE m.server_id=$1 ORDER BY m.started_at DESC`,[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar moderação');}});
 router.post('/servers/:serverId/moderation', async(req,res)=>{
-  try{await requireManage(req.params.serverId,req.user.id);const action=String(req.body.action||'warning');if(!['warning','kick','ban','timeout'].includes(action))return res.status(400).json({error:'Ação inválida'});const row=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,req.body.userId,req.user.id,action,String(req.body.reason||'').slice(0,1000),req.body.expiresAt?Number(req.body.expiresAt):null]);await query(`INSERT INTO audit_logs(id,server_id,actor_id,action,target_type,target_id,reason,changes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[uuidv4(),req.params.serverId,req.user.id,`moderation.${action}`,'user',req.body.userId,row.reason,JSON.stringify(row)]);res.json(row);}catch(e){fail(res,e,'Erro ao executar moderação');}
+  try{await requireManage(req.params.serverId,req.user.id);await requireModerationTarget(req.params.serverId,req.user.id,req.body.userId);const action=String(req.body.action||'warning');if(!['warning','kick','ban','timeout'].includes(action))return res.status(400).json({error:'Ação inválida'});const row=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,req.body.userId,req.user.id,action,sanitizePlainText(req.body.reason||'',1000),req.body.expiresAt?Number(req.body.expiresAt):null]);await query(`INSERT INTO audit_logs(id,server_id,actor_id,action,target_type,target_id,reason,changes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[uuidv4(),req.params.serverId,req.user.id,`moderation.${action}`,'user',req.body.userId,row.reason,JSON.stringify(row)]);res.json(row);}catch(e){fail(res,e,'Erro ao executar moderação');}
 });
 router.get('/servers/:serverId/audit-log',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query(`SELECT a.*,u.username AS actor_username FROM audit_logs a JOIN users u ON u.id=a.actor_id WHERE a.server_id=$1 ORDER BY a.created_at DESC LIMIT 500`,[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar audit log');}});
 
