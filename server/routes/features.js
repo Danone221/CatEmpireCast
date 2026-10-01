@@ -34,7 +34,9 @@ async function ensureSchema() {
 
 async function requireAdmin(serverId, userId) {
   const role = await Server.getMemberRole(serverId, userId);
-  if (role !== 'admin') throw new Error('Apenas administradores podem alterar esta configuração');
+  if (!['admin', 'owner'].includes(role)) {
+    throw Object.assign(new Error('Apenas administradores ou o proprietário podem alterar esta configuração'), { status: 403 });
+  }
 }
 
 router.use(authenticate);
@@ -153,6 +155,11 @@ router.post('/reactions/toggle', async (req, res) => {
       const msg = await queryOne('SELECT id, sender_id, recipient_id FROM dm_messages WHERE id = $1', [messageId]);
       if (!msg) return res.status(404).json({ error: 'Mensagem não encontrada' });
       if (msg.sender_id !== req.user.id && msg.recipient_id !== req.user.id) return res.status(403).json({ error: 'Sem acesso a esta mensagem' });
+      const block = await queryOne(
+        'SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
+        [msg.sender_id, msg.recipient_id]
+      );
+      if (block) return res.status(403).json({ error: 'Esta conversa está bloqueada' });
     }
     const existing = await queryOne(`SELECT id FROM ${table} WHERE message_id = $1 AND user_id = $2 AND emoji = $3`, [messageId, req.user.id, emoji]);
     if (existing) await query(`DELETE FROM ${table} WHERE id = $1`, [existing.id]);
@@ -172,7 +179,7 @@ router.get('/gifs/search', async (req, res) => {
   const term = String(req.query.q || 'trending').slice(0, 80);
   try {
     const url = `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(term)}&key=${encodeURIComponent(key)}&client_key=cat_empire&limit=12`;
-    const r = await fetch(url);
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!r.ok) return res.json({ configured: true, results: [] });
     const d = await r.json();
     const results = (d.results || []).map(x => ({ id:x.id, preview:x.media_formats?.tinygif?.url || x.media_formats?.nanogif?.url, url:x.media_formats?.gif?.url || x.media_formats?.mediumgif?.url })).filter(x => x.url);
