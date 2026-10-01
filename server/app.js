@@ -58,8 +58,8 @@ app.use((req, res, next) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
   const origin = String(req.headers.origin || '').trim();
   if (!origin) return next();
-  const expected = config.appOrigin || `${req.protocol}://${req.get('host')}`;
-  if (origin !== expected) {
+  const expected = config.appOrigin || (config.nodeEnv === 'production' ? '' : `${req.protocol}://${req.get('host')}`);
+  if (!expected || origin !== expected) {
     return res.status(403).json({ error: 'Origem não permitida' });
   }
   next();
