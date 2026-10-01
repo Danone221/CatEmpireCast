@@ -71,8 +71,8 @@ router.put('/me/profile', authenticate, async (req, res) => {
 router.put('/me/password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'A nova senha deve ter no mínimo 4 caracteres.' });
+    if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 128) {
+      return res.status(400).json({ error: 'A nova senha deve ter de 8 a 128 caracteres.' });
     }
     await User.updatePassword(req.user.id, currentPassword, newPassword);
     res.json({ success: true, message: 'Senha atualizada com sucesso!' });
@@ -511,14 +511,19 @@ router.post('/servers/:serverId/channels', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'Apenas administradores podem criar canais' });
     }
     const { name, type, category } = req.body;
-    if (!name || !name.trim()) {
+    const cleanName = sanitizePlainText(name, 80);
+    if (!cleanName) {
       return res.status(400).json({ error: 'Nome do canal é obrigatório' });
     }
+    const cleanCategory = sanitizePlainText(
+      category || (type === 'voice' ? 'CANAIS DE VOZ' : 'CANAIS'),
+      80
+    );
     const channel = await Channel.create({
       serverId: req.params.serverId,
-      name: name.trim(),
+      name: cleanName,
       type: type === 'voice' ? 'voice' : 'text',
-      category: category || (type === 'voice' ? 'CANAIS DE VOZ' : 'CANAIS')
+      category: cleanCategory || (type === 'voice' ? 'CANAIS DE VOZ' : 'CANAIS')
     });
     res.json(channel);
   } catch (error) {
