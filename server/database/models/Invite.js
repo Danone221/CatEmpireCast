@@ -76,11 +76,21 @@ class Invite {
     return { success: true };
   }
 
-  static async use(code) {
-    await query(
-      `UPDATE invites SET uses = uses + 1 WHERE code = $1`,
-      [code]
+  static async consume(code) {
+    const now = Math.floor(Date.now() / 1000);
+    return queryOne(
+      `UPDATE invites
+       SET uses = uses + 1
+       WHERE code = $1
+         AND (expires_at IS NULL OR expires_at >= $2)
+         AND (max_uses IS NULL OR uses < max_uses)
+       RETURNING *`,
+      [String(code || '').trim(), now]
     );
+  }
+
+  static async use(code) {
+    return this.consume(code);
   }
 }
 
