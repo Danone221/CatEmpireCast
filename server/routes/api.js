@@ -193,13 +193,16 @@ router.get('/servers', authenticate, async (req, res) => {
 // Buscar servidor por ID
 router.get('/servers/:serverId', authenticate, async (req, res) => {
   try {
+    const myRole = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (!myRole) {
+      return res.status(403).json({ error: 'Você não participa deste servidor' });
+    }
     const server = await Server.findById(req.params.serverId);
     if (!server) {
       return res.status(404).json({ error: 'Servidor não encontrado' });
     }
     const channels = await Server.getChannels(req.params.serverId);
     const members = await Server.getMembers(req.params.serverId);
-    const myRole = await Server.getMemberRole(req.params.serverId, req.user.id);
     res.json({ ...server, channels, members, myRole });
   } catch (error) {
     console.error('Erro ao buscar servidor:', error);
@@ -232,11 +235,19 @@ router.post('/servers/:serverId/invites', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'Você precisa ser membro do servidor para gerar convites' });
     }
     const { maxUses, expiresInHours } = req.body || {};
+    const parsedMaxUses = maxUses == null || maxUses === '' ? null : Number.parseInt(maxUses, 10);
+    const parsedExpiry = expiresInHours == null || expiresInHours === '' ? null : Number.parseInt(expiresInHours, 10);
+    if (parsedMaxUses !== null && (!Number.isInteger(parsedMaxUses) || parsedMaxUses < 1 || parsedMaxUses > 100000)) {
+      return res.status(400).json({ error: 'Limite de usos inválido' });
+    }
+    if (parsedExpiry !== null && (!Number.isInteger(parsedExpiry) || parsedExpiry < 1 || parsedExpiry > 24 * 365)) {
+      return res.status(400).json({ error: 'Validade do convite inválida' });
+    }
     const invite = await Invite.create({
       serverId: req.params.serverId,
       creatorId: req.user.id,
-      maxUses: maxUses ? parseInt(maxUses, 10) : null,
-      expiresInHours: expiresInHours ? parseInt(expiresInHours, 10) : null
+      maxUses: parsedMaxUses,
+      expiresInHours: parsedExpiry
     });
     res.json(invite);
   } catch (error) {
@@ -266,6 +277,9 @@ router.delete('/servers/:serverId/invites/:code', authenticate, async (req, res)
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
     const invite = await Invite.findByCode(req.params.code);
     if (!invite) return res.status(404).json({ error: 'Convite não encontrado' });
+    if (invite.server_id !== req.params.serverId) {
+      return res.status(404).json({ error: 'Convite não encontrado neste servidor' });
+    }
     const isCreator = invite.creator_id === req.user.id;
     if (role !== 'admin' && !isCreator) {
       return res.status(403).json({ error: 'Você não tem permissão para revogar este convite' });
@@ -390,16 +404,15 @@ router.put('/servers/:serverId', authenticate, async (req, res) => {
       if (trimmed) data.name = trimmed;
     }
     if (typeof icon === 'string') {
-      // Emoji curto OU imagem (data URL/URL) — limite generoso só pra
-      // barrar payloads absurdos, a validação de tipo fica pro cliente.
-      if (icon.length > 700000) {
-        return res.status(400).json({ error: 'Ícone muito grande (máx. ~500KB).' });
+      const shortIcon = Array.from(icon).length <= 12 && !/[<>"'\\]/.test(icon);
+      if (!shortIcon && !isSafeImageRef(icon, 700000)) {
+        return res.status(400).json({ error: 'Ícone inválido.' });
       }
       data.icon = icon;
     }
     if (typeof bannerColor === 'string' || bannerColor === null) {
-      if (typeof bannerColor === 'string' && bannerColor.length > 700000) {
-        return res.status(400).json({ error: 'Banner muito grande (máx. ~500KB).' });
+      if (bannerColor && !isSafeBannerValue(bannerColor, 700000)) {
+        return res.status(400).json({ error: 'Banner inválido.' });
       }
       data.banner_color = bannerColor || null;
     }
