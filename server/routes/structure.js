@@ -4,6 +4,7 @@ const router = express.Router();
 const { query, queryOne } = require('../database');
 const Server = require('../database/models/Server');
 const { authenticate } = require('../middleware/auth');
+const { sanitizePlainText } = require('../security');
 
 router.use(authenticate);
 
@@ -24,6 +25,17 @@ function fail(res, error, fallback) {
   return res.status(error.status || 400).json({ error: error.message || fallback });
 }
 
+function cleanPermissionMap(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out = {};
+  for (const [key, enabled] of Object.entries(value).slice(0, 64)) {
+    if (!/^[a-z0-9_.:-]{1,64}$/i.test(key)) continue;
+    out[key] = !!enabled;
+  }
+  return out;
+}
+
+
 // ===== CATEGORIAS =====
 router.get('/servers/:serverId/categories', async (req, res) => {
   try {
@@ -35,13 +47,13 @@ router.get('/servers/:serverId/categories', async (req, res) => {
 router.post('/servers/:serverId/categories', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);
-    const name = String(req.body.name || 'Nova categoria').trim().slice(0, 80);
+    const name = sanitizePlainText(req.body.name || 'Nova categoria', 80);
     if (!name) return res.status(400).json({ error: 'Nome da categoria inválido' });
     const pos = await queryOne('SELECT COALESCE(MAX(position),-1)+1 AS position FROM channel_categories WHERE server_id=$1', [req.params.serverId]);
     const category = await queryOne(
       `INSERT INTO channel_categories(id,server_id,name,position,collapsed,permissions)
        VALUES($1,$2,$3,$4,$5,$6::jsonb) RETURNING *`,
-      [uuidv4(), req.params.serverId, name, Number(pos.position), !!req.body.collapsed, JSON.stringify(req.body.permissions || {})]
+      [uuidv4(), req.params.serverId, name, Number(pos.position), !!req.body.collapsed, JSON.stringify(cleanPermissionMap(req.body.permissions))]
     );
     res.status(201).json(category);
   } catch (e) { fail(res, e, 'Erro ao criar categoria'); }
@@ -53,10 +65,10 @@ router.patch('/servers/:serverId/categories/:categoryId', async (req, res) => {
     const fields = [];
     const values = [];
     const add = (sql, value) => { values.push(value); fields.push(sql.replace('?', `$${values.length}`)); };
-    if (typeof req.body.name === 'string') add('name=?', req.body.name.trim().slice(0, 80));
+    if (typeof req.body.name === 'string') { const name=sanitizePlainText(req.body.name,80); if(!name)return res.status(400).json({error:'Nome da categoria inválido'}); add('name=?', name); }
     if (req.body.position !== undefined) add('position=?', Math.max(0, Number(req.body.position) || 0));
     if (req.body.collapsed !== undefined) add('collapsed=?', !!req.body.collapsed);
-    if (req.body.permissions && typeof req.body.permissions === 'object') add('permissions=?', JSON.stringify(req.body.permissions));
+    if (req.body.permissions && typeof req.body.permissions === 'object') add('permissions=?', JSON.stringify(cleanPermissionMap(req.body.permissions)));
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
     values.push(req.params.serverId, req.params.categoryId);
     const category = await queryOne(`UPDATE channel_categories SET ${fields.join(', ')} WHERE server_id=$${values.length-1} AND id=$${values.length} RETURNING *`, values);
@@ -94,7 +106,7 @@ router.post('/servers/:serverId/channels', async (req, res) => {
     const channel = await queryOne(
       `INSERT INTO channels(id,server_id,name,type,category,category_id,position,topic,slowmode,user_limit,bitrate,permissions)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb) RETURNING *`,
-      [uuidv4(), req.params.serverId, name, type, categoryName, categoryId, Number(pos.position), req.body.topic || null, Math.max(0, Number(req.body.slowmode) || 0), Math.max(0, Number(req.body.userLimit) || 0), Math.max(8000, Number(req.body.bitrate) || 64000), JSON.stringify(req.body.permissions || {})]
+      [uuidv4(), req.params.serverId, name, type, categoryName, categoryId, Number(pos.position), req.body.topic || null, Math.max(0, Number(req.body.slowmode) || 0), Math.max(0, Number(req.body.userLimit) || 0), Math.max(8000, Number(req.body.bitrate) || 64000), JSON.stringify(cleanPermissionMap(req.body.permissions))]
     );
     res.status(201).json(channel);
   } catch (e) { fail(res, e, 'Erro ao criar canal'); }
@@ -121,12 +133,12 @@ router.patch('/servers/:serverId/channels/:channelId', async (req, res) => {
       add('category_id=?', categoryId);
       add('category=?', categoryName);
     }
-    if (typeof req.body.topic === 'string' || req.body.topic === null) add('topic=?', req.body.topic || null);
+    if (typeof req.body.topic === 'string' || req.body.topic === null) add('topic=?', req.body.topic == null ? null : (sanitizePlainText(req.body.topic, 1000) || null));
     if (req.body.slowmode !== undefined) add('slowmode=?', Math.max(0, Number(req.body.slowmode) || 0));
     if (req.body.userLimit !== undefined) add('user_limit=?', Math.max(0, Number(req.body.userLimit) || 0));
     if (req.body.bitrate !== undefined) add('bitrate=?', Math.max(8000, Number(req.body.bitrate) || 64000));
     if (req.body.position !== undefined) add('position=?', Math.max(0, Number(req.body.position) || 0));
-    if (req.body.permissions && typeof req.body.permissions === 'object') add('permissions=?', JSON.stringify(req.body.permissions));
+    if (req.body.permissions && typeof req.body.permissions === 'object') add('permissions=?', JSON.stringify(cleanPermissionMap(req.body.permissions)));
     if (!fields.length) return res.status(400).json({ error: 'Nenhuma alteração informada' });
     values.push(req.params.serverId, req.params.channelId);
     const updated = await queryOne(`UPDATE channels SET ${fields.join(', ')} WHERE server_id=$${values.length-1} AND id=$${values.length} RETURNING *`, values);
