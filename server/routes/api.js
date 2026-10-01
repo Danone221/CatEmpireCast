@@ -6,7 +6,7 @@ const User = require('../database/models/User');
 const Invite = require('../database/models/Invite');
 const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
-const { sanitizePlainText, validateImageValue } = require('../security');
+const { sanitizePlainText, validateImageValue, verifyAccessToken } = require('../security');
 
 // Endpoint público usado pela tela inicial.
 router.get('/servers/active', async (req, res) => {
@@ -295,11 +295,9 @@ router.get('/invites/:code', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
-        const jwt = require('jsonwebtoken');
-        const config = require('../config');
         const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, config.jwtSecret);
-        if (decoded && decoded.id) {
+        const decoded = await verifyAccessToken(token);
+        if (decoded?.id) {
           const role = await Server.getMemberRole(invite.server_id, decoded.id);
           isMember = !!role;
         }
