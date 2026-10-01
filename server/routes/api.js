@@ -6,6 +6,8 @@ const User = require('../database/models/User');
 const Invite = require('../database/models/Invite');
 const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
+const { issueSession } = require('../security/session');
+const { isSafeImageRef, isSafeBannerValue } = require('../security/input');
 
 // Endpoint público usado pela tela inicial.
 router.get('/servers/active', async (req, res) => {
@@ -35,11 +37,15 @@ router.put('/me/profile', authenticate, async (req, res) => {
       if (trimmed) data.display_name = trimmed;
     }
     if (typeof bio === 'string') data.bio = bio.slice(0, 190);
-    if (typeof bannerColor === 'string' || bannerColor === null) data.banner_color = bannerColor || null;
+    if (typeof bannerColor === 'string' || bannerColor === null) {
+      if (bannerColor && !isSafeBannerValue(bannerColor, 700000)) {
+        return res.status(400).json({ error: 'Banner inválido.' });
+      }
+      data.banner_color = bannerColor || null;
+    }
     if (typeof avatar === 'string') {
-      // Base64 data URL — limite de ~500KB pra não pesar no banco.
-      if (avatar.length > 700000) {
-        return res.status(400).json({ error: 'Imagem muito grande (máx. ~500KB).' });
+      if (!isSafeImageRef(avatar, 700000)) {
+        return res.status(400).json({ error: 'Imagem de perfil inválida.' });
       }
       data.avatar = avatar;
     }
@@ -69,10 +75,12 @@ router.put('/me/profile', authenticate, async (req, res) => {
 router.put('/me/password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!newPassword || newPassword.length < 4) {
-      return res.status(400).json({ error: 'A nova senha deve ter no mínimo 4 caracteres.' });
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'A nova senha deve ter no mínimo 8 caracteres.' });
     }
     await User.updatePassword(req.user.id, currentPassword, newPassword);
+    const user = await User.findById(req.user.id);
+    await issueSession(res, user);
     res.json({ success: true, message: 'Senha atualizada com sucesso!' });
   } catch (error) {
     console.error('Erro ao atualizar senha:', error);
@@ -538,6 +546,10 @@ router.delete('/servers/:serverId/channels/:channelId', authenticate, async (req
     if (role !== 'admin') {
       return res.status(403).json({ error: 'Apenas administradores podem excluir canais' });
     }
+    const channel = await Channel.findById(req.params.channelId);
+    if (!channel || channel.server_id !== req.params.serverId) {
+      return res.status(404).json({ error: 'Canal não encontrado neste servidor' });
+    }
     await Channel.delete(req.params.channelId);
     res.json({ success: true });
   } catch (error) {
@@ -553,6 +565,8 @@ router.get('/channels/:channelId', authenticate, async (req, res) => {
     if (!channel) {
       return res.status(404).json({ error: 'Canal não encontrado' });
     }
+    const role = await Server.getMemberRole(channel.server_id, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Você não participa deste servidor' });
     res.json(channel);
   } catch (error) {
     console.error('Erro ao buscar canal:', error);
@@ -563,7 +577,11 @@ router.get('/channels/:channelId', authenticate, async (req, res) => {
 // Buscar mensagens do canal
 router.get('/channels/:channelId/messages', authenticate, async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 100;
+    const channel = await Channel.findById(req.params.channelId);
+    if (!channel) return res.status(404).json({ error: 'Canal não encontrado' });
+    const role = await Server.getMemberRole(channel.server_id, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Você não participa deste servidor' });
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 100));
     const messages = await Channel.getMessages(req.params.channelId, limit);
     res.json(messages);
   } catch (error) {
@@ -575,6 +593,12 @@ router.get('/channels/:channelId/messages', authenticate, async (req, res) => {
 // Buscar membros no canal de voz
 router.get('/channels/:channelId/voice', authenticate, async (req, res) => {
   try {
+    const channel = await Channel.findById(req.params.channelId);
+    if (!channel || channel.type !== 'voice') {
+      return res.status(404).json({ error: 'Canal de voz não encontrado' });
+    }
+    const role = await Server.getMemberRole(channel.server_id, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Você não participa deste servidor' });
     const members = await Channel.getVoiceMembers(req.params.channelId);
     res.json(members);
   } catch (error) {
