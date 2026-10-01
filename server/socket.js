@@ -3,14 +3,20 @@ const Channel = require('./database/models/Channel');
 const ServerModel = require('./database/models/Server');
 const User = require('./database/models/User');
 const Dm = require('./database/models/Dm');
-const jwt = require('jsonwebtoken');
 const config = require('./config');
+const {
+  SESSION_COOKIE,
+  parseCookies,
+  verifySessionToken,
+  verifyNativeCastToken
+} = require('./security/session');
 
 function setupSocket(server) {
   const io = new Server(server, {
     cors: {
-      origin: '*',
-      methods: ['GET', 'POST']
+      origin: config.nodeEnv === 'production' ? (config.appOrigin || false) : config.corsOrigin,
+      methods: ['GET', 'POST'],
+      credentials: true
     },
     // Padrão do Socket.IO é 1MB — muito pouco pra imagem em base64 (até ~11MB
     // pra um arquivo de 8MB). Sem isso, 'send-message' com anexo grande
@@ -24,6 +30,33 @@ function setupSocket(server) {
     // pong o suficiente pro servidor achar que a conexão morreu.
     pingTimeout: 30000,
     pingInterval: 25000
+  });
+
+  io.use(async (socket, next) => {
+    try {
+      const cookies = parseCookies(socket.handshake.headers.cookie || '');
+      const sessionToken = cookies[SESSION_COOKIE];
+      if (sessionToken) {
+        const session = await verifySessionToken(sessionToken);
+        socket.authKind = 'session';
+        socket.authUser = session.user;
+        socket.auth = session.decoded;
+        socket.userId = session.user.id;
+        return next();
+      }
+
+      const authorization = String(socket.handshake.headers.authorization || '');
+      const match = authorization.match(/^Bearer\s+(.+)$/i);
+      if (!match) return next(new Error('unauthorized'));
+      const cast = await verifyNativeCastToken(match[1]);
+      socket.authKind = 'cast';
+      socket.userId = cast.sub;
+      socket.castChannelId = String(cast.channelId);
+      socket.auth = cast;
+      return next();
+    } catch {
+      return next(new Error('unauthorized'));
+    }
   });
 
   const userSockets = new Map(); // userId -> socketId
@@ -101,15 +134,27 @@ function setupSocket(server) {
   io.on('connection', (socket) => {
     console.log('🔌 Conectado:', socket.id);
 
+    const castEvents = new Set([
+      'register-native-screen',
+      'native-screen-signal',
+      'native-screen-debug',
+      'native-screen-audio'
+    ]);
+    socket.use(([event], next) => {
+      if (socket.authKind === 'cast' && !castEvents.has(event)) {
+        return next(new Error('forbidden'));
+      }
+      next();
+    });
+
     // ========== REGISTRO ==========
-    socket.on('register', async ({ userId, token, serverId }) => {
+    socket.on('register', async ({ serverId } = {}) => {
       try {
-        // Verificar token se necessário
-        const user = await User.findById(userId);
-        if (!user) {
-          socket.emit('error', { message: 'Usuário não encontrado' });
-          return;
+        if (socket.authKind !== 'session' || !socket.authUser) {
+          return socket.emit('error', { message: 'Sessão inválida' });
         }
+        const user = socket.authUser;
+        const userId = user.id;
 
         socketUsers.set(socket.id, userId);
         userSockets.set(userId, socket.id);
@@ -119,35 +164,27 @@ function setupSocket(server) {
         socket.join(`user-${userId}`);
         console.log(`👤 ${socket.userName} (${userId}) registrado`);
 
-        // Entra na "sala" do servidor (página) atual, se informado — é isso
-        // que permite avisar quem já está com a página aberta quando ALGUÉM
-        // NOVO entra no servidor (ver rota HTTP /api/servers/:id/join, que
-        // emite 'member-joined' pra essa sala). Sem isso o servidor nunca
-        // tinha como empurrar essa novidade pra quem já estava conectado —
-        // o array de membros no cliente só era carregado uma vez, no load()
-        // inicial, e ficava desatualizado (por isso membros novos apareciam
-        // como "MEMBRO" genérico nas chamadas de voz).
         if (serverId) {
-          socket.join(`server-${serverId}`);
-          socket.serverId = serverId;
+          const role = await ServerModel.getMemberRole(String(serverId), userId);
+          if (!role) {
+            socket.emit('error', { message: 'Você não participa deste servidor' });
+          } else {
+            socket.join(`server-${serverId}`);
+            socket.serverId = String(serverId);
+          }
         }
 
-        // ===== Presença online/offline (bolinha verde estilo Discord) =====
         const wasOffline = !onlineUsers.has(userId);
         onlineUsers.add(userId);
-        // Manda a lista atual pra quem acabou de entrar, pra ele já
-        // desenhar as bolinhas certas sem esperar um evento de outra pessoa.
         socket.emit('presence-list', Array.from(onlineUsers));
-        if (wasOffline && serverId) {
-          io.to(`server-${serverId}`).emit('presence-update', { userId, online: true });
+        if (wasOffline && socket.serverId) {
+          io.to(`server-${socket.serverId}`).emit('presence-update', { userId, online: true });
         }
 
-        // Enviar servidores do usuário
         const servers = await User.getServers(userId);
         socket.emit('servers-list', servers);
-
       } catch (error) {
-        console.error('❌ Erro no registro:', error);
+        console.error('❌ Erro no registro:', error?.message || error);
         socket.emit('error', { message: 'Erro ao registrar' });
       }
     });
@@ -155,9 +192,17 @@ function setupSocket(server) {
     // ========== ENTRAR NO CANAL DE VOZ ==========
     socket.on('join-voice-channel', async ({ channelId }) => {
       try {
+        if (socket.authKind !== 'session' || !socket.userId) {
+          return socket.emit('error', { message: 'Sessão inválida' });
+        }
         const channel = await Channel.findById(channelId);
-        if (!channel) {
-          socket.emit('error', { message: 'Canal não encontrado' });
+        if (!channel || channel.type !== 'voice') {
+          socket.emit('error', { message: 'Canal de voz não encontrado' });
+          return;
+        }
+        const memberRole = await ServerModel.getMemberRole(channel.server_id, socket.userId);
+        if (!memberRole) {
+          socket.emit('error', { message: 'Você não participa deste servidor' });
           return;
         }
 
