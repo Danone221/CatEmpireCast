@@ -49,19 +49,22 @@ router.post('/servers/:serverId/roles', async (req, res) => {
   } catch (e) { fail(res, e, 'Erro ao criar cargo'); }
 });
 
-router.patch('/servers/:serverId/roles/:roleId', async (req, res) => {
+async function updateRole(req, res) {
   try {
     const level = await requireManage(req.params.serverId, req.user.id);
     const role = await Role.findById(req.params.serverId, req.params.roleId);
     if (!role) return res.status(404).json({ error: 'Cargo não encontrado' });
-    if (role.position >= level && role.name !== '@everyone') {
-      return res.status(403).json({ error: 'Você não pode editar um cargo acima ou igual à sua hierarquia' });
+    if (Number(role.position || 0) >= level || ['owner','@everyone'].includes(String(role.name || '').trim().toLowerCase())) {
+      return res.status(403).json({ error: 'Você não pode editar este cargo protegido ou acima da sua hierarquia' });
     }
     const next = { ...(req.body || {}) };
     if (next.position !== undefined && Number(next.position) >= level) next.position = level - 1;
     res.json(await Role.update(req.params.serverId, req.params.roleId, next));
   } catch (e) { fail(res, e, 'Erro ao editar cargo'); }
-});
+}
+
+router.patch('/servers/:serverId/roles/:roleId', updateRole);
+router.put('/servers/:serverId/roles/:roleId', updateRole);
 
 router.delete('/servers/:serverId/roles/:roleId', async (req, res) => {
   try {
