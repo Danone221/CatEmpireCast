@@ -2,7 +2,11 @@ const { query, queryOne } = require('../index');
 const { v4: uuidv4 } = require('uuid');
 const { sanitizePlainText } = require('../../security');
 
-const SYSTEM_ROLES = new Set(['@everyone', 'OWNER']);
+const SYSTEM_ROLES = new Set(['@everyone', 'owner']);
+
+function isSystemRoleName(value) {
+  return SYSTEM_ROLES.has(String(value || '').trim().toLowerCase());
+}
 
 function cleanRoleColor(value) {
   if (value == null || value === '') return null;
@@ -58,7 +62,9 @@ class Role {
 
   static async create(serverId, data) {
     const name = sanitizePlainText(data.name || 'Novo cargo', 80);
-    if (!name) throw Object.assign(new Error('Nome do cargo inválido'), { status: 400 });
+    if (!name || isSystemRoleName(name)) {
+      throw Object.assign(new Error('Nome do cargo inválido ou reservado'), { status: 400 });
+    }
 
     const highest = await queryOne(
       `SELECT COALESCE(MAX(position), 0) AS position
@@ -89,7 +95,7 @@ class Role {
   static async update(serverId, roleId, data) {
     const role = await this.findById(serverId, roleId);
     if (!role) throw Object.assign(new Error('Cargo não encontrado'), { status: 404 });
-    if (SYSTEM_ROLES.has(role.name)) {
+    if (isSystemRoleName(role.name)) {
       throw Object.assign(new Error('Este cargo é protegido pelo sistema'), { status: 400 });
     }
 
@@ -102,7 +108,9 @@ class Role {
 
     if (typeof data.name === 'string') {
       const name = sanitizePlainText(data.name, 80);
-      if (!name) throw Object.assign(new Error('Nome do cargo inválido'), { status: 400 });
+      if (!name || isSystemRoleName(name)) {
+        throw Object.assign(new Error('Nome do cargo inválido ou reservado'), { status: 400 });
+      }
       add('name', name);
     }
     if (data.color !== undefined) add('color', cleanRoleColor(data.color));
@@ -128,7 +136,7 @@ class Role {
   static async remove(serverId, roleId) {
     const role = await this.findById(serverId, roleId);
     if (!role) throw Object.assign(new Error('Cargo não encontrado'), { status: 404 });
-    if (SYSTEM_ROLES.has(role.name)) {
+    if (isSystemRoleName(role.name)) {
       throw Object.assign(new Error('Este cargo é protegido pelo sistema'), { status: 400 });
     }
     await query('DELETE FROM server_roles WHERE server_id = $1 AND id = $2', [serverId, roleId]);
