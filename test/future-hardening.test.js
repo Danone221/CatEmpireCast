@@ -75,9 +75,11 @@ test('platform friendship acceptance requires a real incoming pending request', 
   assert.match(platform, /user_blocks/);
 });
 
-test('platform role and permission mutations enforce hierarchy and tenant scope', () => {
+test('role and permission mutations enforce hierarchy and tenant scope', () => {
+  const roles = source('server/routes/roles.js');
   const platform = source('server/routes/platform.js');
-  assert.match(platform, /Role\.update/);
+  assert.match(roles, /Role\.update/);
+  assert.match(roles, /Number\(role\.position \|\| 0\) >= level/);
   assert.match(platform, /Number\(role\.position \|\| 0\) >= level/);
   assert.match(platform, /assertScopedReference/);
   assert.match(platform, /Referência não pertence a este servidor/);
