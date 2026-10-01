@@ -22,6 +22,7 @@ const messagingRoutes = require('./routes/messaging');
 const stageRoutes = require('./routes/stage');
 const expansionRoutes = require('./routes/expansion');
 const db = require('./database');
+const { csrfOriginGuard, originAllowed } = require('./security');
 
 const app = express();
 
@@ -29,22 +30,65 @@ if (config.nodeEnv === 'production') app.set('trust proxy', 1);
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  referrerPolicy: { policy: 'no-referrer' },
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
+      scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc: ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com'],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://cdn.discordapp.com', 'https://media.discordapp.net'],
       mediaSrc: ["'self'", 'blob:'],
-      connectSrc: ["'self'", 'ws:', 'wss:', 'http:', 'https:']
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"]
     }
   }
 }));
-app.use(cors({ origin: config.corsOrigin }));
+
+app.use((req, res, next) => {
+  const origin = String(req.headers.origin || '').trim();
+  if (origin && !originAllowed(origin)) {
+    return res.status(403).json({ error: 'Origem não autorizada' });
+  }
+  next();
+});
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || originAllowed(origin)) return callback(null, true);
+    return callback(new Error('Origem não autorizada'));
+  },
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(compression());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+app.use((req, res, next) => {
+  const rawPath = String(req.originalUrl || '').split('?')[0];
+  let decoded = rawPath;
+  try {
+    for (let i = 0; i < 2; i++) decoded = decodeURIComponent(decoded);
+  } catch (_) {
+    return res.status(400).json({ error: 'Caminho inválido' });
+  }
+  const normalized = decoded.replace(/\\/g, '/');
+  const segments = normalized.split('/');
+  if (normalized.includes('\0') || segments.includes('..') || /(^|\/)\.(?!well-known(?:\/|$))/.test(normalized)) {
+    return res.status(400).json({ error: 'Caminho inválido' });
+  }
+  next();
+});
+
+app.use(csrfOriginGuard);
+app.use(['/api', '/auth'], (req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 
 // Toda mutação de servidor aprovada publica um evento único. Assim clientes
 // conectados atualizam somente os dados afetados, sem reload/F5.
@@ -94,7 +138,7 @@ app.use((req, res, next) => {
   });
 });
 
-app.use(express.static(clientDir));
+app.use(express.static(clientDir, { dotfiles: 'deny', index: false, redirect: false }));
 
 app.use('/api', profileRoutes);
 app.use('/api', apiRoutes);
@@ -117,8 +161,11 @@ app.get(['/invite', '/invite/:code', '/invite/:code/*'], (req, res) => {
   res.sendFile(path.join(__dirname, '../client/invite.html'));
 });
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/index.html'));
+app.use((req, res) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/auth/')) {
+    return res.status(404).json({ error: 'Rota não encontrada' });
+  }
+  res.status(404).type('text').send('Not Found');
 });
 
 module.exports = app;
