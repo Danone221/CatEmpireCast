@@ -1,6 +1,8 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const User = require('../database/models/User');
+const Channel = require('../database/models/Channel');
+const ServerModel = require('../database/models/Server');
 const config = require('../config');
 const { validateRegistration, validateLogin } = require('../auth-input');
 const { authenticate, resolveSession } = require('../middleware/auth');
@@ -9,7 +11,8 @@ const {
   clearSession,
   createOAuthState,
   setOAuthState,
-  consumeOAuthState
+  consumeOAuthState,
+  createNativeCastToken
 } = require('../security/session');
 
 const router = express.Router();
@@ -145,6 +148,25 @@ router.get('/discord/callback', oauthLimiter, async (req, res) => {
 router.get('/verify', authenticate, (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ user: req.user });
+});
+
+router.post('/native-cast-token', authenticate, async (req, res) => {
+  try {
+    const channelId = String(req.body?.channelId || '').trim();
+    if (!channelId) return res.status(400).json({ error: 'Canal não informado' });
+    const channel = await Channel.findById(channelId);
+    if (!channel || channel.type !== 'voice') {
+      return res.status(404).json({ error: 'Canal de voz não encontrado' });
+    }
+    const role = await ServerModel.getMemberRole(channel.server_id, req.user.id);
+    if (!role) return res.status(403).json({ error: 'Você não participa deste servidor' });
+    const token = await createNativeCastToken(req.user, channelId);
+    res.set('Cache-Control', 'no-store');
+    res.json({ token, userId: req.user.id, channelId, expiresIn: 120 });
+  } catch (error) {
+    console.error('Erro ao emitir token de transmissão:', error?.code || error?.message);
+    res.status(500).json({ error: 'Não foi possível autorizar a transmissão' });
+  }
 });
 
 router.post('/logout', async (req, res) => {
