@@ -1,5 +1,4 @@
 import { build } from "esbuild";
-
 await build({
   entryPoints: ["client/liquid-metal-react.jsx"],
   outfile: "client/liquid-metal-react.bundle.js",
@@ -11,7 +10,7 @@ await build({
   target: ["es2020"],
   jsx: "automatic",
   define: {
-    "process.env.NODE_ENV": '"production"',
+    "process.env.NODE_ENV": '"production"'
   },
-  logLevel: "info",
+  logLevel: "info"
 });

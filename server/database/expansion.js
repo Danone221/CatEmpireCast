@@ -1,9 +1,4 @@
-const { query } = require('./index');
-
-/**
- * Additive schema for the Cat Empire platform expansion.
- * This file never drops or resets existing data.
- */
+const { query } = require("./index");
 async function initExpansionSchema() {
   await query(`
     CREATE TABLE IF NOT EXISTS server_invites (
@@ -68,5 +63,4 @@ async function initExpansionSchema() {
     );
   `);
 }
-
 module.exports = { initExpansionSchema };

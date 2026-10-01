@@ -1,33 +1,24 @@
-const { Pool } = require('pg');
-const config = require('../config');
-
+const { Pool } = require("pg");
+const config = require("../config");
 if (!config.databaseUrl) {
-  console.error('❌ DATABASE_URL não configurada. Defina a variável de ambiente apontando para o Postgres.');
+  console.error("❌ DATABASE_URL não configurada. Defina a variável de ambiente apontando para o Postgres.");
 }
-
-// Conexões locais/internas (ex: rede interna do Render) geralmente não precisam de SSL.
-// Conexões externas (ex: seu Postgres acessado de outro host) normalmente exigem.
-const isLocal = /localhost|127\.0\.0\.1/.test(config.databaseUrl || '');
+const isLocal = /localhost|127\.0\.0\.1/.test(config.databaseUrl || "");
 const pool = new Pool({
   connectionString: config.databaseUrl,
   ssl: isLocal ? false : { rejectUnauthorized: false }
 });
-
-pool.on('error', (err) => {
-  console.error('❌ Erro inesperado no pool do Postgres:', err);
+pool.on("error", (err) => {
+  console.error("❌ Erro inesperado no pool do Postgres:", err);
 });
-
 async function query(text, params = []) {
   const result = await pool.query(text, params);
   return result.rows;
 }
-
 async function queryOne(text, params = []) {
   const rows = await query(text, params);
   return rows[0] || null;
 }
-
-// ========== SCHEMA ==========
 async function initSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -138,32 +129,27 @@ async function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id, blocker_id);
     CREATE INDEX IF NOT EXISTS idx_invites_server ON invites(server_id);
   `);
-
   const col = await pool.query(`
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'users' AND column_name = 'discord_id'
   `);
   if (col.rowCount === 0) {
-    await pool.query('ALTER TABLE users ADD COLUMN discord_id TEXT');
-    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)');
+    await pool.query("ALTER TABLE users ADD COLUMN discord_id TEXT");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_discord_id ON users(discord_id)");
   }
-
-  await addColumnIfMissing('users', 'bio', 'TEXT');
-  await addColumnIfMissing('users', 'banner_color', 'TEXT');
-  await addColumnIfMissing('servers', 'banner_color', 'TEXT');
-  await addColumnIfMissing('servers', 'description', 'TEXT');
-  await addColumnIfMissing('messages', 'edited_at', 'BIGINT');
-  await addColumnIfMissing('dm_messages', 'file_name', 'TEXT');
-  await addColumnIfMissing('dm_messages', 'file_type', 'TEXT');
-  await addColumnIfMissing('dm_messages', 'file_size', 'INTEGER');
-  await addColumnIfMissing('dm_messages', 'file_data', 'TEXT');
-  await addColumnIfMissing('dm_messages', 'edited_at', 'BIGINT');
-  await addColumnIfMissing('dm_messages', 'read_at', 'BIGINT');
-  await addColumnIfMissing('invites', 'max_uses', 'INTEGER');
-  await addColumnIfMissing('invites', 'expires_at', 'BIGINT');
-
-  // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
-  // depender de extensões como pgcrypto só para gerar IDs de categorias.
+  await addColumnIfMissing("users", "bio", "TEXT");
+  await addColumnIfMissing("users", "banner_color", "TEXT");
+  await addColumnIfMissing("servers", "banner_color", "TEXT");
+  await addColumnIfMissing("servers", "description", "TEXT");
+  await addColumnIfMissing("messages", "edited_at", "BIGINT");
+  await addColumnIfMissing("dm_messages", "file_name", "TEXT");
+  await addColumnIfMissing("dm_messages", "file_type", "TEXT");
+  await addColumnIfMissing("dm_messages", "file_size", "INTEGER");
+  await addColumnIfMissing("dm_messages", "file_data", "TEXT");
+  await addColumnIfMissing("dm_messages", "edited_at", "BIGINT");
+  await addColumnIfMissing("dm_messages", "read_at", "BIGINT");
+  await addColumnIfMissing("invites", "max_uses", "INTEGER");
+  await addColumnIfMissing("invites", "expires_at", "BIGINT");
   await pool.query(`
     INSERT INTO channel_categories (id, server_id, name, position)
     SELECT md5(x.server_id || ':' || x.category), x.server_id, x.category,
@@ -175,14 +161,11 @@ async function initSchema() {
     ) x
     ON CONFLICT DO NOTHING
   `);
-
-  const usernameCollision = await pool.query('SELECT lower(username) AS normalized FROM users GROUP BY lower(username) HAVING COUNT(*) > 1 LIMIT 1');
-  if (usernameCollision.rowCount > 0) throw new Error('Existem usuários que diferem apenas por maiúsculas/minúsculas. Resolva a colisão antes de iniciar.');
-  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username))');
-
-  console.log('🗄️  Schema do Postgres verificado/criado com sucesso.');
+  const usernameCollision = await pool.query("SELECT lower(username) AS normalized FROM users GROUP BY lower(username) HAVING COUNT(*) > 1 LIMIT 1");
+  if (usernameCollision.rowCount > 0) throw new Error("Existem usuários que diferem apenas por maiúsculas/minúsculas. Resolva a colisão antes de iniciar.");
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username))");
+  console.log("🗄️  Schema do Postgres verificado/criado com sucesso.");
 }
-
 async function addColumnIfMissing(table, column, type) {
   const col = await pool.query(
     `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
@@ -192,5 +175,4 @@ async function addColumnIfMissing(table, column, type) {
     await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
   }
 }
-
 module.exports = { pool, query, queryOne, initSchema };

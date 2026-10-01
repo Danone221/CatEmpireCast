@@ -1,5 +1,4 @@
-const { query } = require('./index');
-
+const { query } = require("./index");
 async function initMessagingSchema() {
   await query(`
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to TEXT REFERENCES messages(id) ON DELETE SET NULL;
@@ -49,5 +48,4 @@ async function initMessagingSchema() {
     CREATE INDEX IF NOT EXISTS idx_pinned_messages_channel ON pinned_messages(channel_id, pinned_at DESC);
   `);
 }
-
 module.exports = { initMessagingSchema };
