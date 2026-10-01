@@ -105,6 +105,11 @@ router.post('/group-dms', async (req, res) => {
     if (!participants.includes(req.user.id)) participants.push(req.user.id);
     if (participants.length < 2 || participants.length > 25) return res.status(400).json({ error: 'Um grupo de DM precisa ter entre 2 e 25 participantes' });
     for (const userId of participants) await ensureUser(userId);
+    const blockedPair = await queryOne(
+      'SELECT 1 FROM user_blocks WHERE blocker_id = ANY($1::text[]) AND blocked_id = ANY($1::text[]) LIMIT 1',
+      [participants]
+    );
+    if (blockedPair) return res.status(403).json({ error: 'Não é possível criar grupo com usuários bloqueados entre si' });
     const groupId = uuidv4();
     const name = sanitizePlainText(req.body.name || '', 80) || null;
     const icon = req.body.icon == null || req.body.icon === ''
@@ -133,6 +138,16 @@ router.post('/group-dms/:groupId/members/:userId', async (req, res) => {
     const member = await queryOne('SELECT 1 FROM group_dm_members WHERE group_id=$1 AND user_id=$2', [group.id, req.user.id]);
     if (!owner && !member) return res.status(403).json({ error: 'Você não participa deste grupo' });
     await ensureUser(req.params.userId);
+    const blocked = await queryOne(
+      `SELECT 1
+       FROM user_blocks b
+       JOIN group_dm_members gm ON gm.group_id=$1
+       WHERE (b.blocker_id=$2 AND b.blocked_id=gm.user_id)
+          OR (b.blocked_id=$2 AND b.blocker_id=gm.user_id)
+       LIMIT 1`,
+      [group.id, req.params.userId]
+    );
+    if (blocked) return res.status(403).json({ error: 'Não é possível adicionar este usuário por causa de um bloqueio' });
     const count = await queryOne('SELECT COUNT(*)::int AS count FROM group_dm_members WHERE group_id=$1', [group.id]);
     if (Number(count.count) >= 25) return res.status(400).json({ error: 'Limite de participantes atingido' });
     await query('INSERT INTO group_dm_members(group_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING', [group.id, req.params.userId]);
