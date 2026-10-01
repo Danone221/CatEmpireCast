@@ -24,16 +24,20 @@ class Channel {
   }
 
   static async update(id, data) {
+    const allowed = new Set(['name', 'type', 'category', 'category_id', 'position', 'topic', 'slowmode', 'user_limit', 'bitrate', 'permissions']);
     const fields = [];
     const values = [];
     let i = 1;
-    for (const [key, value] of Object.entries(data)) {
-      fields.push(`${key} = $${i}`);
+    for (const [key, value] of Object.entries(data || {})) {
+      if (!allowed.has(key)) continue;
+      fields.push(`${key} = ${i}`);
       values.push(value);
       i++;
     }
+    if (!fields.length) return this.findById(id);
     values.push(id);
-    return query(`UPDATE channels SET ${fields.join(', ')} WHERE id = $${i}`, values);
+    await query(`UPDATE channels SET ${fields.join(', ')} WHERE id = ${i}`, values);
+    return this.findById(id);
   }
 
   static async getMessages(channelId, limit = 100) {
