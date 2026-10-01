@@ -149,10 +149,33 @@ router.put('/servers/:serverId/permissions', async (req, res) => {
     await requireManage(req.params.serverId, req.user.id);
     const id = uuidv4();
     const { categoryId=null, channelId=null, roleId=null, userId=null, permissions={} } = req.body || {};
+    if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) {
+      return res.status(400).json({ error: 'Permissões inválidas' });
+    }
+    const permissionsJson = JSON.stringify(permissions);
+    if (permissionsJson.length > 20000) return res.status(413).json({ error: 'Permissões muito grandes' });
+    if (!categoryId && !channelId && !roleId && !userId) {
+      return res.status(400).json({ error: 'Informe o alvo da permissão' });
+    }
+    if (categoryId) {
+      const category = await queryOne('SELECT id FROM channel_categories WHERE id=$1 AND server_id=$2', [categoryId, req.params.serverId]);
+      if (!category) return res.status(400).json({ error: 'Categoria inválida para este servidor' });
+    }
+    if (channelId) {
+      const channel = await queryOne('SELECT id FROM channels WHERE id=$1 AND server_id=$2', [channelId, req.params.serverId]);
+      if (!channel) return res.status(400).json({ error: 'Canal inválido para este servidor' });
+    }
+    if (roleId) {
+      const role = await queryOne('SELECT id FROM server_roles WHERE id=$1 AND server_id=$2', [roleId, req.params.serverId]);
+      if (!role) return res.status(400).json({ error: 'Cargo inválido para este servidor' });
+    }
+    if (userId) {
+      const member = await queryOne('SELECT user_id FROM server_members WHERE user_id=$1 AND server_id=$2', [userId, req.params.serverId]);
+      if (!member) return res.status(400).json({ error: 'Usuário não pertence a este servidor' });
+    }
     await query(`INSERT INTO permission_overrides(id,server_id,category_id,channel_id,role_id,user_id,permissions)
-      VALUES($1,$2,$3,$4,$5,$6,$7)
-      ON CONFLICT (id) DO NOTHING`, [id, req.params.serverId, categoryId, channelId, roleId, userId, JSON.stringify(permissions)]);
-    await audit(req.params.serverId, req.user.id, 'permissions.update', 'permission', id, { categoryId, channelId, roleId, userId, permissions });
+      VALUES($1,$2,$3,$4,$5,$6,$7)`, [id, req.params.serverId, categoryId, channelId, roleId, userId, permissionsJson]);
+    await audit(req.params.serverId, req.user.id, 'permissions.update', 'permission', id, { categoryId, channelId, roleId, userId });
     res.json({ id, serverId:req.params.serverId, categoryId, channelId, roleId, userId, permissions });
   } catch (e) { fail(res, e, 'Erro ao salvar permissões'); }
 });
@@ -172,8 +195,13 @@ router.post('/channels/:channelId/threads', async (req,res) => {
     const channel = await queryOne('SELECT * FROM channels WHERE id=$1',[req.params.channelId]);
     if (!channel) return res.status(404).json({error:'Canal não encontrado'});
     await requireMember(channel.server_id, req.user.id);
+    const parentMessageId = req.body.parentMessageId || null;
+    if (parentMessageId) {
+      const parent = await queryOne('SELECT id FROM messages WHERE id=$1 AND channel_id=$2', [parentMessageId, req.params.channelId]);
+      if (!parent) return res.status(400).json({ error: 'Mensagem pai inválida para este canal' });
+    }
     const thread = await queryOne(`INSERT INTO threads(id,channel_id,parent_message_id,name,creator_id)
-      VALUES($1,$2,$3,$4,$5) RETURNING *`, [uuidv4(), req.params.channelId, req.body.parentMessageId || null, String(req.body.name || 'Thread').slice(0,80), req.user.id]);
+      VALUES($1,$2,$3,$4,$5) RETURNING *`, [uuidv4(), req.params.channelId, parentMessageId, String(req.body.name || 'Thread').slice(0,80), req.user.id]);
     res.json(thread);
   } catch(e) { fail(res,e,'Erro ao criar thread'); }
 });
@@ -238,7 +266,25 @@ router.get('/servers/:serverId/events',async(req,res)=>{try{await requireMember(
 router.post('/servers/:serverId/events',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const e=await queryOne(`INSERT INTO server_events(id,server_id,creator_id,name,description,start_at,end_at,location,type,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,[uuidv4(),req.params.serverId,req.user.id,String(req.body.name||'Evento').slice(0,100),String(req.body.description||'').slice(0,2000),Number(req.body.startAt),req.body.endAt?Number(req.body.endAt):null,req.body.location||null,req.body.type||'other',req.body.status||'scheduled']);res.json(e);}catch(e){fail(res,e,'Erro ao criar evento');}});
 router.post('/events/:eventId/rsvp',async(req,res)=>{try{const e=await queryOne('SELECT * FROM server_events WHERE id=$1',[req.params.eventId]);if(!e)return res.status(404).json({error:'Evento não encontrado'});await requireMember(e.server_id,req.user.id);await query('INSERT INTO event_attendees(event_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[e.id,req.user.id]);res.json({success:true});}catch(e){fail(res,e,'Erro ao confirmar presença');}});
 router.get('/servers/:serverId/moderation',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query('SELECT m.*,u.username,m2.username AS moderator_name FROM moderation_actions m JOIN users u ON u.id=m.user_id JOIN users m2 ON m2.id=m.moderator_id WHERE m.server_id=$1 ORDER BY m.started_at DESC',[req.params.serverId]));}catch(e){fail(res,e,'Erro ao listar moderação');}});
-router.post('/servers/:serverId/moderation',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const action=req.body.action;if(!['warning','kick','ban','timeout'].includes(action))return res.status(400).json({error:'Ação inválida'});const m=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,req.body.userId,req.user.id,action,req.body.reason||null,req.body.expiresAt?Number(req.body.expiresAt):null]);await audit(req.params.serverId,req.user.id,`moderation.${action}`,'user',req.body.userId,{reason:req.body.reason||null},req.body.reason||null);res.json(m);}catch(e){fail(res,e,'Erro ao aplicar moderação');}});
+router.post('/servers/:serverId/moderation',async(req,res)=>{try{
+  await requireManage(req.params.serverId,req.user.id);
+  const action=req.body.action;
+  if(!['warning','kick','ban','timeout'].includes(action)) return res.status(400).json({error:'Ação inválida'});
+  const targetId=String(req.body.userId||'');
+  const target=await queryOne('SELECT sm.role,s.creator_id,s.owner_id FROM server_members sm JOIN servers s ON s.id=sm.server_id WHERE sm.server_id=$1 AND sm.user_id=$2',[req.params.serverId,targetId]);
+  if(!target) return res.status(404).json({error:'Membro não encontrado neste servidor'});
+  const actorLevel=await getManageLevel(req.params.serverId,req.user.id);
+  const targetProtected=target.creator_id===targetId||target.owner_id===targetId||['owner'].includes(String(target.role||'').toLowerCase());
+  const targetAdmin=String(target.role||'').toLowerCase()==='admin';
+  if(targetProtected || (targetAdmin && actorLevel<100)) return res.status(403).json({error:'Você não pode moderar este membro'});
+  if(targetId===req.user.id) return res.status(400).json({error:'Você não pode aplicar esta ação a si mesmo'});
+  const reason=String(req.body.reason||'').slice(0,1000)||null;
+  const expiresAt=req.body.expiresAt?Number(req.body.expiresAt):null;
+  if(expiresAt!==null && (!Number.isFinite(expiresAt)||expiresAt<0)) return res.status(400).json({error:'Expiração inválida'});
+  const m=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,targetId,req.user.id,action,reason,expiresAt]);
+  await audit(req.params.serverId,req.user.id,`moderation.${action}`,'user',targetId,{reason},reason);
+  res.json(m);
+}catch(e){fail(res,e,'Erro ao aplicar moderação');}});
 router.get('/servers/:serverId/audit-log',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query('SELECT a.*,u.username AS actor_name FROM audit_logs a JOIN users u ON u.id=a.actor_id WHERE a.server_id=$1 ORDER BY a.created_at DESC LIMIT 500',[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar audit log');}});
 
 // ===== ONBOARDING / AUTOMOD / SERVER SETTINGS =====
