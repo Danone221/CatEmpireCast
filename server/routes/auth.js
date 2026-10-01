@@ -26,7 +26,13 @@ function parseCookies(req) {
   for (const chunk of String(req.headers.cookie || '').split(';')) {
     const index = chunk.indexOf('=');
     if (index <= 0) continue;
-    out[chunk.slice(0, index).trim()] = decodeURIComponent(chunk.slice(index + 1).trim());
+    const key = chunk.slice(0, index).trim();
+    const raw = chunk.slice(index + 1).trim();
+    try {
+      out[key] = decodeURIComponent(raw);
+    } catch (_) {
+      out[key] = raw;
+    }
   }
   return out;
 }
@@ -169,7 +175,8 @@ router.get('/discord/callback', authLimiter, async (req, res) => {
         code: String(code),
         redirect_uri: config.discordRedirectUri,
         code_verifier: cookies.cat_oauth_verifier
-      })
+      }),
+      signal: AbortSignal.timeout(10000)
     });
 
     if (!tokenRes.ok) {
@@ -183,7 +190,8 @@ router.get('/discord/callback', authLimiter, async (req, res) => {
     }
 
     const profileRes = await fetch('https://discord.com/api/users/@me', {
-      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      signal: AbortSignal.timeout(10000)
     });
     if (!profileRes.ok) return res.redirect('/?discordError=profile_fetch_failed');
 
