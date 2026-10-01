@@ -76,10 +76,32 @@ class Invite {
     return { success: true };
   }
 
-  static async use(code) {
-    await query(
-      `UPDATE invites SET uses = uses + 1 WHERE code = $1`,
-      [code]
+  static async consumeForUser(code, userId) {
+    if (!code || !userId) return null;
+    const cleanCode = String(code).trim();
+    const now = Math.floor(Date.now() / 1000);
+    return queryOne(
+      `WITH candidate AS (
+         SELECT code, server_id
+         FROM invites
+         WHERE code = $1
+           AND (expires_at IS NULL OR expires_at >= $3)
+           AND (max_uses IS NULL OR COALESCE(uses, 0) < max_uses)
+         FOR UPDATE
+       ),
+       inserted AS (
+         INSERT INTO server_members (server_id, user_id, role)
+         SELECT server_id, $2, 'member'
+         FROM candidate
+         ON CONFLICT (server_id, user_id) DO NOTHING
+         RETURNING server_id
+       )
+       UPDATE invites i
+       SET uses = COALESCE(i.uses, 0) + 1
+       FROM inserted m
+       WHERE i.code = $1 AND i.server_id = m.server_id
+       RETURNING i.*`,
+      [cleanCode, userId, now]
     );
   }
 }
