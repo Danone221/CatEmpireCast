@@ -532,6 +532,9 @@ function setupSocket(server) {
         if (rateLimited(socket, 'edit-message', 30, 10_000)) return;
         const original = await Channel.getMessage(messageId);
         if (!original) return socket.emit('error', { message: 'Mensagem não encontrada' });
+        const channel = await Channel.findById(original.channel_id);
+        const memberRole = channel ? await ServerModel.getMemberRole(channel.server_id, socket.userId) : null;
+        if (!memberRole) return socket.emit('error', { message: 'Acesso ao canal negado' });
         if (original.user_id !== socket.userId) {
           return socket.emit('error', { message: 'Você só pode editar suas próprias mensagens' });
         }
@@ -553,8 +556,9 @@ function setupSocket(server) {
         if (!original) return;
         const channel = await Channel.findById(original.channel_id);
         const role = channel ? await ServerModel.getMemberRole(channel.server_id, socket.userId) : null;
+        if (!role) return socket.emit('error', { message: 'Acesso ao canal negado' });
         const isOwner = original.user_id === socket.userId;
-        const isAdmin = role === 'admin';
+        const isAdmin = role === 'admin' || role === 'owner';
         if (!isOwner && !isAdmin) {
           return socket.emit('error', { message: 'Você não pode excluir essa mensagem' });
         }
@@ -627,10 +631,16 @@ function setupSocket(server) {
 
     socket.on('edit-dm', async ({ messageId, content }) => {
       try {
+        if (rateLimited(socket, 'edit-dm', 30, 10_000)) return;
         const original = await Dm.getById(messageId);
         if (!original || original.sender_id !== socket.userId) {
           return socket.emit('error', { message: 'Você só pode editar suas próprias mensagens' });
         }
+        const block = await require('./database').queryOne(
+          'SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1',
+          [original.sender_id, original.recipient_id]
+        );
+        if (block) return socket.emit('error', { message: 'Esta conversa está bloqueada' });
         const trimmed = cleanMessageText(content, 2000);
         if (!trimmed) return;
         const updated = await Dm.edit(messageId, trimmed);
@@ -644,6 +654,7 @@ function setupSocket(server) {
 
     socket.on('delete-dm', async ({ messageId }) => {
       try {
+        if (rateLimited(socket, 'delete-dm', 20, 10_000)) return;
         const original = await Dm.getById(messageId);
         if (!original || original.sender_id !== socket.userId) {
           return socket.emit('error', { message: 'Você só pode excluir suas próprias mensagens' });
