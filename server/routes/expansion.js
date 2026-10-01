@@ -126,7 +126,7 @@ router.post('/servers/:serverId/invites', async (req, res) => {
   } catch (e) { fail(res, e, 'Erro ao criar convite'); }
 });
 router.get('/servers/:serverId/invites', async (req, res) => {
-  try { await requireServerMember(req.params.serverId, req.user.id); res.json(await query('SELECT * FROM server_invites WHERE server_id=$1 ORDER BY created_at DESC', [req.params.serverId])); }
+  try { await requireManage(req.params.serverId, req.user.id); res.json(await query('SELECT * FROM server_invites WHERE server_id=$1 ORDER BY created_at DESC', [req.params.serverId])); }
   catch (e) { fail(res, e, 'Erro ao listar convites'); }
 });
 router.post('/invites/:code/use', async (req, res) => {
