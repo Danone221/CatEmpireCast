@@ -7,7 +7,8 @@ const config = require('../config');
 const { validateRegistration, validateLogin } = require('../auth-input');
 const { authenticate } = require('../middleware/auth');
 const {
-  bearerToken,
+  SESSION_COOKIE_NAME,
+  accessTokenFromRequest,
   createAccessToken,
   revokeAccessToken
 } = require('../security');
@@ -33,6 +34,19 @@ function parseCookies(req) {
 function oauthCookie(name, value, maxAge = 600) {
   const secure = config.nodeEnv === 'production' ? '; Secure' : '';
   return `${name}=${encodeURIComponent(value)}; Path=/auth/discord/callback; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+}
+
+function sessionCookie(value, maxAge = 12 * 60 * 60) {
+  const secure = config.nodeEnv === 'production' ? '; Secure' : '';
+  return `${SESSION_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
+}
+
+function setSessionCookie(res, token) {
+  res.append('Set-Cookie', sessionCookie(token));
+}
+
+function clearSessionCookie(res) {
+  res.append('Set-Cookie', sessionCookie('', 0));
 }
 
 function clearOauthCookies(res) {
@@ -61,8 +75,10 @@ router.post('/register', authLimiter, async (req, res) => {
     if (existing) return res.status(400).json({ error: 'Usuário já existe' });
 
     const user = await User.create({ username, password, displayName });
+    const token = await createAccessToken(user);
+    setSessionCookie(res, token);
     res.set('Cache-Control', 'no-store');
-    res.json({ user, token: await createAccessToken(user) });
+    res.json({ user, token: 'cookie', session: true });
   } catch (error) {
     if (error?.code === '23505') return res.status(409).json({ error: 'Usuário já existe' });
     console.error('Erro ao registrar:', error);
@@ -79,8 +95,10 @@ router.post('/login', authLimiter, async (req, res) => {
     const user = await User.authenticate(username, password);
     if (!user) return res.status(401).json({ error: 'Credenciais inválidas' });
 
+    const token = await createAccessToken(user);
+    setSessionCookie(res, token);
     res.set('Cache-Control', 'no-store');
-    res.json({ user, token: await createAccessToken(user) });
+    res.json({ user, token: 'cookie', session: true });
   } catch (error) {
     console.error('Erro ao fazer login:', error);
     res.status(500).json({ error: 'Erro ao fazer login' });
@@ -88,7 +106,8 @@ router.post('/login', authLimiter, async (req, res) => {
 });
 
 router.post('/logout', async (req, res) => {
-  const token = bearerToken(req);
+  const token = accessTokenFromRequest(req);
+  clearSessionCookie(res);
   if (!token) return res.status(204).end();
 
   try {
@@ -181,8 +200,9 @@ router.get('/discord/callback', authLimiter, async (req, res) => {
     });
 
     const appToken = await createAccessToken(user);
+    setSessionCookie(res, appToken);
     res.set('Cache-Control', 'no-store');
-    res.redirect('/#discord_token=' + encodeURIComponent(appToken));
+    res.redirect('/#discord_token=cookie');
   } catch (error) {
     console.error('Erro no callback do Discord:', error.message);
     res.redirect('/?discordError=unexpected_error');
@@ -190,8 +210,9 @@ router.get('/discord/callback', authLimiter, async (req, res) => {
 });
 
 router.get('/verify', authenticate, async (req, res) => {
+  setSessionCookie(res, req.authToken);
   res.set('Cache-Control', 'no-store');
-  res.json({ user: req.user });
+  res.json({ user: req.user, session: true });
 });
 
 module.exports = router;
