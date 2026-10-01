@@ -18,7 +18,7 @@ let pendingBlockedProfileUser = null;
 
 $('myName').textContent = userName;
 const cachedAvatar = localStorage.getItem('cat_avatar');
-if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
+if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = safeImageUrl(cachedAvatar);
 
 (async function loadMyProfileOnStartup() {
   try {
@@ -27,7 +27,7 @@ if (cachedAvatar && $('myAvatarImg')) $('myAvatarImg').src = cachedAvatar;
     const me = await r.json();
     if (me) {
       if (me.display_name && $('myName')) $('myName').textContent = me.display_name;
-      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = me.avatar;
+      if (me.avatar && $('myAvatarImg')) $('myAvatarImg').src = safeImageUrl(me.avatar);
       if (me.avatar) localStorage.setItem('cat_avatar', me.avatar);
       if (me.display_name) localStorage.setItem('cat_user_name', me.display_name);
     }
@@ -39,6 +39,30 @@ function headers() {
 }
 function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function safeImageUrl(value, fallback = '/logo.svg') {
+  const s = String(value || '').trim();
+  if (!s) return fallback;
+  if (/^\/(?!\/)[A-Za-z0-9._~!function esc(s) {
+  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}'()*+,;=:@%/?#-]+$/.test(s)) return s;
+  if (/^https:\/\/[^\s"'<>\\]+$/i.test(s)) return s;
+  const m = s.match(/^data:image\/(?:png|jpe?g|webp|gif);base64,/i);
+  if (m && s.length <= 1300000 && /^[A-Za-z0-9+/]+={0,2}$/.test(s.slice(m[0].length))) return s;
+  return fallback;
+}
+
+function safeFileUrl(value, type) {
+  const s = String(value || '').trim();
+  if (!s) return '';
+  if (/^https:\/\/[^\s"'<>\\]+$/i.test(s)) return s;
+  const mime = String(type || '').toLowerCase();
+  const allowed = new Set(['image/jpeg','image/png','image/gif','image/webp','video/mp4','video/webm','audio/mpeg','audio/ogg','application/pdf']);
+  if (!allowed.has(mime)) return '';
+  const prefix = `data:${mime};base64,`;
+  if (!s.startsWith(prefix) || s.length > 12000000) return '';
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(s.slice(prefix.length)) ? s : '';
 }
 function renderMarkdown(escapedText) {
   let t = escapedText;
@@ -131,7 +155,7 @@ function renderConversationList() {
     const text = blocked ? 'Conversa bloqueada' : (c.last_message ? (c.last_message.length > 34 ? c.last_message.slice(0, 34) + '…' : c.last_message) : (c.last_has_file ? '📄 Arquivo' : ''));
     const active = c.id === currentOtherId ? ' active' : '';
     return `<div class="channel-item dm-item${active}${blocked ? ' dm-item-blocked' : ''}" data-id="${esc(c.id)}">
-      <div class="dm-avatar"><img src="${c.avatar || '/logo.svg'}" alt=""></div>
+      <div class="dm-avatar"><img src="${esc(safeImageUrl(c.avatar))}" alt=""></div>
       <div class="dm-info">
         <div class="cname">${esc(c.display_name || c.username)}</div>
         <div class="dm-preview">${esc(preview + text)}</div>
@@ -156,7 +180,7 @@ async function openConversation(otherId) {
     currentOtherUser = d.user;
     currentBlockState = d.blockState || { blocked_by_me:false, blocked_me:false };
     revealBlockedMessages = false;
-    $('dmHeader').innerHTML = `<button type="button" class="dm-header-user" data-open-dm-profile><img src="${d.user.avatar || '/logo.svg'}" alt=""><span><strong>${esc(d.user.display_name || d.user.username)}</strong><small>@${esc(d.user.username)}</small></span><span class="dm-header-chevron">›</span></button><div class="dm-header-actions"><button type="button" class="dm-head-icon" title="Buscar">⌕</button></div>`;
+    $('dmHeader').innerHTML = `<button type="button" class="dm-header-user" data-open-dm-profile><img src="${esc(safeImageUrl(d.user.avatar))}" alt=""><span><strong>${esc(d.user.display_name || d.user.username)}</strong><small>@${esc(d.user.username)}</small></span><span class="dm-header-chevron">›</span></button><div class="dm-header-actions"><button type="button" class="dm-head-icon" title="Buscar">⌕</button></div>`;
     $('mobileTitle').textContent = d.user.display_name || d.user.username;
     updateDmComposerState();
     renderMessages(d.messages);
@@ -176,7 +200,7 @@ function dmIntroHtml() {
   const u=currentOtherUser;
   if(!u) return '';
   const blocked=currentBlockState.blocked_by_me;
-  return `<section class="dm-profile-intro"><img class="dm-intro-avatar" src="${u.avatar || '/logo.svg'}" alt=""><h1>${esc(u.display_name || u.username)}</h1><div class="dm-intro-username">@${esc(u.username)}</div><p>Este é o começo da sua conversa com ${esc(u.display_name || u.username)}.</p><div class="dm-intro-actions"><button type="button" class="btn btn-primary" data-dm-friend>Enviar pedido de amizade</button><button type="button" class="btn ${blocked ? 'btn-primary' : ''}" data-dm-block>${blocked ? 'Desbloquear' : 'Bloquear'}</button></div></section>`;
+  return `<section class="dm-profile-intro"><img class="dm-intro-avatar" src="${esc(safeImageUrl(u.avatar))}" alt=""><h1>${esc(u.display_name || u.username)}</h1><div class="dm-intro-username">@${esc(u.username)}</div><p>Este é o começo da sua conversa com ${esc(u.display_name || u.username)}.</p><div class="dm-intro-actions"><button type="button" class="btn btn-primary" data-dm-friend>Enviar pedido de amizade</button><button type="button" class="btn ${blocked ? 'btn-primary' : ''}" data-dm-block>${blocked ? 'Desbloquear' : 'Bloquear'}</button></div></section>`;
 }
 function renderMessages(msgs) {
   const intro=dmIntroHtml();
@@ -199,10 +223,11 @@ function updateDmComposerState(){
 function messageHtml(m) {
   const time = new Date((m.created_at || 0) * 1000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   let fileHtml = '';
-  if (m.file_data && m.file_type && m.file_type.startsWith('image/')) {
-    fileHtml = `<img class="message-image" src="${m.file_data}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${m.file_data}">`;
-  } else if (m.file_data) {
-    fileHtml = `<a class="message-file" href="${m.file_data}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
+  const fileUrl = safeFileUrl(m.file_data, m.file_type);
+  if (fileUrl && m.file_type && m.file_type.startsWith('image/')) {
+    fileHtml = `<img class="message-image" src="${esc(fileUrl)}" alt="${esc(m.file_name || 'imagem')}" data-file-url="${esc(fileUrl)}">`;
+  } else if (fileUrl) {
+    fileHtml = `<a class="message-file" href="${esc(fileUrl)}" download="${esc(m.file_name || 'arquivo')}">📄 ${esc(m.file_name || 'arquivo')}</a>`;
   }
   const isMine = m.sender_id === userId;
   const editedTag = m.edited_at ? '<span class="message-edited-tag">(editado)</span>' : '';
@@ -211,7 +236,7 @@ function messageHtml(m) {
       <button class="msg-tool-btn" data-action="delete" title="Excluir">🗑️</button>
     </div>` : '';
   return `<div class="message" data-message-id="${esc(m.id)}" data-user-id="${esc(m.sender_id)}">
-    <div class="message-avatar" data-user-id="${esc(m.sender_id)}"><img src="${m.sender_avatar || '/logo.svg'}" alt=""></div>
+    <div class="message-avatar" data-user-id="${esc(m.sender_id)}"><img src="${esc(safeImageUrl(m.sender_avatar))}" alt=""></div>
     <div class="message-body">
       <div class="message-head">
         <span class="message-author" data-user-id="${esc(m.sender_id)}">${esc(m.sender_display_name || m.sender_username || 'Membro')}</span>
@@ -417,7 +442,7 @@ function showDmUserProfile(u){
   const modal=$('dmUserProfileModal');
   modal.dataset.profileId=viewingDmProfileId;
   applyBannerStyle($('dmProfileBanner'),u.banner||u.banner_color||'#8b2bff');
-  $('dmProfileAvatar').src=u.avatar||'/logo.svg';
+  $('dmProfileAvatar').src=safeImageUrl(u.avatar);
   $('dmProfileName').textContent=u.display_name||u.username;
   $('dmProfileUsername').textContent='@'+u.username;
   $('dmProfileBio').textContent=u.bio||'Sem bio.';
@@ -436,7 +461,7 @@ $('dmProfileMessageBtn')?.addEventListener('click',()=>{
 });
 async function loadBlockedAccounts(){
  const list=$('blockedAccountsList');if(!list)return;
- try{const r=await fetch('/api/social/blocks',{headers:headers()});const rows=await r.json();if(!r.ok)throw new Error(rows.error||'Erro ao carregar bloqueios');list.innerHTML=rows.length?rows.map(u=>`<div class="blocked-account-row"><img src="${u.avatar||'/logo.svg'}" alt=""><div><strong>${esc(u.display_name||u.username)}</strong><small>@${esc(u.username)}</small></div><button type="button" class="btn" data-unblock-id="${esc(u.id)}">Desbloquear</button></div>`).join(''):'<p class="empty-hint">Nenhuma conta bloqueada.</p>';}catch(e){list.innerHTML='<p class="empty-hint">'+esc(e.message)+'</p>';}
+ try{const r=await fetch('/api/social/blocks',{headers:headers()});const rows=await r.json();if(!r.ok)throw new Error(rows.error||'Erro ao carregar bloqueios');list.innerHTML=rows.length?rows.map(u=>`<div class="blocked-account-row"><img src="${esc(safeImageUrl(u.avatar))}" alt=""><div><strong>${esc(u.display_name||u.username)}</strong><small>@${esc(u.username)}</small></div><button type="button" class="btn" data-unblock-id="${esc(u.id)}">Desbloquear</button></div>`).join(''):'<p class="empty-hint">Nenhuma conta bloqueada.</p>';}catch(e){list.innerHTML='<p class="empty-hint">'+esc(e.message)+'</p>';}
 }
 $('refreshBlockedBtn')?.addEventListener('click',loadBlockedAccounts);
 $('blockedAccountsList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-unblock-id]');if(!b)return;await fetch('/api/social/blocks/'+encodeURIComponent(b.dataset.unblockId),{method:'DELETE',headers:headers()});loadBlockedAccounts();if(currentOtherId===b.dataset.unblockId)openConversation(currentOtherId);});
@@ -592,7 +617,7 @@ async function openMyProfile() {
     pendingAvatarData = null;
     pendingProfileBannerData = null;
     editSelectedColor = me.banner_color || '#5865f2';
-    $('editAvatarPreview').src = me.avatar || '/logo.svg';
+    $('editAvatarPreview').src = safeImageUrl(me.avatar);
     $('editDisplayName').value = me.display_name || me.username || '';
     $('editBio').value = me.bio || '';
     $('editBioCount').textContent = (me.bio || '').length;
