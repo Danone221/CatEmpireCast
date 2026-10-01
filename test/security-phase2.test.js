@@ -64,3 +64,52 @@ test('User model prevents arbitrary column assignment', () => {
   assert.match(source, /const allowed = new Set\(\['display_name', 'avatar', 'banner', 'bio', 'banner_color'\]\)/);
   assert.match(source, /auth_version = auth_version \+ 1/);
 });
+
+test('global search is tenant-scoped to server membership', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../server/routes/expansion.js'), 'utf8');
+  const start = source.indexOf("router.get('/search'");
+  const end = source.indexOf('// ===== MEMBER DETAILS =====', start);
+  const block = source.slice(start, end);
+  assert.ok(block.length > 0);
+  assert.match(block, /JOIN server_members sm ON sm\.server_id=/);
+  assert.match(block, /sm\.user_id=\$2/);
+  assert.match(block, /m\.deleted_at IS NULL/);
+});
+
+test('reaction reads filter message ids by authenticated access', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../server/routes/features.js'), 'utf8');
+  const start = source.indexOf("router.get('/reactions'");
+  const end = source.indexOf("router.post('/reactions/toggle'", start);
+  const block = source.slice(start, end);
+  assert.ok(block.length > 0);
+  assert.match(block, /sender_id=\$2 OR recipient_id=\$2/);
+  assert.match(block, /JOIN server_members sm/);
+  assert.match(block, /allowedIds/);
+});
+
+test('server settings reuse canonical validation', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../server/routes/settings.js'), 'utf8');
+  assert.match(source, /sanitizePlainText/);
+  assert.match(source, /validateImageValue/);
+});
+
+test('active clients never accept auth credentials from query strings', () => {
+  for (const file of ['runtime-v5.js', 'mentions-v5.js', 'room.js', 'dms.js']) {
+    const source = fs.readFileSync(path.join(__dirname, '../client', file), 'utf8');
+    assert.doesNotMatch(source, /q\.get\(['\"]token['\"]\)/);
+    assert.doesNotMatch(source, /q\.get\(['\"]userId['\"]\)/);
+  }
+});
+
+test('user profile updates keep PostgreSQL values parameterized', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../server/database/models/User.js'), 'utf8');
+  assert.match(source, /fields\.push/);
+  assert.match(source, /\$\$\{i\}/);
+});
+
+test('persisted attachment URLs are escaped before HTML interpolation', () => {
+  for (const file of ['room.js', 'dms.js']) {
+    const source = fs.readFileSync(path.join(__dirname, '../client', file), 'utf8');
+    assert.match(source, /href=\"\$\{esc\(m\.file_data\)\}\"/);
+  }
+});
