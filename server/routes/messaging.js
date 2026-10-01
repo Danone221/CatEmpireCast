@@ -27,6 +27,15 @@ function fail(res, error, fallback) {
   return res.status(error.status || 400).json({ error: error.message || fallback });
 }
 
+function boundedJson(value, fallback, maxBytes) {
+  const json = JSON.stringify(value == null ? fallback : value);
+  if (Buffer.byteLength(json, 'utf8') > maxBytes) {
+    throw Object.assign(new Error('Conteúdo estruturado excede o limite permitido'), { status: 413 });
+  }
+  return json;
+}
+
+
 async function loadMessage(messageId) {
   return queryOne(`
     SELECT m.*, u.username, u.display_name, u.avatar,
@@ -76,6 +85,9 @@ router.post('/channels/:channelId/messages', async (req, res) => {
     const embeds = Array.isArray(req.body.embeds) ? req.body.embeds.slice(0, 10) : [];
     const mentions = Array.isArray(req.body.mentions) ? req.body.mentions.slice(0, 100) : [];
     const stickers = Array.isArray(req.body.stickers) ? req.body.stickers.slice(0, 20) : [];
+    const embedsJson = boundedJson(embeds, [], 32768);
+    const mentionsJson = boundedJson(mentions, [], 16384);
+    const stickersJson = boundedJson(stickers, [], 16384);
     if (!content && !req.body.attachments?.length && !embeds.length && !stickers.length) {
       return res.status(400).json({ error: 'A mensagem está vazia' });
     }
@@ -94,7 +106,7 @@ router.post('/channels/:channelId/messages', async (req, res) => {
       if (!thread) return res.status(400).json({ error: 'Thread inválida ou bloqueada' });
     }
     const message = await queryOne(`INSERT INTO messages(id,channel_id,user_id,content,created_at,reply_to,thread_id,embeds,mentions,stickers)
-      VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [uuidv4(), channel.id, req.user.id, content, replyTo, threadId, JSON.stringify(embeds), JSON.stringify(mentions), JSON.stringify(stickers)]);
+      VALUES($1,$2,$3,$4,extract(epoch FROM now())::bigint,$5,$6,$7,$8,$9) RETURNING id`, [uuidv4(), channel.id, req.user.id, content, replyTo, threadId, embedsJson, mentionsJson, stickersJson]);
 
     for (const attachment of Array.isArray(req.body.attachments) ? req.body.attachments.slice(0, 10) : []) {
       const rawUrl = typeof attachment?.url === 'string' ? attachment.url.trim() : '';
@@ -129,7 +141,7 @@ router.post('/channels/:channelId/messages', async (req, res) => {
       }
       if (!storedUrl) return res.status(400).json({ error: 'Anexo inválido' });
       await query(`INSERT INTO message_attachments(id,message_id,file_name,file_type,file_size,url,metadata)
-        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, fileName, fileType, fileSize, storedUrl, JSON.stringify(attachment.metadata || {})]);
+        VALUES($1,$2,$3,$4,$5,$6,$7)`, [uuidv4(), message.id, fileName, fileType, fileSize, storedUrl, boundedJson(attachment.metadata || {}, {}, 8192)]);
     }
 
     for (const mention of mentions) {
