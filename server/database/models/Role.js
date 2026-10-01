@@ -158,6 +158,9 @@ class Role {
   static async addMember(serverId, roleId, userId) {
     const role = await this.findById(serverId, roleId);
     if (!role) throw Object.assign(new Error('Cargo não encontrado'), { status: 404 });
+    if (isSystemRoleName(role.name)) {
+      throw Object.assign(new Error('Este cargo é gerenciado pelo sistema'), { status: 400 });
+    }
     const member = await queryOne(
       'SELECT user_id FROM server_members WHERE server_id = $1 AND user_id = $2',
       [serverId, userId]
@@ -173,6 +176,11 @@ class Role {
   }
 
   static async removeMember(serverId, roleId, userId) {
+    const role = await this.findById(serverId, roleId);
+    if (!role) throw Object.assign(new Error('Cargo não encontrado'), { status: 404 });
+    if (isSystemRoleName(role.name)) {
+      throw Object.assign(new Error('Este cargo é gerenciado pelo sistema'), { status: 400 });
+    }
     await query(
       'DELETE FROM server_role_members WHERE server_id=$1 AND role_id=$2 AND user_id=$3',
       [serverId, roleId, userId]
