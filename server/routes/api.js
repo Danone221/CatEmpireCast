@@ -6,6 +6,7 @@ const User = require('../database/models/User');
 const Invite = require('../database/models/Invite');
 const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
+const { normalizeImageSource, normalizeHexColor } = require('../security');
 
 // Endpoint público usado pela tela inicial.
 router.get('/servers/active', async (req, res) => {
@@ -35,14 +36,8 @@ router.put('/me/profile', authenticate, async (req, res) => {
       if (trimmed) data.display_name = trimmed;
     }
     if (typeof bio === 'string') data.bio = bio.slice(0, 190);
-    if (typeof bannerColor === 'string' || bannerColor === null) data.banner_color = bannerColor || null;
-    if (typeof avatar === 'string') {
-      // Base64 data URL — limite de ~500KB pra não pesar no banco.
-      if (avatar.length > 700000) {
-        return res.status(400).json({ error: 'Imagem muito grande (máx. ~500KB).' });
-      }
-      data.avatar = avatar;
-    }
+    if (typeof bannerColor === 'string' || bannerColor === null) data.banner_color = normalizeHexColor(bannerColor);
+    if (typeof avatar === 'string' || avatar === null) data.avatar = normalizeImageSource(avatar, 700000);
     const user = await User.update(req.user.id, data);
 
     // Propaga em tempo real pra quem estiver com a página aberta em
@@ -189,9 +184,12 @@ router.get('/servers/:serverId', authenticate, async (req, res) => {
     if (!server) {
       return res.status(404).json({ error: 'Servidor não encontrado' });
     }
+    const myRole = await Server.getMemberRole(req.params.serverId, req.user.id);
+    if (!myRole) {
+      return res.status(403).json({ error: 'Você não é membro deste servidor' });
+    }
     const channels = await Server.getChannels(req.params.serverId);
     const members = await Server.getMembers(req.params.serverId);
-    const myRole = await Server.getMemberRole(req.params.serverId, req.user.id);
     res.json({ ...server, channels, members, myRole });
   } catch (error) {
     console.error('Erro ao buscar servidor:', error);
