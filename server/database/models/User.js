@@ -27,6 +27,20 @@ class User {
     );
   }
 
+  static async getAuthState(id) {
+    return queryOne(
+      'SELECT id, username, auth_version FROM users WHERE id = $1',
+      [id]
+    );
+  }
+
+  static async bumpAuthVersion(id) {
+    return queryOne(
+      'UPDATE users SET auth_version = auth_version + 1 WHERE id = $1 RETURNING auth_version',
+      [id]
+    );
+  }
+
   static async findByUsername(username) {
     return queryOne('SELECT * FROM users WHERE lower(username) = lower($1)', [username]);
   }
@@ -66,20 +80,23 @@ class User {
       }
     }
     const hashed = bcrypt.hashSync(newPassword, 10);
-    await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashed, id]);
+    await query('UPDATE users SET password_hash = $1, auth_version = auth_version + 1 WHERE id = $2', [hashed, id]);
   }
 
   static async update(id, data) {
+    const allowed = new Set(['display_name', 'avatar', 'banner', 'bio', 'banner_color']);
     const fields = [];
     const values = [];
     let i = 1;
-    for (const [key, value] of Object.entries(data)) {
-      fields.push(`${key} = $${i}`);
+    for (const [key, value] of Object.entries(data || {})) {
+      if (!allowed.has(key)) continue;
+      fields.push(`${key} = ${i}`);
       values.push(value);
       i++;
     }
+    if (!fields.length) return this.findById(id);
     values.push(id);
-    await query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i}`, values);
+    await query(`UPDATE users SET ${fields.join(', ')} WHERE id = ${i}`, values);
     return this.findById(id);
   }
 
