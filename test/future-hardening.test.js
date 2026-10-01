@@ -83,3 +83,27 @@ test('platform role and permission mutations enforce hierarchy and tenant scope'
   assert.match(platform, /Referência não pertence a este servidor/);
   assert.match(platform, /cleanPermissionMap/);
 });
+
+test('REST server messages re-check membership and reject unsafe attachment schemes', () => {
+  const messaging = source('server/routes/messaging.js');
+  assert.match(messaging, /requireMemberByChannel\(message\.channel_id, req\.user\.id\)/);
+  assert.match(messaging, /sanitizeAttachment/);
+  assert.match(messaging, /parsed\.protocol !== 'https:'/);
+  assert.match(messaging, /server_members WHERE server_id=\$1 AND user_id=\$2/);
+  assert.match(messaging, /server_roles WHERE server_id=\$1 AND id=\$2/);
+});
+
+test('group DMs enforce existing block relationships', () => {
+  const dm = source('server/routes/dm.js');
+  assert.match(dm, /blocker_id = ANY\(\$1::text\[\]\)/);
+  assert.match(dm, /JOIN group_dm_members gm ON gm\.group_id=\$1/);
+});
+
+test('dev-only presentation assets remain outside the public static surface', () => {
+  const app = source('server/app.js');
+  for (const name of ['community-test-theme.css','rx-test-theme.css','crystal-theme.css','login-depth-theme.css']) {
+    assert.match(app, new RegExp(name.replace('.', '\\.'), 'i'));
+  }
+  assert.match(app, /Cache-Control', 'no-store'/);
+  assert.match(app, /Permissions-Policy/);
+});
