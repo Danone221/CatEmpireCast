@@ -53,6 +53,7 @@ app.use(helmet({
 }));
 
 app.use((req, res, next) => {
+  res.set('Permissions-Policy', 'camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()');
   const origin = String(req.headers.origin || '').trim();
   if (origin && !originAllowed(origin)) {
     return res.status(403).json({ error: 'Origem não autorizada' });
@@ -184,7 +185,11 @@ const blockedPublicFiles = new Set([
   '/features-v3.js',
   '/features-v3-fix.js',
   '/profile-v5.js',
-  '/liquid-metal-react.jsx'
+  '/liquid-metal-react.jsx',
+  '/community-test-theme.css',
+  '/rx-test-theme.css',
+  '/crystal-theme.css',
+  '/login-depth-theme.css'
 ]);
 
 app.use((req, res, next) => {
@@ -209,6 +214,7 @@ app.use((req, res, next) => {
     if (vnextPages.has(req.path) && !html.includes('data-cat-empire-v4') && !html.includes('vnext-loader.js')) {
       html = html.replace('</body>', '<script src="/vnext-loader.js?v=20261001-audit1" data-cat-empire-loader></script></body>');
     }
+    res.set('Cache-Control', 'no-store');
     res.type('html').send(html);
   });
 });
