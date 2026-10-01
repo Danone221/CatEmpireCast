@@ -122,12 +122,10 @@
 
       overlay.querySelector('#confirmCreateServerBtn').onclick = async () => {
         const name = inputName.value.trim() || 'Cat Empire';
-        const token = localStorage.getItem('cat_token');
-        if (!token) return toast('Sessão expirada. Faça login novamente.', 'error');
         try {
           const r = await fetch('/api/servers', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name })
           });
           const d = await r.json();
@@ -147,13 +145,10 @@
         const match = raw.match(/invite\/([a-zA-Z0-9_-]+)/);
         const code = match ? match[1] : raw;
 
-        const token = localStorage.getItem('cat_token');
-        if (!token) return toast('Sessão expirada. Faça login novamente.', 'error');
-
         try {
           const r = await fetch('/api/invites/' + encodeURIComponent(code) + '/join', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }
+            headers: { 'Content-Type': 'application/json' }
           });
           const d = await r.json();
           if (!r.ok) throw new Error(d.error || 'Convite inválido ou expirado');
