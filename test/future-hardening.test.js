@@ -107,3 +107,28 @@ test('dev-only presentation assets remain outside the public static surface', ()
   assert.match(app, /Cache-Control', 'no-store'/);
   assert.match(app, /Permissions-Policy/);
 });
+
+test('canonical role router owns all role CRUD verbs without platform duplicates', () => {
+  const roles = source('server/routes/roles.js');
+  const platform = source('server/routes/platform.js');
+  assert.match(roles, /router\.patch\('\/servers\/:serverId\/roles\/:roleId', updateRole\)/);
+  assert.match(roles, /router\.put\('\/servers\/:serverId\/roles\/:roleId', updateRole\)/);
+  assert.doesNotMatch(platform, /router\.(get|post|put|patch|delete)\('\/servers\/:serverId\/roles(?:\/|')/);
+});
+
+test('structured server content is bounded before persistence', () => {
+  const messaging = source('server/routes/messaging.js');
+  const structure = source('server/routes/structure.js');
+  assert.match(messaging, /boundedJson\(embeds, \[\], 32768\)/);
+  assert.match(messaging, /boundedJson\(attachment\.metadata \|\| \{\}, \{\}, 8192\)/);
+  assert.match(structure, /cleanPermissionMap/);
+  assert.match(structure, /sanitizePlainText\(req\.body\.topic, 1000\)/);
+});
+
+test('canonical HTML supports HEAD and Android networking overrides old transitive client deps', () => {
+  const app = source('server/app.js');
+  const gradle = source('CatEmpireCast/app/build.gradle');
+  assert.match(app, /\['GET','HEAD'\]\.includes\(req\.method\)/);
+  assert.match(gradle, /socket\.io-client:2\.1\.2/);
+  assert.match(gradle, /okhttp:4\.12\.0/);
+});
