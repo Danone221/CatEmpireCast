@@ -42,7 +42,7 @@
     const serverId = q.get('serverId') || localStorage.getItem('cat_last_server');
     if (!serverId) return;
 
-    // If the normal room.js boot succeeded, do not touch its DOM/state.
+
     const channelList = document.getElementById('channelList');
     const membersList = document.getElementById('membersList');
     const hasChannels = !!channelList?.querySelector('.channel-item');
@@ -94,7 +94,7 @@
       const roleEl = document.getElementById('myRole');
       if (roleEl) roleEl.textContent = role === 'admin' ? 'admin' : 'membro';
 
-      // Keep the page usable even if room.js aborted before wiring events.
+
       channelList?.querySelectorAll('.channel-item').forEach(el => {
         el.addEventListener('click', () => {
           const id = el.dataset.id;
@@ -108,8 +108,8 @@
         });
       });
 
-      // The normal room.js loader will usually have opened the first text
-      // channel already. If it did not, open it here without changing styles.
+
+
       if (!hasChannels) {
         const firstText = channels.find(c => c.type === 'text');
         if (firstText) {
