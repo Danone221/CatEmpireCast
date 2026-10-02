@@ -17,16 +17,16 @@ function setupSocket(server) {
       const origin = String(req.headers.origin || '').trim();
       callback(null, !origin || originAllowed(origin));
     },
-    // Padrão do Socket.IO é 1MB — muito pouco pra imagem em base64 (até ~11MB
-    // pra um arquivo de 8MB). Sem isso, 'send-message' com anexo grande
-    // simplesmente não chegava no servidor: o pacote era descartado (ou a
-    // conexão derrubada) por estourar o buffer, e o cliente ficava esperando
-    // pra sempre um retorno que nunca vinha ("cai em um vazio").
+
+
+
+
+
     maxHttpBufferSize: 15 * 1024 * 1024,
-    // Um pouco mais tolerante que o padrão (20s) — em celular, abrir a
-    // câmera/tela pode travar a thread principal por alguns segundos
-    // (prompt de permissão, seletor nativo de tela) e isso pode atrasar o
-    // pong o suficiente pro servidor achar que a conexão morreu.
+
+
+
+
     pingTimeout: 30000,
     pingInterval: 25000
   });
@@ -152,9 +152,9 @@ function setupSocket(server) {
         reason
       });
     }
-    // O serviço Android encerra MediaProjection, áudio, peers e foreground
-    // service. Apenas desconectar faria o Socket.IO reconectar e registrar
-    // a transmissão órfã novamente.
+
+
+
     nativeSocket.emit('native-screen-force-stop', { reason });
     nativeSocket.screenPeerId = null;
     nativeSocket.screenChannelId = null;
@@ -164,7 +164,7 @@ function setupSocket(server) {
   io.on('connection', (socket) => {
     console.log('🔌 Conectado:', socket.id);
 
-    // ========== REGISTRO ==========
+
     socket.on('register', async ({ serverId } = {}) => {
       try {
         if (rateLimited(socket, 'register', 8, 10_000)) return;
@@ -201,7 +201,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== ENTRAR NO CANAL DE VOZ ==========
+
     socket.on('join-voice-channel', async ({ channelId } = {}) => {
       try {
         if (rateLimited(socket, 'join-voice', 20, 10_000)) return;
@@ -211,7 +211,7 @@ function setupSocket(server) {
           return;
         }
 
-        // Sair do canal anterior
+
         const prevChannel = userChannels.get(socket.userId);
         if (prevChannel) {
           stopNativeScreenForOwner(socket.userId, 'channel-changed');
@@ -223,18 +223,18 @@ function setupSocket(server) {
           socket.leave(`channel-${prevChannel}`);
         }
 
-        // Entrar no novo canal
+
         await Channel.joinVoice(socket.userId, channelId);
         userChannels.set(socket.userId, channelId);
 
         socket.join(`channel-${channelId}`);
         socket.currentChannel = channelId;
 
-        // Buscar membros atuais
+
         const members = await Channel.getVoiceMembers(channelId);
         io.to(`channel-${channelId}`).emit('channel-members', members);
 
-        // Notificar entrada
+
         io.to(`channel-${channelId}`).emit('user-joined', {
           userId: socket.userId,
           userName: socket.userName
@@ -242,8 +242,8 @@ function setupSocket(server) {
 
         console.log(`🎤 ${socket.userName} entrou no canal ${channel.name}`);
 
-        // Se já existe uma transmissão externa (celular) rolando nesse
-        // canal, avisa quem acabou de entrar pra ele já renderizar o tile.
+
+
         const { getActiveCastInfo } = require('./media');
         const castInfo = getActiveCastInfo(channelId);
         if (castInfo) {
@@ -257,7 +257,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== SAIR DO CANAL DE VOZ ==========
+
     socket.on('leave-voice-channel', async () => {
       try {
         const channelId = userChannels.get(socket.userId);
@@ -286,7 +286,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== AUDIO TOGGLE ==========
+
     socket.on('audio-toggle', async ({ muted }) => {
       try {
         const channelId = userChannels.get(socket.userId);
@@ -303,7 +303,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== ESTADO DE MÍDIA (mic/câmera) NA CHAMADA DE VOZ ==========
+
     socket.on('voice-media-state', ({ muted, camera, screen }) => {
       try {
         if (rateLimited(socket, 'voice-media-state', 40, 10_000)) return;
@@ -320,8 +320,8 @@ function setupSocket(server) {
       }
     });
 
-    // ========== SINALIZAÇÃO WEBRTC (peer-to-peer mesh) ==========
-    // Repassa SDP offers/answers e ICE candidates diretamente para o usuário-alvo.
+
+
     socket.on('voice-signal', ({ to, data }) => {
       try {
         if (rateLimited(socket, 'voice-signal', 120, 10_000)) return;
@@ -341,8 +341,8 @@ function setupSocket(server) {
             console.log(`📡 Oferta ${data.sdp.type} do visualizador ${socket.id} encaminhada para ${to}`);
           }
           io.to(targetSocketId).emit('voice-signal', {
-            // Para a tela nativa, identifica esta conexão exata. Isso evita
-            // mandar a resposta para outra aba/WebView do mesmo usuário.
+
+
             from: screenSocketId ? viewerPeerId(socket.id) : socket.userId,
             data
           });
@@ -352,7 +352,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== TELA NATIVA DO APK VIA WEBRTC ==========
+
     socket.on('register-native-screen', async ({ channelId }) => {
       try {
         const userId = socket.userId;
@@ -375,8 +375,8 @@ function setupSocket(server) {
         const viewers = activeScreenViewers(channelId);
         socket.emit('native-screen-registered', {
           peerId,
-          // Inclui o próprio transmissor para que o APK mostre uma prévia
-          // real da tela no mosaico, além dos demais membros do canal.
+
+
           viewers
         });
         console.log(`📱 Tela nativa de ${socket.screenOwnerName} registrada no canal ${channelId} para ${viewers.length} visualizador(es)`);
@@ -445,8 +445,8 @@ function setupSocket(server) {
     socket.on('native-screen-audio', ({ data, sampleRate, channels, sequence }) => {
       try {
         if (!socket.screenPeerId || !socket.screenChannelId || typeof data !== 'string') return;
-        // 40 ms de PCM mono/48 kHz gera ~5,1 KB em Base64. Limites abaixo
-        // impedem que um cliente adulterado use o evento para pacotes grandes.
+
+
         const safeSampleRate = Number(sampleRate);
         if (data.length < 1 || data.length > 6_000 || ![32_000, 48_000].includes(safeSampleRate) || Number(channels) !== 1) return;
         const now = Date.now();
@@ -475,7 +475,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== ENTRAR NO CANAL DE TEXTO (necessário pro broadcast de mensagens) ==========
+
     socket.on('join-text-channel', async ({ channelId } = {}) => {
       try {
         if (rateLimited(socket, 'join-text', 30, 10_000)) return;
@@ -489,7 +489,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== MENSAGEM ==========
+
     socket.on('send-message', async ({ channelId, message, file } = {}) => {
       try {
         if (rateLimited(socket, 'send-message', 30, 10_000)) return;
@@ -526,7 +526,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== EDITAR MENSAGEM ==========
+
     socket.on('edit-message', async ({ messageId, content }) => {
       try {
         if (rateLimited(socket, 'edit-message', 30, 10_000)) return;
@@ -548,7 +548,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== EXCLUIR MENSAGEM ==========
+
     socket.on('delete-message', async ({ messageId }) => {
       try {
         if (rateLimited(socket, 'delete-message', 20, 10_000)) return;
@@ -570,7 +570,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== INDICADOR "ESTÁ DIGITANDO…" ==========
+
     socket.on('typing-start', ({ channelId }) => {
       if (rateLimited(socket, 'typing', 60, 10_000)) return;
       if (socket.textChannel !== channelId) return;
@@ -582,10 +582,10 @@ function setupSocket(server) {
       socket.to(`channel-${channelId}`).emit('user-stop-typing', { channelId, userId: socket.userId });
     });
 
-    // ========== MENSAGENS PRIVADAS (DM) ==========
-    // Cada usuário já está numa sala `user-${id}` desde o registro (ver
-    // 'register' acima), então dá pra mandar DM direto pra sala da pessoa
-    // sem precisar que ela esteja com a página de DMs aberta.
+
+
+
+
     socket.on('send-dm', async ({ toUserId, message, file } = {}) => {
       try {
         if (rateLimited(socket, 'send-dm', 30, 10_000)) return;
@@ -680,7 +680,7 @@ function setupSocket(server) {
       io.to(`user-${toUserId}`).emit('dm-user-stop-typing', { userId: socket.userId });
     });
 
-    // ========== GO LIVE ==========
+
     socket.on('start-go-live', ({ channelId }) => {
       try {
         if (rateLimited(socket, 'go-live', 20, 10_000)) return;
@@ -706,7 +706,7 @@ function setupSocket(server) {
       }
     });
 
-    // ========== DESCONEXÃO ==========
+
     socket.on('disconnect', async () => {
       console.log('🔌 Desconectado:', socket.id);
 
@@ -720,20 +720,20 @@ function setupSocket(server) {
 
       const userId = socketUsers.get(socket.id);
       if (userId) {
-        // Sair do canal de voz
+
         const channelId = userChannels.get(userId);
-        // Entre este 'disconnect' disparar e chegarmos aqui, o cliente pode
-        // já ter reconectado com um socket NOVO e reentrado no canal (ele
-        // reemite 'register' + 'join-voice-channel' automaticamente no
-        // reconnect). Nesse caso userSockets.get(userId) já aponta pro
-        // socket novo, não mais pra este socket.id que está desconectando.
-        // Sem essa checagem, este handler (que só roda um pouco depois,
-        // já que os awaits abaixo esperam o banco) apagava o voice_state
-        // recém-criado pela reconexão e avisava todo mundo (user-left) que
-        // a pessoa saiu — mesmo ela já tendo voltado. Do lado de quem
-        // reconectou, a própria tela nunca mostrou saída (o tile dela é
-        // sempre renderizado localmente), então parecia que só os OUTROS a
-        // viam sumir da call.
+
+
+
+
+
+
+
+
+
+
+
+
         const stillCurrentSocket = userSockets.get(userId) === socket.id;
         if (channelId && stillCurrentSocket) {
           try {
@@ -751,14 +751,14 @@ function setupSocket(server) {
           }
         }
 
-        // Mesma checagem: só limpar os mapas globais se nenhuma reconexão
-        // já assumiu esse userId.
+
+
         if (userSockets.get(userId) === socket.id) {
           userSockets.delete(userId);
           userChannels.delete(userId);
           onlineUsers.delete(userId);
-          // Avisa todo mundo que divide servidor com essa pessoa que ela
-          // ficou offline (bolinha cinza), igual à entrada em 'register'.
+
+
           try {
             const servers = await User.getServers(userId);
             for (const s of servers) {
