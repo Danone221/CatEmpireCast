@@ -109,7 +109,7 @@ $('backBtn')?.addEventListener('click', () => {
   }
 });
 
-// ========== LISTA DE CONVERSAS ==========
+
 async function loadConversations() {
   try {
     const r = await fetch('/api/dms', { headers: headers() });
@@ -144,7 +144,7 @@ function renderConversationList() {
   });
 }
 
-// ========== CONVERSA ABERTA ==========
+
 async function openConversation(otherId) {
   currentOtherId = otherId;
   typingUsers.clear();
@@ -296,7 +296,7 @@ function startEditMessage(msgEl, messageId) {
   input.addEventListener('blur', () => finish(true));
 }
 
-// ========== ENVIAR MENSAGEM / ANEXO ==========
+
 let pendingFile = null;
 $('attachBtn').onclick = () => { $('fileInput').click(); $('attachBtn').blur(); };
 $('fileInput').onchange = () => {
@@ -337,7 +337,7 @@ $('sendBtn').onclick = sendMessage;
 $('messageInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
 $('messageForm').onsubmit = (e) => { e.preventDefault(); if(currentBlockState.blocked_by_me||currentBlockState.blocked_me)return toast('Esta conversa está bloqueada.','error'); sendMessage(); };
 
-// ---- "Está digitando…" ----
+
 let typingTimeout = null;
 let iAmTyping = false;
 function stopTyping() {
@@ -367,7 +367,7 @@ socket.on('dm-user-typing', ({ userId: uid, userName: uname }) => {
 });
 socket.on('dm-user-stop-typing', ({ userId: uid }) => removeTypingUser(uid));
 
-// ========== BLOQUEIOS E PERFIL DA DM ==========
+
 let lastDmMessages=[];
 function openConversationMessagesOnly(){renderMessages(lastDmMessages);}
 const originalRenderMessages=renderMessages;
@@ -441,7 +441,7 @@ async function loadBlockedAccounts(){
 $('refreshBlockedBtn')?.addEventListener('click',loadBlockedAccounts);
 $('blockedAccountsList')?.addEventListener('click',async e=>{const b=e.target.closest('[data-unblock-id]');if(!b)return;await fetch('/api/social/blocks/'+encodeURIComponent(b.dataset.unblockId),{method:'DELETE',headers:headers()});loadBlockedAccounts();if(currentOtherId===b.dataset.unblockId)openConversation(currentOtherId);});
 
-// ========== ADICIONAR AMIGO ==========
+
 function closeAddFriendModal() {
   $('addFriendModal')?.classList.remove('open');
   if ($('addFriendStatus')) $('addFriendStatus').textContent = '';
@@ -493,12 +493,12 @@ $('addFriendUsername')?.addEventListener('keydown', event => {
   }
 });
 
-// ========== MOBILE SIDEBAR ==========
+
 $('hamburgerBtn').onclick = () => { $('mobileDrawer').classList.add('open'); $('sidebarOverlay').classList.add('open'); };
 $('sidebarOverlay').onclick = closeMobileSidebar;
 function closeMobileSidebar() { $('mobileDrawer').classList.remove('open'); $('sidebarOverlay').classList.remove('open'); }
 
-// ========== MEU PERFIL (mesmo modal usado em server.html) ==========
+
 const PROFILE_COLORS = [
   '#5865f2', // Discord Blurple
   '#57f287', // Discord Green
@@ -699,7 +699,7 @@ $('saveEditProfileBtn').onclick = async () => {
   } catch (e) { toast(e.message, 'error'); }
 };
 
-// ========== INÍCIO ==========
+
 (async function init() {
   loadServersRail();
   await loadConversations();
