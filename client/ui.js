@@ -224,8 +224,8 @@
       box-shadow: 0 0 10px rgba(255, 255, 255, .25);
     }
 
-                                                                     
-                                                                
+    /* Campo de cor personalizada: não deixar o input nativo aparecer
+       como um retângulo sem identificação ao lado da paleta. */
     .custom-color-field {
       width: 100%;
       min-width: 172px;
