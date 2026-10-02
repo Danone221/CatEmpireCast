@@ -301,7 +301,7 @@ body[data-theme="void"]{
 }
 }
 
-/* Animated shader + chrome orb + LimelightNav ------------------------- */
+
 .shader-layer{
   position:absolute;
   inset:0;
@@ -398,7 +398,7 @@ body[data-theme="void"]{
 }
 
 
-/* 21st.dev Limelight animation — decorative only, no navigation */
+
 @keyframes limelight-scan{
   0%{left:8%;opacity:.25}
   12%{opacity:1}
@@ -454,7 +454,7 @@ body[data-theme="void"]{
 }
 
 
-/* Effects round 2: liquid crystal + glowy waves + border beam + shimmer */
+
 @keyframes liquid-crystal-morph{
   0%,100%{
     border-radius:48% 52% 49% 51% / 39% 41% 59% 61%;
@@ -604,7 +604,7 @@ body[data-theme="void"]{
 }
 
 
-/* Animation reliability pass */
+
 .scene,
 .scene::before,
 .scene::after,
@@ -651,8 +651,8 @@ body[data-theme="void"]{
 }
 
 
-/* V1 PC Lite --------------------------------------------------------- */
-/* Replaces the expensive per-frame Canvas shader with one composited CSS layer. */
+
+
 #shaderCanvas{display:none!important}
 .shader-layer{
   overflow:hidden;
@@ -679,7 +679,7 @@ body[data-theme="void"]{
   to{transform:translate3d(13%,9%,0)}
 }
 
-/* Keep the liquid identity, but animate only compositor-friendly properties. */
+
 .chrome-orb{
   animation:chrome-orb-float 12s ease-in-out infinite!important;
   filter:saturate(1.08) contrast(1.03)!important;
@@ -695,7 +695,7 @@ body[data-theme="void"]{
   box-shadow:0 0 9px rgba(255,255,255,.82),0 0 14px rgba(255,118,65,.50)!important;
 }
 
-/* One soft wave instead of two large continuously blurred layers. */
+
 .wave-field{opacity:calc(.22 + (.10 * var(--depth)))!important}
 .wave-field::before{
   filter:blur(18px)!important;
@@ -704,10 +704,10 @@ body[data-theme="void"]{
 }
 .wave-field::after{display:none!important}
 
-/* Diagnostic beams were useful while debugging, but are unnecessary in the final V1. */
+
 .motion-proof{display:none!important}
 
-/* Simplify animated light effects. */
+
 .limelight-effect .limelight-head{
   box-shadow:0 0 7px rgba(255,255,255,.78),0 0 13px color-mix(in srgb,var(--accent2) 40%,transparent)!important;
   animation-duration:10s!important;
@@ -728,7 +728,7 @@ body[data-theme="void"]{
 .cta{animation:none!important}
 .cta::after{animation-duration:7s!important}
 
-/* Lower blur/shadow cost on large translucent surfaces. */
+
 .lab{
   backdrop-filter:blur(8px) saturate(112%)!important;
   box-shadow:0 12px 34px rgba(0,0,0,.30)!important;
@@ -740,7 +740,7 @@ body[data-theme="void"]{
     inset 0 1px rgba(255,255,255,.055)!important;
 }
 
-/* Avoid reserving GPU layers for properties we no longer animate. */
+
 .scene,
 .scene::before,
 .scene::after,
@@ -760,7 +760,7 @@ body[data-theme="void"]{
   will-change:transform!important;
 }
 
-/* Extra desktop budget: keep only the effects that materially change the look. */
+
 @media(min-width:861px){
   .gridfx{opacity:.28!important}
   .shader-vignette{background:radial-gradient(circle at 50% 42%,transparent 0 30%,rgba(0,0,0,.10) 64%,rgba(0,0,0,.58) 100%)!important}
@@ -770,7 +770,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 animation boost — compositor-only */
+
 .shader-layer::after{
   content:"";
   position:absolute;
@@ -850,7 +850,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 roaming orb */
+
 @keyframes orb-screen-roam{
   0%{transform:translateX(-50%) translate3d(-26vw,-14vh,0) rotate(-8deg) scale(.96)}
   18%{transform:translateX(-50%) translate3d(12vw,-22vh,0) rotate(-2deg) scale(1.04)}
@@ -883,7 +883,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 liquid roaming orb */
+
 @keyframes orb-liquid-roam{
   0%{
     transform:translateX(-50%) translate3d(-22vw,-12vh,0) rotate(-6deg) scale(.96);
@@ -1038,7 +1038,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 random liquid orb ------------------------------------------------ */
+
 .chrome-orb,
 .chrome-orb::before,
 .chrome-orb::after{
@@ -1106,7 +1106,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 continuous amorphous blob -------------------------------------- */
+
 .chrome-orb{
   transition:none!important;
   border-radius:var(--blob-radius,32% 68% 27% 73% / 61% 29% 71% 39%)!important;
@@ -1145,7 +1145,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 true liquid physics --------------------------------------------- */
+
 .chrome-orb{display:none!important}
 
 .liquid-physics{
@@ -1216,7 +1216,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 WebGL Liquid Metal ---------------------------------------------- */
+
 .liquid-physics{display:none!important}
 .liquid-metal-canvas{
   position:absolute;
@@ -1234,7 +1234,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 exact Paper LiquidMetal ----------------------------------------- */
+
 .shader-layer,
 .gridfx,
 .wave-field,
@@ -1275,7 +1275,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 mobile composition — compact + lighter -------------------------- */
+
 @media(max-width:860px){
   html,body{
     background:#05070c!important;
@@ -1299,7 +1299,7 @@ body[data-theme="void"]{
     opacity:.16!important;
   }
 
-  /* On mobile the shader becomes a contained visual object instead of the whole background. */
+
   #liquidMetalReactRoot{
     inset:auto!important;
     left:50%!important;
@@ -1462,7 +1462,7 @@ body[data-theme="void"]{
     font-size:11px!important;
   }
 
-  /* mobile performance budget */
+
   .border-beam{
     animation-duration:14s!important;
     filter:none!important;
@@ -1508,7 +1508,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 mobile composition hotfix */
+
 @media(max-width:860px){
   .shell,
   .preview,
@@ -1581,7 +1581,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 mobile width containment */
+
 @media(max-width:860px){
   .shell{
     width:auto!important;
@@ -1619,7 +1619,7 @@ body[data-theme="void"]{
 }
 
 
-/* Discord animated icon */
+
 .discord{
   display:flex!important;
   align-items:center!important;
@@ -1638,7 +1638,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 mobile hard containment */
+
 @media(max-width:560px){
   .shell{
     padding-left:16px!important;
@@ -1678,7 +1678,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 green glass login — video inspired ------------------------------ */
+
 .login-glass-card{
   display:grid!important;
   grid-template-columns:minmax(185px,.88fr) minmax(0,1.25fr)!important;
@@ -2100,7 +2100,7 @@ body[data-theme="void"]{
 }
 
 
-/* Uiverse-inspired login buttons -------------------------------------- */
+
 .uiv-primary-wrap{
   position:relative;
   width:100%;
@@ -2274,7 +2274,7 @@ body[data-theme="void"]{
   to{opacity:1;transform:none;filter:none}
 }
 
-/* staggered glow for both text rows */
+
 .uiv-primary-text > span:nth-child(1){animation-delay:0s}
 .uiv-primary-text > span:nth-child(2){animation-delay:.08s}
 .uiv-primary-text > span:nth-child(3){animation-delay:.16s}
@@ -2285,7 +2285,7 @@ body[data-theme="void"]{
 .uiv-primary-text > span:nth-child(8){animation-delay:.56s}
 .uiv-primary-text > span:nth-child(9){animation-delay:.64s}
 
-/* Discord glass button — using only the Discord icon from the supplied set */
+
 .login-form-pane .uiv-discord{
   position:relative!important;
   isolation:isolate!important;
@@ -2406,7 +2406,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 Uiverse-inspired action buttons + desktop-identical mobile bg ---- */
+
 .fx-primary-btn{
   --fx-hue:158deg;
   position:relative!important;
@@ -2625,7 +2625,7 @@ body[data-theme="void"]{
   letter-spacing:.025em;
 }
 
-/* Mobile keeps the exact desktop background / full-screen LiquidMetal. */
+
 @media(max-width:860px){
   html,body{
     background:var(--bg)!important;
@@ -2802,7 +2802,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 mobile layout polish — split cards, more background visibility --- */
+
 @media(max-width:860px){
   h1{
     width:100%!important;
@@ -2928,7 +2928,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 login reveal + title shine + interactive cards + Cat Empire footer */
+
 #liquidMetalReactRoot{
   position:fixed!important;
   inset:0!important;
@@ -2974,7 +2974,7 @@ body[data-theme="void"]{
   100%{background-position:-135% 0}
 }
 
-/* Remove sparkle glyph from primary button while preserving the Uiverse text effect. */
+
 .fx-primary-btn{
   gap:0!important;
 }
@@ -2985,7 +2985,7 @@ body[data-theme="void"]{
   min-width:7.8em!important;
 }
 
-/* Login entrance inspired by the supplied video: shell resolves first, then both panels. */
+
 .login-glass-card{
   transform-origin:center!important;
   animation:login-shell-reveal 1.05s cubic-bezier(.16,1,.3,1) both!important;
@@ -3022,7 +3022,7 @@ body[data-theme="void"]{
   100%{opacity:1;transform:none}
 }
 
-/* Cursor-reactive cards. */
+
 .login-visual-pane,
 .login-form-pane,
 .cat-footer-card{
@@ -3064,7 +3064,7 @@ body[data-theme="void"]{
   }
 }
 
-/* Footer adapted from the supplied HoverFooter. */
+
 .cat-footer{
   width:min(1180px,calc(100% - 40px));
   margin:74px auto 28px;
@@ -3362,7 +3362,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 final polish fixes */
+
 .login-form-pane .uiv-primary{
   gap:0!important;
 }
@@ -3370,7 +3370,7 @@ body[data-theme="void"]{
   display:none!important;
 }
 
-/* Release entrance-animation transforms after reveal so desktop hover tilt works again. */
+
 .scene.login-ready .login-visual-pane,
 .scene.login-ready .login-form-pane{
   animation:none!important;
@@ -3386,7 +3386,7 @@ body[data-theme="void"]{
 }
 
 
-/* V1 LiquidMetal contrast balance */
+
 #liquidMetalReactRoot{
   opacity:.62!important;
 }
@@ -3412,7 +3412,7 @@ body[data-theme="void"]{
 }
 
 
-/* Discord icon shape fix */
+
 .uiv-discord-icon-wrap{
   width:32px!important;
   height:32px!important;
