@@ -67,7 +67,7 @@ async function loadServers() {
   }
 }
 
-// clique nos cards de servidor
+
 if ($('serversList')) {
   $('serversList').addEventListener('click', (e) => {
     const card = e.target.closest('.server-card');
@@ -100,12 +100,12 @@ async function resumeUserDestination() {
     return;
   }
 
-  // Se não há servidor salvo, vai direto para a tela de DMs (que tem a rail lateral de servidores)
+
   location.href = '/dms.html';
 }
 
 async function restoreSession() {
-  // Retorno do fluxo OAuth do Discord chega como #discord_token=... na URL
+
   const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
   const discordToken = hash.get('discord_token');
   if (discordToken) {
@@ -135,7 +135,7 @@ async function restoreSession() {
     if (d?.user) setSession(d.user);
     await resumeUserDestination();
   } catch (e) {
-    // Token salvo inválido — limpa sessão
+
     userId = ''; userName = ''; token = '';
     localStorage.removeItem('cat_user_id');
     localStorage.removeItem('cat_user_name');
