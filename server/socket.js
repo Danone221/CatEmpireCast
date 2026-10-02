@@ -31,11 +31,11 @@ function setupSocket(server) {
     pingInterval: 25000
   });
 
-  const userSockets = new Map(); // userId -> socketId
-  const socketUsers = new Map(); // socketId -> userId
-  const userChannels = new Map(); // userId -> channelId
-  const onlineUsers = new Set(); // userId presente com pelo menos 1 socket ativo
-  const screenShareSockets = new Map(); // screen:<userId> -> socketId
+  const userSockets = new Map();
+  const socketUsers = new Map();
+  const userChannels = new Map();
+  const onlineUsers = new Set();
+  const screenShareSockets = new Map();
 
   io.use(async (socket, next) => {
     try {
