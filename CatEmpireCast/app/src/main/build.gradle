@@ -9,9 +9,9 @@ android {
 
     defaultConfig {
         applicationId "com.danonin.catempirecast"
-        // minSdk 26 pra usar ícone adaptativo (vetor) sem precisar de PNGs
-        // legados de mipmap. A MediaProjection (captura de tela) em si
-        // funciona a partir da API 21.
+                                                                           
+                                                                       
+                                       
         minSdk 26
         targetSdk 34
         versionCode 1

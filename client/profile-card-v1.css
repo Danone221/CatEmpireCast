@@ -1,4 +1,4 @@
-/* Cat Empire profile card — complete redesign V1 */
+                                                    
 .room-page .profile-x-modal{
   align-items:center!important;
   justify-content:center!important;
@@ -512,7 +512,7 @@
   to{opacity:1;transform:none}
 }
 
-/* Desktop spotlight + subtle parallax */
+                                         
 @media(pointer:fine){
   .room-page .profile-x-card{
     transform-style:preserve-3d!important;
@@ -527,7 +527,7 @@
   }
 }
 
-/* Mobile bottom sheet */
+                         
 @media(max-width:720px){
   .room-page .profile-x-modal{
     align-items:flex-end!important;
@@ -649,7 +649,7 @@
   }
 }
 
-/* Native app: denser without losing the new design */
+                                                      
 html.cat-native-app .room-page .profile-x-card{
   max-height:86dvh!important;
 }

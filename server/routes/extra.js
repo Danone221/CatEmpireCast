@@ -6,7 +6,7 @@ const User = require('../database/models/User');
 const { queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
 
-// ========== CATEGORIAS DE CANAIS ==========
+                                             
 router.get('/servers/:serverId/categories', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -60,10 +60,10 @@ router.delete('/servers/:serverId/categories/:categoryId', authenticate, async (
   }
 });
 
-// ========== PERFIL DENTRO DO SERVIDOR ==========
-// Inclui datas e uma hierarquia de cargos visual para o servidor atual.
-// O sistema de permissões existente continua baseado em admin/member; os
-// nomes abaixo são a representação visual solicitada no perfil.
+                                                  
+                                                                        
+                                                                         
+                                                                
 router.get('/users/:userId/server-profile', authenticate, async (req, res) => {
   try {
     const serverId = req.query.serverId;

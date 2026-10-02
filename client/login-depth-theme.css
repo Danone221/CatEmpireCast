@@ -1,7 +1,7 @@
 @import url('/rx-test-theme.css?v=20260930a');
 
-/* CatEmpireCast — Login depth pass
-   Keeps the previous RX-inspired landing structure; adds richer depth and motion. */
+                                   
+                                                                                     
 
 :root{
   --login-violet:#8c5cff;
@@ -52,7 +52,7 @@
   50%{border-color:rgba(139,92,246,.22);background:rgba(139,92,246,.07)}
 }
 
-/* Deep layered page */
+                       
 .landing-page{
   isolation:isolate;
   background:
@@ -114,7 +114,7 @@
   filter:blur(26px);
 }
 
-/* Header depth */
+                  
 .landing-topbar{
   background:
     linear-gradient(180deg,rgba(8,9,15,.86),rgba(5,6,11,.63))!important;
@@ -144,7 +144,7 @@
     0 0 36px rgba(140,92,255,.36)!important;
 }
 
-/* Hero depth */
+                
 .landing-page .crystal-kicker{
   box-shadow:
     0 12px 34px rgba(0,0,0,.25),
@@ -185,7 +185,7 @@
 .landing-page .entry-features span:nth-child(2){animation-delay:-1.7s}
 .landing-page .entry-features span:nth-child(3){animation-delay:-3.4s}
 
-/* Login card: stronger spatial separation */
+                                             
 .landing-page .auth{
   perspective:1000px;
   border-color:rgba(164,128,255,.22)!important;
@@ -259,7 +259,7 @@
     inset 0 2px 8px rgba(0,0,0,.30)!important;
 }
 
-/* More animated CTAs */
+                        
 .btn{
   transition:
     transform .18s ease,
@@ -301,7 +301,7 @@
     0 0 28px rgba(88,101,242,.12)!important;
 }
 
-/* Tiny orbit lights around the card */
+                                       
 .landing-page .auth .entry-note{
   position:relative;
 }
@@ -326,7 +326,7 @@
   animation:login-orbit 13s -4s linear infinite reverse;
 }
 
-/* Server list, if session exposes it on landing */
+                                                   
 .server-card{
   box-shadow:
     0 12px 30px rgba(0,0,0,.22),
@@ -341,7 +341,7 @@
     0 0 34px rgba(140,92,255,.08)!important;
 }
 
-/* Mobile: keep motion but reduce geometry shifts */
+                                                    
 @media(max-width:900px){
   .landing-page .auth{
     animation:rx-fade-up .6s .22s ease-out both!important;

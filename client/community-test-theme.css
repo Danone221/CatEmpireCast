@@ -1,7 +1,7 @@
 
-/* CatEmpireCast — community visual test
-   Direction: Brazilian social/community landing + clean teal/blue workspace.
-   Loaded last; existing backend, Socket.IO, WebRTC and DOM ids remain canonical. */
+                                        
+                                                                             
+                                                                                    
 
 :root{
   --ce-bg:#07110f;
@@ -61,7 +61,7 @@ body::before{
 body>*{position:relative;z-index:1}
 ::selection{background:rgba(105,191,255,.32);color:#fff}
 
-/* Landing ------------------------------------------------------------- */
+                                                                           
 .landing-page{
   min-height:100dvh;
   background:transparent!important;
@@ -417,7 +417,7 @@ body>*{position:relative;z-index:1}
 }
 .landing-copyright a{color:#a2b6b2!important}
 
-/* Workspace ----------------------------------------------------------- */
+                                                                           
 .discord-page,.app-shell{
   background:
     radial-gradient(circle at 8% 0%,rgba(20,102,72,.12),transparent 22rem),
@@ -626,7 +626,7 @@ body>*{position:relative;z-index:1}
 .members-sidebar h4{color:#66817b!important}
 .member-item:hover{background:rgba(255,255,255,.035)!important}
 
-/* Modal language ------------------------------------------------------ */
+                                                                           
 .modal{
   background:rgba(3,9,10,.72)!important;
   backdrop-filter:blur(9px)!important;
@@ -645,7 +645,7 @@ body>*{position:relative;z-index:1}
   color:#dff1fc!important;
 }
 
-/* MOBILE: deterministic drawer + one workspace panel at a time ------- */
+                                                                          
 @media(max-width:860px){
   html,body,.discord-page{
     width:100%!important;
@@ -853,7 +853,7 @@ body>*{position:relative;z-index:1}
   }
 }
 
-/* Landing responsive -------------------------------------------------- */
+                                                                           
 @media(max-width:900px){
   .landing-main{
     padding-top:70px!important;
@@ -939,7 +939,7 @@ body>*{position:relative;z-index:1}
 }
 
 
-/* Narrow viewport hardening */
+                               
 @media(max-width:640px){
   .landing-page,
   .landing-main,

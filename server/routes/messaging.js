@@ -39,7 +39,7 @@ async function loadMessage(messageId) {
   `, [messageId]);
 }
 
-// Histórico de mensagens com paginação. A API não altera o visual existente.
+                                                                             
 router.get('/channels/:channelId/messages', async (req, res) => {
   try {
     const { channel } = await requireMemberByChannel(req.params.channelId, req.user.id);
@@ -63,7 +63,7 @@ router.get('/channels/:channelId/messages', async (req, res) => {
   } catch (e) { fail(res, e, 'Erro ao carregar mensagens'); }
 });
 
-// Criar mensagem com resposta, embeds, menções e anexos já persistidos.
+                                                                        
 router.post('/channels/:channelId/messages', async (req, res) => {
   try {
     const { channel } = await requireMemberByChannel(req.params.channelId, req.user.id);

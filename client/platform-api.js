@@ -48,7 +48,7 @@
     automod: serverId => request(`/api/platform/servers/${id(serverId)}/automod`),
     saveAutomod: (serverId, data) => request(`/api/platform/servers/${id(serverId)}/automod`, { method:'PUT', body:data }),
 
-    // ===== V4 expansion =====
+                               
     fullServer: serverId => request(`/api/v4/servers/${id(serverId)}/full`),
     updateServerProfile: (serverId, data) => request(`/api/v4/servers/${id(serverId)}/profile`, { method:'PATCH', body:data }),
     security: serverId => request(`/api/v4/servers/${id(serverId)}/security`),

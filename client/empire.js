@@ -74,8 +74,8 @@
   for (const [id,glyph] of Object.entries(controls)) {
     const control = el(id);
     if (!control) continue;
-    // Some existing media handlers update button labels; observe only those
-    // controls, leaving the media elements and their streams untouched.
+                                                                            
+                                                                        
     const decorate = () => {
       if (!control.querySelector('svg')) control.innerHTML = icon(glyph);
       control.setAttribute('aria-label',control.title || id);
@@ -85,8 +85,8 @@
     const observer = new MutationObserver(decorate);
     observer.observe(control,{childList:true,attributes:true,attributeFilter:['title','class']});
   }
-  // The rails predate keyboard controls. Delegate so asynchronously loaded
-  // server entries remain reachable after the server list refreshes.
+                                                                           
+                                                                     
   const rail = el('serverRail');
   if (rail) {
     const accessible = () => rail.querySelectorAll('.rail-icon').forEach(item => {

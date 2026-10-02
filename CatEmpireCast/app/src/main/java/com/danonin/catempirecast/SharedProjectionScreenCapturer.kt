@@ -10,7 +10,7 @@ import org.webrtc.VideoCapturer
 import org.webrtc.VideoFrame
 import org.webrtc.VideoSink
 
-/** Captura vídeo usando o mesmo MediaProjection usado pelo áudio interno. */
+                                                                             
 class SharedProjectionScreenCapturer(
     private val projection: MediaProjection,
     private val projectionCallback: MediaProjection.Callback
@@ -97,17 +97,17 @@ class SharedProjectionScreenCapturer(
     override fun isScreencast(): Boolean = true
 
     override fun onFrame(frame: VideoFrame) {
-        // MediaProjection entrega na taxa física do aparelho (com frequência
-        // 60/90/120 Hz). Sem limitar aqui, a opção de FPS era apenas visual e
-        // cada encoder WebRTC tentava processar quadros desnecessários.
+                                                                             
+                                                                              
+                                                                        
         val now = System.nanoTime()
         val frameIntervalNs = 1_000_000_000L / targetFps.coerceAtLeast(1)
         if (nextFrameAtNs == 0L) {
             nextFrameAtNs = now + frameIntervalNs
         } else {
-            // Aceita o quadro físico ligeiramente adiantado. Sem tolerância,
-            // uma tela de 60 Hz podia entregar 33,2 ms em vez de 33,3 ms e o
-            // limitador descartava esse quadro, fazendo 30 FPS virar ~20 FPS.
+                                                                             
+                                                                             
+                                                                              
             if (now + FRAME_EARLY_TOLERANCE_NS < nextFrameAtNs) return
             do {
                 nextFrameAtNs += frameIntervalNs

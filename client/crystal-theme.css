@@ -1,6 +1,6 @@
-/* CatEmpireCast — Crystal-inspired visual layer
-   2026-09-30
-   Loaded last so the existing application logic and DOM hooks stay untouched. */
+                                                
+             
+                                                                                 
 
 :root{
   --bg:#09090b;
@@ -44,7 +44,7 @@ button{border-radius:9px}
 a{color:inherit}
 .sky,.moon,.stars,.skyline,.mist{display:none!important}
 
-/* Landing page ---------------------------------------------------------- */
+                                                                             
 .landing-page{
   min-height:100dvh;
   background:transparent!important;
@@ -318,7 +318,7 @@ a{color:inherit}
 .landing-copyright a{color:#a1a1aa;text-decoration:none}
 .landing-copyright a:hover{color:#fafafa}
 
-/* App shell ------------------------------------------------------------- */
+                                                                             
 .discord-page{
   background:#09090b!important;
 }
@@ -532,7 +532,7 @@ a{color:inherit}
 .member-item:hover{background:#1c1c1f!important}
 .member-avatar{border-radius:50%!important}
 
-/* DMs / profile / sheets ----------------------------------------------- */
+                                                                            
 .dm-server-head{gap:9px!important}
 .btn-add-friend{
   border:1px solid var(--ce-border)!important;
@@ -594,7 +594,7 @@ a{color:inherit}
 }
 .blocked-account-row{border-bottom:1px solid var(--ce-border)!important}
 
-/* Modals --------------------------------------------------------------- */
+                                                                            
 .modal{
   background:rgba(0,0,0,.68)!important;
   backdrop-filter:blur(7px);
@@ -640,7 +640,7 @@ a{color:inherit}
 }
 .invite-options select{border:1px solid var(--ce-border)!important;border-radius:8px!important}
 
-/* Invite page ---------------------------------------------------------- */
+                                                                            
 .invite-card{
   overflow:hidden;
   padding:0!important;
@@ -671,13 +671,13 @@ a{color:inherit}
 }
 .invite-stats{color:#a1a1aa!important}
 
-/* Scrollbars ----------------------------------------------------------- */
+                                                                            
 *{scrollbar-width:thin;scrollbar-color:#3f3f46 transparent}
 *::-webkit-scrollbar{width:9px;height:9px}
 *::-webkit-scrollbar-track{background:transparent}
 *::-webkit-scrollbar-thumb{background:#3f3f46;border:2px solid transparent;border-radius:999px;background-clip:padding-box}
 
-/* Responsive ----------------------------------------------------------- */
+                                                                            
 @media(max-width:860px){
   .landing-main{padding-top:54px!important}
   .members-sidebar{background:#111113!important}
@@ -698,7 +698,7 @@ a{color:inherit}
 }
 
 
-/* Final Crystal alignment ------------------------------------------------ */
+                                                                              
 .landing-page .hero{
   border:0!important;
   border-radius:0!important;

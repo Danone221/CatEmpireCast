@@ -36,7 +36,7 @@ function fail(res, e, fallback) {
   return res.status(e.status || 400).json({ error: e.message || fallback });
 }
 
-// ===== ROLES =====
+                    
 router.get('/servers/:serverId/roles', async (req, res) => {
   try {
     await requireMember(req.params.serverId, req.user.id);
@@ -137,7 +137,7 @@ router.put('/servers/:serverId/members/:userId/roles', async (req, res) => {
   } catch (e) { fail(res, e, 'Erro ao atualizar cargos do membro'); }
 });
 
-// ===== CATEGORIES / CHANNELS / PERMISSIONS =====
+                                                  
 router.get('/servers/:serverId/structure', async (req, res) => {
   try {
     await requireMember(req.params.serverId, req.user.id);
@@ -164,7 +164,7 @@ router.put('/servers/:serverId/permissions', async (req, res) => {
   } catch (e) { fail(res, e, 'Erro ao salvar permissões'); }
 });
 
-// ===== THREADS / FORUM =====
+                              
 router.get('/channels/:channelId/threads', async (req, res) => {
   try {
     const channel = await queryOne('SELECT * FROM channels WHERE id=$1', [req.params.channelId]);
@@ -214,7 +214,7 @@ router.post('/channels/:channelId/forum/posts', async(req,res)=>{
   }catch(e){fail(res,e,'Erro ao criar post');}
 });
 
-// ===== SOCIAL / NOTIFICATIONS =====
+                                     
 router.get('/friends', async(req,res)=>{
   try{ const rows=await query(`SELECT f.status,f.created_at,u.id,u.username,u.display_name,u.avatar FROM friends f JOIN users u ON u.id=f.friend_id WHERE f.user_id=$1 ORDER BY u.username`,[req.user.id]); res.json(rows); }
   catch(e){fail(res,e,'Erro ao listar amigos');}
@@ -240,7 +240,7 @@ router.post('/friends/:userId/accept',async(req,res)=>{
 router.get('/notifications',async(req,res)=>{try{res.json(await query('SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100',[req.user.id]));}catch(e){fail(res,e,'Erro ao listar notificações');}});
 router.post('/notifications/:id/read',async(req,res)=>{try{await query('UPDATE notifications SET read=true WHERE id=$1 AND user_id=$2',[req.params.id,req.user.id]);res.json({success:true});}catch(e){fail(res,e,'Erro ao marcar notificação');}});
 
-// ===== EVENTS / MODERATION / AUDIT =====
+                                          
 router.get('/servers/:serverId/events',async(req,res)=>{try{await requireMember(req.params.serverId,req.user.id);res.json(await query('SELECT e.*,u.username AS creator_name,COUNT(a.user_id)::int AS attendees FROM server_events e JOIN users u ON u.id=e.creator_id LEFT JOIN event_attendees a ON a.event_id=e.id WHERE e.server_id=$1 GROUP BY e.id,u.username ORDER BY e.start_at',[req.params.serverId]));}catch(e){fail(res,e,'Erro ao listar eventos');}});
 router.post('/servers/:serverId/events',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const e=await queryOne(`INSERT INTO server_events(id,server_id,creator_id,name,description,start_at,end_at,location,type,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,[uuidv4(),req.params.serverId,req.user.id,String(req.body.name||'Evento').slice(0,100),String(req.body.description||'').slice(0,2000),Number(req.body.startAt),req.body.endAt?Number(req.body.endAt):null,req.body.location||null,req.body.type||'other',req.body.status||'scheduled']);res.json(e);}catch(e){fail(res,e,'Erro ao criar evento');}});
 router.post('/events/:eventId/rsvp',async(req,res)=>{try{const e=await queryOne('SELECT * FROM server_events WHERE id=$1',[req.params.eventId]);if(!e)return res.status(404).json({error:'Evento não encontrado'});await requireMember(e.server_id,req.user.id);await query('INSERT INTO event_attendees(event_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[e.id,req.user.id]);res.json({success:true});}catch(e){fail(res,e,'Erro ao confirmar presença');}});
@@ -248,7 +248,7 @@ router.get('/servers/:serverId/moderation',async(req,res)=>{try{await requireMan
 router.post('/servers/:serverId/moderation',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const action=req.body.action;if(!['warning','kick','ban','timeout'].includes(action))return res.status(400).json({error:'Ação inválida'});const m=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,req.body.userId,req.user.id,action,req.body.reason||null,req.body.expiresAt?Number(req.body.expiresAt):null]);await audit(req.params.serverId,req.user.id,`moderation.${action}`,'user',req.body.userId,{reason:req.body.reason||null},req.body.reason||null);res.json(m);}catch(e){fail(res,e,'Erro ao aplicar moderação');}});
 router.get('/servers/:serverId/audit-log',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query('SELECT a.*,u.username AS actor_name FROM audit_logs a JOIN users u ON u.id=a.actor_id WHERE a.server_id=$1 ORDER BY a.created_at DESC LIMIT 500',[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar audit log');}});
 
-// ===== ONBOARDING / AUTOMOD / SERVER SETTINGS =====
+                                                     
 router.get('/servers/:serverId/onboarding',async(req,res)=>{try{await requireMember(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM onboarding_configs WHERE server_id=$1',[req.params.serverId]) || {server_id:req.params.serverId,enabled:false,questions:[],default_roles:[],default_channels:[]});}catch(e){fail(res,e,'Erro ao carregar onboarding');}});
 router.put('/servers/:serverId/onboarding',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO onboarding_configs(server_id,enabled,welcome_text,questions,default_roles,default_channels,updated_at) VALUES($1,$2,$3,$4,$5,$6,extract(epoch FROM now())::bigint) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,welcome_text=EXCLUDED.welcome_text,questions=EXCLUDED.questions,default_roles=EXCLUDED.default_roles,default_channels=EXCLUDED.default_channels,updated_at=EXCLUDED.updated_at RETURNING *`,[req.params.serverId,!!req.body.enabled,req.body.welcomeText||null,JSON.stringify(req.body.questions||[]),JSON.stringify(req.body.defaultRoles||[]),JSON.stringify(req.body.defaultChannels||[])]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar onboarding');}});
 router.get('/servers/:serverId/automod',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM automod_configs WHERE server_id=$1',[req.params.serverId]) || {server_id:req.params.serverId,enabled:false,rules:{},keywords:[],actions:{}});}catch(e){fail(res,e,'Erro ao carregar automod');}});

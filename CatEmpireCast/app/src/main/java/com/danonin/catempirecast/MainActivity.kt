@@ -32,7 +32,7 @@ import androidx.core.content.ContextCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.danonin.catempirecast.databinding.ActivityMainBinding
 
-/** Cat Empire — app-casca em WebView. */
+                                         
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         if (granted.isNotEmpty()) request.grant(granted) else request.deny()
     }
 
-    // ===== Transmissão nativa de tela (WebRTC via BroadcastService) =====
+                                                                           
     private var broadcastService: BroadcastService? = null
     private var broadcastBound = false
     private var pendingBaseUrl: String? = null
@@ -127,8 +127,8 @@ class MainActivity : AppCompatActivity() {
     private val screenAudioPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ ->
-        // Mesmo se o usuário negar o áudio, a tela continua funcionando.
-        // Quando concedido, o serviço inclui o áudio interno automaticamente.
+                                                                         
+                                                                              
         launchScreenCapturePermission()
     }
 

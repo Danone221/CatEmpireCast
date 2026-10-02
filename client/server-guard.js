@@ -1,9 +1,9 @@
 (() => {
   'use strict';
 
-  // Never let a missing Socket.IO client library prevent the entire server UI
-  // from booting. Realtime/voice can degrade gracefully; HTTP server data must
-  // still render.
+                                                                              
+                                                                               
+                  
   if (typeof window.io !== 'function') {
     const listeners = new Map();
     window.io = function () {

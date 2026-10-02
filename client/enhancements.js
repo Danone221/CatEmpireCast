@@ -1,4 +1,4 @@
-/* CAT EMPIRE — Discord-style enhancements requested 2026-08-21 */
+                                                                  
 (function () {
   'use strict';
 

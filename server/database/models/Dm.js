@@ -2,9 +2,9 @@ const { query, queryOne } = require('../index');
 const { v4: uuidv4 } = require('uuid');
 
 class Dm {
-  // Lista de conversas do usuário — a pessoa do outro lado, a última
-  // mensagem trocada e quantas estão sem ler. Sem tabela de "conversa"
-  // separada: a lista é derivada direto de dm_messages.
+                                                                     
+                                                                       
+                                                        
   static async getConversations(userId) {
     const rows = await query(
       `SELECT dm.*,
@@ -96,7 +96,7 @@ class Dm {
     await query('DELETE FROM dm_messages WHERE id = $1', [id]);
   }
 
-  // Marca como lidas todas as mensagens que `otherId` mandou pra `userId`.
+                                                                           
   static async markRead(userId, otherId) {
     await query(
       `UPDATE dm_messages SET read_at = extract(epoch FROM now())::bigint

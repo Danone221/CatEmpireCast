@@ -29,7 +29,7 @@ async function getStage(channelId) {
     WHERE c.id=$1 AND c.type='stage'`, [channelId]);
 }
 
-// Stage state: moderators, speakers and audience.
+                                                  
 router.get('/channels/:channelId/stage', async (req, res) => {
   try {
     const channel = await getStage(req.params.channelId);

@@ -1,4 +1,4 @@
-/* CAT EMPIRE profile sheet — native neon/pixel visual. */
+                                                          
 .profile-sheet-modal{
   align-items:flex-end!important;
   padding:0!important;
@@ -217,8 +217,8 @@
 }
 
 
-/* O WebView do APK já desconta as barras do sistema. O perfil precisa caber
-   nessa área sem esconder ações nem ocupar a tela inteira. */
+                                                                            
+                                                              
 html.cat-native-app .profile-sheet-modal{
   padding:10px 10px max(10px,env(safe-area-inset-bottom))!important
 }

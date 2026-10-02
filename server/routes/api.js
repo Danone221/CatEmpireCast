@@ -8,7 +8,7 @@ const { query, queryOne } = require('../database');
 const { authenticate } = require('../middleware/auth');
 const { sanitizePlainText, validateImageValue, verifyAccessToken } = require('../security');
 
-// Endpoint público usado pela tela inicial.
+                                            
 router.get('/servers/active', async (req, res) => {
   try {
     const row = await queryOne('SELECT COUNT(*) AS count FROM servers');
@@ -19,14 +19,14 @@ router.get('/servers/active', async (req, res) => {
   }
 });
 
-// ========== PERFIL DO USUÁRIO ==========
+                                          
 
-// Dados completos do usuário logado (pra pré-preencher o modal de edição)
+                                                                          
 router.get('/me', authenticate, async (req, res) => {
   res.json(req.user);
 });
 
-// Editar meu perfil: nome de exibição, avatar, bio, cor do banner
+                                                                  
 router.put('/me/profile', authenticate, async (req, res) => {
   try {
     const { displayName, avatar, bio, bannerColor } = req.body;
@@ -47,10 +47,10 @@ router.put('/me/profile', authenticate, async (req, res) => {
     }
     const user = await User.update(req.user.id, data);
 
-    // Propaga em tempo real pra quem estiver com a página aberta em
-    // qualquer servidor que essa pessoa participa — sem isso, nomes e
-    // avatares atualizados só apareceriam pros outros membros depois de
-    // um refresh manual da página.
+                                                                    
+                                                                      
+                                                                        
+                                   
     const io = req.app.get('io');
     if (io) {
       const servers = await User.getServers(req.user.id);
@@ -67,7 +67,7 @@ router.put('/me/profile', authenticate, async (req, res) => {
   }
 });
 
-// Alterar senha da conta
+                         
 router.put('/me/password', authenticate, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -82,8 +82,8 @@ router.put('/me/password', authenticate, async (req, res) => {
   }
 });
 
-// Ver o perfil público de outra pessoa — só liberado pra quem divide
-// pelo menos um servidor com ela (evita expor perfis pra estranhos).
+                                                                     
+                                                                     
 router.get('/users/:userId/profile', authenticate, async (req, res) => {
   try {
     if (req.params.userId === req.user.id) {
@@ -107,10 +107,10 @@ router.get('/users/:userId/profile', authenticate, async (req, res) => {
   }
 });
 
-// ========== MENSAGENS PRIVADAS (DM) ==========
+                                                
 const Dm = require('../database/models/Dm');
 
-// Lista de conversas — pra montar a lista lateral da aba de DMs.
+                                                                 
 router.get('/dms', authenticate, async (req, res) => {
   try {
     const conversations = await Dm.getConversations(req.user.id);
@@ -121,7 +121,7 @@ router.get('/dms', authenticate, async (req, res) => {
   }
 });
 
-// Total de DMs não lidas — pro badge no ícone que abre a aba de DMs.
+                                                                     
 router.get('/dms/unread-count', authenticate, async (req, res) => {
   try {
     const count = await Dm.getUnreadTotal(req.user.id);
@@ -132,8 +132,8 @@ router.get('/dms/unread-count', authenticate, async (req, res) => {
   }
 });
 
-// Histórico de conversa com uma pessoa específica. Marca como lidas as
-// mensagens dela pra mim como efeito colateral de abrir a conversa.
+                                                                       
+                                                                    
 router.get('/dms/:userId', authenticate, async (req, res) => {
   try {
     if (req.params.userId === req.user.id) {
@@ -154,9 +154,9 @@ router.get('/dms/:userId', authenticate, async (req, res) => {
   }
 });
 
-// ========== SERVIDORES ==========
+                                   
 
-// Criar servidor
+                 
 router.post('/servers', authenticate, async (req, res) => {
   try {
     const { name, icon } = req.body;
@@ -179,7 +179,7 @@ router.post('/servers', authenticate, async (req, res) => {
   }
 });
 
-// Listar servidores do usuário
+                               
 router.get('/servers', authenticate, async (req, res) => {
   try {
     const servers = await Server.findByUser(req.user.id);
@@ -190,7 +190,7 @@ router.get('/servers', authenticate, async (req, res) => {
   }
 });
 
-// Buscar servidor por ID
+                         
 router.get('/servers/:serverId', authenticate, async (req, res) => {
   try {
     const server = await Server.findById(req.params.serverId);
@@ -221,9 +221,9 @@ router.delete('/servers/:serverId/members/me', authenticate, async (req, res) =>
   }
 });
 
-// ========== CONVITES DE SERVIDOR ==========
+                                             
 
-// Criar convite para o servidor
+                                
 router.post('/servers/:serverId/invites', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -244,7 +244,7 @@ router.post('/servers/:serverId/invites', authenticate, async (req, res) => {
   }
 });
 
-// Listar convites do servidor (somente ADMIN)
+                                              
 router.get('/servers/:serverId/invites', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -259,7 +259,7 @@ router.get('/servers/:serverId/invites', authenticate, async (req, res) => {
   }
 });
 
-// Revogar convite
+                  
 router.delete('/servers/:serverId/invites/:code', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -277,7 +277,7 @@ router.delete('/servers/:serverId/invites/:code', authenticate, async (req, res)
   }
 });
 
-// Prévia pública de convite
+                            
 router.get('/invites/:code', async (req, res) => {
   try {
     const invite = await Invite.findByCode(req.params.code);
@@ -324,7 +324,7 @@ router.get('/invites/:code', async (req, res) => {
   }
 });
 
-// Entrar em servidor usando convite
+                                    
 router.post('/invites/:code/join', authenticate, async (req, res) => {
   try {
     const invite = await Invite.findByCode(req.params.code);
@@ -371,7 +371,7 @@ router.post('/invites/:code/join', authenticate, async (req, res) => {
   }
 });
 
-// Entrar em servidor direto (se já tiver permissão)
+                                                    
 router.post('/servers/:serverId/join', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -385,7 +385,7 @@ router.post('/servers/:serverId/join', authenticate, async (req, res) => {
   }
 });
 
-// Editar servidor (somente ADMIN): nome, ícone, cor do banner, descrição
+                                                                         
 router.put('/servers/:serverId', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -424,7 +424,7 @@ router.put('/servers/:serverId', authenticate, async (req, res) => {
   }
 });
 
-// Alterar cargo de membro do servidor (somente ADMIN)
+                                                      
 router.put('/servers/:serverId/members/:memberId/role', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -454,7 +454,7 @@ router.put('/servers/:serverId/members/:memberId/role', authenticate, async (req
   }
 });
 
-// Expulsar membro ou sair do servidor
+                                      
 router.delete('/servers/:serverId/members/:memberId', authenticate, async (req, res) => {
   try {
     const isSelf = req.params.memberId === req.user.id || req.params.memberId === 'me';
@@ -489,7 +489,7 @@ router.delete('/servers/:serverId/members/:memberId', authenticate, async (req, 
   }
 });
 
-// Excluir servidor permanentemente (somente o CRIADOR do servidor)
+                                                                   
 router.delete('/servers/:serverId', authenticate, async (req, res) => {
   try {
     const server = await Server.findById(req.params.serverId);
@@ -514,9 +514,9 @@ router.delete('/servers/:serverId', authenticate, async (req, res) => {
   }
 });
 
-// ========== CANAIS ==========
+                               
 
-// Criar canal (somente ADMIN do servidor)
+                                          
 router.post('/servers/:serverId/channels', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -545,7 +545,7 @@ router.post('/servers/:serverId/channels', authenticate, async (req, res) => {
   }
 });
 
-// Deletar canal (somente ADMIN do servidor)
+                                            
 router.delete('/servers/:serverId/channels/:channelId', authenticate, async (req, res) => {
   try {
     const role = await Server.getMemberRole(req.params.serverId, req.user.id);
@@ -564,7 +564,7 @@ router.delete('/servers/:serverId/channels/:channelId', authenticate, async (req
   }
 });
 
-// Buscar canal por ID
+                      
 router.get('/channels/:channelId', authenticate, async (req, res) => {
   try {
     const channel = await Channel.findById(req.params.channelId);
@@ -578,7 +578,7 @@ router.get('/channels/:channelId', authenticate, async (req, res) => {
   }
 });
 
-// Buscar mensagens do canal
+                            
 router.get('/channels/:channelId/messages', authenticate, async (req, res) => {
   try {
     const channel = await Channel.findById(req.params.channelId);
@@ -594,7 +594,7 @@ router.get('/channels/:channelId/messages', authenticate, async (req, res) => {
   }
 });
 
-// Buscar membros no canal de voz
+                                 
 router.get('/channels/:channelId/voice', authenticate, async (req, res) => {
   try {
     const channel = await Channel.findById(req.params.channelId);
@@ -609,8 +609,8 @@ router.get('/channels/:channelId/voice', authenticate, async (req, res) => {
   }
 });
 
-// Credenciais de RTMP pra transmitir a tela do celular (app externo tipo
-// Larix Broadcaster) pro canal de voz — ver server/media.js.
+                                                                         
+                                                             
 router.get('/channels/:channelId/cast-credentials', authenticate, async (req, res) => {
   try {
     const channel = await Channel.findById(req.params.channelId);

@@ -16,9 +16,9 @@
     if (window.__catEmpireVNextLoaded || window.__catEmpireVNextLoading) return;
     window.__catEmpireVNextLoading = true;
 
-    // Only the canonical layers are loaded. The former features-v4-final layer
-    // duplicated interaction handlers and was responsible for TDZ/runtime
-    // failures around invite and profile actions.
+                                                                               
+                                                                          
+                                                  
     loadScript('/platform-api.js?v=20260822-v6', 'data-cat-empire-platform')
       .then(function () {
         return loadScript('/runtime-v6.js?v=20260822-v7', 'data-cat-empire-v6');

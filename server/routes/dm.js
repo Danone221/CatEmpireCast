@@ -19,7 +19,7 @@ async function ensureUser(userId) {
   return user;
 }
 
-// ===== DM INDIVIDUAL =====
+                            
 router.post('/dms/:userId/messages', async (req, res) => {
   try {
     if (req.params.userId === req.user.id) return res.status(400).json({ error: 'Não é possível enviar DM para você mesmo' });
@@ -79,7 +79,7 @@ router.delete('/dms/messages/:messageId', async (req, res) => {
   } catch (e) { fail(res, e, 'Erro ao excluir DM'); }
 });
 
-// ===== GROUP DM =====
+                       
 router.get('/group-dms', async (req, res) => {
   try {
     const groups = await query(`

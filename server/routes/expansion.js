@@ -23,7 +23,7 @@ const requireManage = async (serverId, userId) => {
   return member;
 };
 
-// ===== SERVER PROFILE / SECURITY / COMMUNITY =====
+                                                    
 router.get('/servers/:serverId/full', async (req, res) => {
   try {
     await requireServerMember(req.params.serverId, req.user.id);
@@ -113,7 +113,7 @@ router.put('/servers/:serverId/community', async (req, res) => {
   } catch (e) { fail(res, e, 'Erro ao salvar comunidade'); }
 });
 
-// ===== INVITES =====
+                      
 router.post('/servers/:serverId/invites', async (req, res) => {
   try {
     await requireServerMember(req.params.serverId, req.user.id);
@@ -179,7 +179,7 @@ router.delete('/invites/:code', async (req, res) => {
   } catch (e) { fail(res, e, 'Erro ao revogar convite'); }
 });
 
-// ===== EMOJIS / STICKERS =====
+                                
 router.get('/servers/:serverId/emojis', async (req, res) => {
   try { await requireServerMember(req.params.serverId, req.user.id); res.json(await query('SELECT * FROM server_emojis WHERE server_id=$1 ORDER BY name', [req.params.serverId])); }
   catch (e) { fail(res, e, 'Erro ao listar emojis'); }
@@ -200,20 +200,20 @@ router.post('/servers/:serverId/stickers', async (req,res)=>{
   try{await requireManage(req.params.serverId,req.user.id);const s=await queryOne(`INSERT INTO server_stickers(id,server_id,name,description,image) VALUES($1,$2,$3,$4,$5) RETURNING *`,[uuidv4(),req.params.serverId,String(req.body.name||'sticker').slice(0,32),String(req.body.description||'').slice(0,200),String(req.body.image||'').slice(0,200000)]);res.json(s);}catch(e){fail(res,e,'Erro ao criar sticker');}
 });
 
-// ===== MODERATION / AUDIT =====
+                                 
 router.get('/servers/:serverId/moderation', async (req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query(`SELECT m.*,u.username,m2.username AS moderator_username FROM moderation_actions m JOIN users u ON u.id=m.user_id JOIN users m2 ON m2.id=m.moderator_id WHERE m.server_id=$1 ORDER BY m.started_at DESC`,[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar moderação');}});
 router.post('/servers/:serverId/moderation', async(req,res)=>{
   try{await requireManage(req.params.serverId,req.user.id);const action=String(req.body.action||'warning');if(!['warning','kick','ban','timeout'].includes(action))return res.status(400).json({error:'Ação inválida'});const row=await queryOne(`INSERT INTO moderation_actions(id,server_id,user_id,moderator_id,action,reason,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,[uuidv4(),req.params.serverId,req.body.userId,req.user.id,action,String(req.body.reason||'').slice(0,1000),req.body.expiresAt?Number(req.body.expiresAt):null]);await query(`INSERT INTO audit_logs(id,server_id,actor_id,action,target_type,target_id,reason,changes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,[uuidv4(),req.params.serverId,req.user.id,`moderation.${action}`,'user',req.body.userId,row.reason,JSON.stringify(row)]);res.json(row);}catch(e){fail(res,e,'Erro ao executar moderação');}
 });
 router.get('/servers/:serverId/audit-log',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);res.json(await query(`SELECT a.*,u.username AS actor_username FROM audit_logs a JOIN users u ON u.id=a.actor_id WHERE a.server_id=$1 ORDER BY a.created_at DESC LIMIT 500`,[req.params.serverId]));}catch(e){fail(res,e,'Erro ao carregar audit log');}});
 
-// ===== ONBOARDING / AUTOMOD =====
+                                   
 router.get('/servers/:serverId/onboarding',async(req,res)=>{try{await requireServerMember(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM onboarding_configs WHERE server_id=$1',[req.params.serverId])||{});}catch(e){fail(res,e,'Erro ao carregar onboarding');}});
 router.put('/servers/:serverId/onboarding',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO onboarding_configs(server_id,enabled,welcome_text,questions,default_roles,default_channels) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,welcome_text=EXCLUDED.welcome_text,questions=EXCLUDED.questions,default_roles=EXCLUDED.default_roles,default_channels=EXCLUDED.default_channels,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,req.body.welcomeText||null,JSON.stringify(req.body.questions||[]),JSON.stringify(req.body.defaultRoles||[]),JSON.stringify(req.body.defaultChannels||[])]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar onboarding');}});
 router.get('/servers/:serverId/automod',async(req,res)=>{try{await requireServerMember(req.params.serverId,req.user.id);res.json(await queryOne('SELECT * FROM automod_configs WHERE server_id=$1',[req.params.serverId])||{});}catch(e){fail(res,e,'Erro ao carregar automod');}});
 router.put('/servers/:serverId/automod',async(req,res)=>{try{await requireManage(req.params.serverId,req.user.id);const row=await queryOne(`INSERT INTO automod_configs(server_id,enabled,rules,keywords,actions) VALUES($1,$2,$3,$4,$5) ON CONFLICT(server_id) DO UPDATE SET enabled=EXCLUDED.enabled,rules=EXCLUDED.rules,keywords=EXCLUDED.keywords,actions=EXCLUDED.actions,updated_at=extract(epoch FROM now())::bigint RETURNING *`,[req.params.serverId,!!req.body.enabled,JSON.stringify(req.body.rules||{}),JSON.stringify(req.body.keywords||[]),JSON.stringify(req.body.actions||{})]);res.json(row);}catch(e){fail(res,e,'Erro ao salvar automod');}});
 
-// ===== GLOBAL SEARCH =====
+                            
 router.get('/search',async(req,res)=>{
   try{
     const q=String(req.query.q||'').trim();
@@ -287,7 +287,7 @@ router.get('/search',async(req,res)=>{
   }catch(e){fail(res,e,'Erro na pesquisa');}
 });
 
-// ===== MEMBER DETAILS =====
+                             
 router.get('/servers/:serverId/members/:userId',async(req,res)=>{try{await requireServerMember(req.params.serverId,req.user.id);const row=await queryOne(`SELECT sm.*,u.id,u.username,u.display_name,u.avatar,u.banner,u.bio,u.status,u.activities,u.badges,u.created_at AS account_created_at FROM server_members sm JOIN users u ON u.id=sm.user_id WHERE sm.server_id=$1 AND sm.user_id=$2`,[req.params.serverId,req.params.userId]);if(!row)return res.status(404).json({error:'Membro não encontrado'});row.roles=await query(`SELECT r.* FROM server_roles r JOIN server_role_members rm ON rm.role_id=r.id WHERE rm.server_id=$1 AND rm.user_id=$2 ORDER BY r.position DESC`,[req.params.serverId,req.params.userId]);res.json(row);}catch(e){fail(res,e,'Erro ao carregar membro');}});
 
 module.exports = router;

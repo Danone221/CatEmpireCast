@@ -1,11 +1,11 @@
-/*
- * CAT EMPIRE — compatibilidade mobile / WebView
- *
- * Esta camada agora é deliberadamente pequena.
- * O boot canônico é: room.js + runtime-v5 + interação v6.
- * As camadas antigas enhancements/features-v2/features-v3 não são mais
- * injetadas porque duplicavam listeners, modais e handlers de interação.
- */
+  
+                                                
+  
+                                               
+                                                          
+                                                                       
+                                                                         
+   
 (function () {
   'use strict';
 
@@ -80,7 +80,7 @@
     };
   }
 
-  // Convite: o modal precisa existir antes do room.js registrar os handlers.
+                                                                             
   function ensureInviteModal() {
     if (document.getElementById('inviteModal')) return;
     const modal = document.createElement('div');

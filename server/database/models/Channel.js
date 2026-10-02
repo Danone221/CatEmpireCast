@@ -78,8 +78,8 @@ class Channel {
     );
   }
 
-  // Edita o conteúdo de uma mensagem já enviada (marca edited_at). Não
-  // mexe em anexo — só o texto pode ser editado, igual ao Discord.
+                                                                       
+                                                                   
   static async editMessage(id, content) {
     await query(
       `UPDATE messages SET content = $1, edited_at = extract(epoch FROM now())::bigint WHERE id = $2`,

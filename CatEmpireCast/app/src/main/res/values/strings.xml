@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Cat Empire</string>
 
-    <!-- Endereço do site. Troque aqui se o domínio do Render/Railway mudar
-         — é o único lugar que precisa editar. -->
+                                                                           
+                                                  
     <string name="app_base_url" translatable="false">https://cat-empire-n6qv.onrender.com/</string>
 
     <string name="loading">carregando o império…</string>

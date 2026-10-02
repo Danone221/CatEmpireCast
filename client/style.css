@@ -6,7 +6,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:-ap
 body{background-image:repeating-linear-gradient(90deg,rgba(117,54,205,.08) 0,rgba(117,54,205,.08) 2px,transparent 2px,transparent 27px),repeating-linear-gradient(0deg,rgba(117,54,205,.025) 0,rgba(117,54,205,.025) 1px,transparent 1px,transparent 4px);}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer}
-/* ---------- cenário do céu (base pixel: grid + brilho) ---------- */
+                                                                      
 .sky{position:absolute;inset:0;height:100%;z-index:0;overflow:hidden;pointer-events:none}
 .moon{position:absolute;top:-70px;right:14%;width:220px;height:220px;border-radius:50%;
   background:radial-gradient(circle at 38% 35%,#e9d9ff 0%,#c9adf0 28%,#8b5fd6 60%,#4a2a8a 100%);
@@ -30,7 +30,7 @@ button{cursor:pointer}
   mix-blend-mode:screen}
 .mist{position:absolute;left:0;right:0;bottom:0;height:340px;background:linear-gradient(transparent,rgba(10,3,20,.9) 78%);}
 
-/* ---------- topo / marca ---------- */
+                                        
 .landing-page{position:relative;min-height:100vh;display:flex;flex-direction:column;z-index:1}
 .landing-topbar{height:72px;flex:none;background:rgba(13,3,25,.72);border-bottom:4px solid #29104b;display:flex;align-items:center;justify-content:space-between;padding:0 22px;gap:14px;backdrop-filter:blur(2px);position:relative;z-index:5}
 .topbar-right{display:flex;align-items:center;gap:12px}
@@ -45,11 +45,11 @@ button{cursor:pointer}
 .brand{font-size:20px;color:#fff;text-shadow:0 0 14px rgba(181,107,255,.65),3px 3px #3d146e;display:flex;align-items:center;gap:12px}
 .creator{font-size:10px;color:var(--gold);letter-spacing:1px;margin-top:10px}
 
-/* ---------- mascote (logo grande na tela inicial) ---------- */
+                                                                 
 .pixel-cat{width:200px;height:200px;margin:0 auto 20px;filter:drop-shadow(0 0 14px #9b3cff) drop-shadow(0 0 36px rgba(155,60,255,.4));animation:brandFloat 4s ease-in-out infinite}
 @media (max-width:600px){.pixel-cat{width:150px;height:150px}}
 
-/* ---------- área principal (hero + card de status) ---------- */
+                                                                  
 .landing-main{position:relative;z-index:1;flex:1;display:grid;grid-template-columns:minmax(0,720px) 260px;gap:26px;align-items:start;justify-content:center;padding:54px 22px 40px;max-width:1120px;margin:0 auto;width:100%}
 .hero{text-align:center;padding:0;max-width:900px;margin:0}
 .hero h1{font-size:26px;line-height:1.6;text-shadow:4px 4px #2b0c50;letter-spacing:1px}
@@ -71,7 +71,7 @@ button{cursor:pointer}
   .active-pill{display:none}
 }
 
-/* ---------- rodapé ---------- */
+                                  
 .landing-footer{position:relative;z-index:1;max-width:1120px;margin:0 auto;width:100%;padding:20px 22px 30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
 .footer-item{display:flex;gap:14px;border-top:2px solid #29104b;padding-top:20px}
 .footer-item h4{font-size:11px;margin-bottom:8px;text-shadow:2px 2px #2b0c50}
@@ -96,21 +96,21 @@ button{cursor:pointer}
 .member-avatar img{width:100%;height:100%;object-fit:cover}.btn:disabled{opacity:.5;cursor:not-allowed}
 .type-toggle{display:flex;gap:10px;margin-bottom:16px}.type-opt{flex:1;padding:12px;border:2px solid #3b1b68;background:#0d0618;color:#8d7ba9;font-size:9px}.type-opt.active{border-color:#a65cff;color:#fff;background:#1c0e37}
 
-/* ===== Discord-style room layout ===== */
+                                           
 
-/* CRÍTICO: .text-view e .voice-view abaixo definem display:flex direto na
-   classe. Isso tem a MESMA especificidade do [hidden] nativo do navegador,
-   e como vem depois no CSS, vence — ou seja, setar elemento.hidden=true no
-   JS não escondia nada. É a causa do chat, barra "conectado" e botões de
-   chamada aparecerem todos empilhados na tela ao mesmo tempo. */
+                                                                          
+                                                                           
+                                                                           
+                                                                         
+                                                                 
 [hidden] { display: none !important; }
 
-/* 100vh no celular usa a altura "cheia" do viewport, contando com a área
-   coberta pela barra de endereço do navegador — então o conteúdo (inclusive
-   os botões de microfone/câmera/tela lá embaixo) fica mais alto do que a
-   tela realmente visível, e como overflow é hidden, não dá nem pra rolar
-   até eles. 100dvh acompanha a altura visível de verdade; o 100vh antes
-   dele é só um fallback pra navegador muito antigo que não entende dvh. */
+                                                                         
+                                                                            
+                                                                         
+                                                                         
+                                                                        
+                                                                           
 .discord-page{height:100vh;height:100dvh;overflow:hidden}
 .mobile-topbar{display:none}
 .app-shell{display:flex;height:100vh;height:100dvh}
@@ -118,7 +118,7 @@ button{cursor:pointer}
 
 .channels-sidebar{width:260px;flex:none;background:#0d0319;border-right:3px solid #29104b;display:flex;flex-direction:column;min-width:0;min-height:0}
 
-/* ---------- barra de servidores (estilo Discord, cores/traço do site) ---------- */
+                                                                                     
 .server-rail{width:72px;flex:none;background:#08020f;border-right:3px solid #29104b;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 0;overflow-y:auto;overflow-x:hidden}
 .rail-icon{width:46px;height:46px;flex:none;display:grid;place-items:center;background:#150a29;border:2px solid #3b1b68;color:#b99adb;font-size:13px;cursor:pointer;position:relative;box-shadow:3px 3px 0 #050007;transition:border-color .12s ease,color .12s ease,transform .12s ease}
 .rail-home,.rail-add{font-size:20px}
@@ -156,16 +156,16 @@ button{cursor:pointer}
 .user-role{font-family:monospace;font-size:9px;color:#7f6a98;margin-top:3px;text-transform:uppercase}
 .leave-btn{background:#1b0710;border:2px solid #a11c35;color:#ff5369;font-size:13px;padding:8px 10px;flex:none}
 
-/* .main-panel é item de flexbox do .app-shell (linha) E TAMBÉM container
-   flex pros seus próprios filhos (coluna) — nesse aninhamento, todo item
-   flex tem "min-height:auto" por padrão, ou seja, ele se recusa a encolher
-   além da altura do próprio conteúdo. Como o conteúdo (grid de voz +
-   controles) podia ser mais alto que a tela, o .main-panel "estourava"
-   pra fora do .discord-page — e como ali é overflow:hidden, os botões lá
-   embaixo (mic/câmera/tela) ficavam fora da área visível/tocável. Esse é
-   o motivo real dos botões terem continuado invisíveis mesmo depois do
-   fix de 100vh -> 100dvh (que resolvia só a MEDIDA da tela, não esse
-   comportamento de encolhimento). min-height:0 aqui resolve isso. */
+                                                                         
+                                                                         
+                                                                           
+                                                                     
+                                                                       
+                                                                         
+                                                                         
+                                                                       
+                                                                     
+                                                                     
 .main-panel{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:rgba(10,2,18,.45)}
 .panel-header{height:56px;flex:none;border-bottom:3px solid #29104b;display:flex;align-items:center;padding:0 18px;font-size:12px;color:#eee8ff;gap:10px}
 
@@ -247,10 +247,10 @@ button{cursor:pointer}
   .vc-btn{width:48px;height:48px;font-size:15px}
 }
 
-/* Classe extraída do inline style do botão genérico 'criar canal' (CSP não permite style inline com hash/nonce configurados) */
+                                                                                                                                
 .add-channel-generic { width: 100%; text-align: left; padding: 10px; color: #7f6a98; font-size: 10px; }
 
-/* ===== Toasts e confirm customizados (substituem alert()/confirm() nativos) ===== */
+                                                                                      
 .toast-container{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:10px;align-items:center;pointer-events:none;width:min(420px,92vw)}
 .toast{pointer-events:auto;width:100%;background:#150829;border:2px solid var(--purple2);box-shadow:5px 5px 0 #050007,0 0 16px rgba(181,107,255,.35);color:var(--text);font-family:monospace;font-size:12px;line-height:1.5;padding:14px 16px;opacity:0;transform:translateY(-14px);transition:opacity .2s ease,transform .2s ease}
 .toast.show{opacity:1;transform:translateY(0)}
@@ -264,7 +264,7 @@ button{cursor:pointer}
 .confirm-actions{display:flex;gap:10px}
 .confirm-actions .btn{flex:1;margin:0}
 
-/* ---------- perfil de usuário e configurações de servidor (fidelidade Discord) ---------- */
+                                                                                              
 .server-head-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .server-head-row .server-name{flex:1;min-width:0}
 .server-gear-btn{background:none;border:2px solid transparent;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 4px;flex:none;line-height:1}
@@ -293,7 +293,7 @@ textarea.bio-input{width:100%;padding:12px;background:#09020f;border:2px solid #
 .server-icon-preview{width:56px;height:56px;border:3px solid #5a2a95;overflow:hidden;display:grid;place-items:center;font-size:22px;flex:none;background:#09020f}
 .server-icon-preview img{width:100%;height:100%;object-fit:cover}
 .native-broadcast-btn{background:linear-gradient(135deg,var(--purple),var(--pink))!important}
-/* ---------- fidelidade Discord: presença, digitando, markdown, editar/excluir, não lidos ---------- */
+                                                                                                        
 .m-avatar{position:relative}
 .presence-dot{position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;border:2px solid #0a0215}
 .presence-dot.online{background:var(--success);box-shadow:0 0 4px rgba(61,220,122,.7)}
@@ -321,7 +321,7 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 .edit-message-wrap{margin-top:2px}
 .edit-message-input{width:100%;padding:8px 10px;background:#0d0618;border:2px solid var(--purple2);color:#eee8ff;font-family:monospace;font-size:12px;outline:none}
 .edit-message-hint{font-family:monospace;font-size:8px;color:var(--muted);margin-top:4px}
-/* ---------- mensagens privadas (DM) ---------- */
+                                                   
 .rail-logo-img{border-radius:2px}
 .dm-unread-badge{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--danger);color:#fff;font-family:monospace;font-size:8px;display:grid;place-items:center;box-shadow:0 0 6px rgba(255,59,85,.7);border:2px solid #08020f}
 .dm-item{padding:8px 10px}
@@ -332,11 +332,11 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 .dm-preview{font-family:monospace;font-size:8px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 .unread-badge{min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--danger);color:#fff;font-family:monospace;font-size:8px;display:grid;place-items:center;flex:none}
 
-/* ---------- barra de usuário e botão de configurações (estilo Discord) ---------- */
+                                                                                      
 .user-settings-btn{background:#15092a;border:2px solid #4a2180;color:var(--muted);font-size:15px;padding:6px 9px;cursor:pointer;flex:none;transition:border-color .15s ease,color .15s ease}
 .user-settings-btn:hover{border-color:var(--purple2);color:#fff;background:#240f45}
 
-/* ---------- sistema de convites ---------- */
+                                               
 .server-invite-bar{margin-top:8px}
 .btn-server-invite{width:100%;padding:8px 10px;background:#15092a;border:2px solid #5a2a95;color:var(--gold);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;font-weight:bold;text-align:center;box-shadow:2px 2px 0 #050007;transition:border-color .15s ease,background .15s ease;display:flex;align-items:center;justify-content:center;gap:6px}
 .btn-server-invite:hover{border-color:var(--purple2);background:#220e40;color:#fff}
@@ -361,7 +361,7 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 .invite-config-panel select:focus{border-color:var(--purple2)}
 .invite-config-panel .btn-primary{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;font-weight:bold;padding:10px 14px}
 
-/* ---------- customização avançada de perfil e servidor ---------- */
+                                                                      
 .banner-edit-wrap{position:relative}
 .banner-btn-group{position:absolute;top:8px;right:10px;display:flex;gap:6px;z-index:3}
 .banner-upload-btn, .banner-clear-btn{padding:4px 8px;background:rgba(8,2,15,.82);border:1px solid var(--purple2);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:10px;font-weight:500;cursor:pointer;border-radius:3px;display:flex;align-items:center;gap:4px;backdrop-filter:blur(2px);transition:all .15s ease}
@@ -371,7 +371,7 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 
 .custom-color-input{width:32px;height:26px;border:2px solid #050007;background:none;cursor:pointer;padding:0;border-radius:3px}
 
-/* ---------- gerenciamento de membros e cargos no servidor ---------- */
+                                                                         
 .server-members-manage-list{max-height:220px;overflow-y:auto;background:#09020f;border:2px solid #29104b;padding:8px;margin-top:8px}
 .server-member-manage-row{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid #1c0a36}
 .server-member-manage-row:last-child{border-bottom:none}
@@ -383,10 +383,10 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 .btn-kick-member:hover{background:#a11c35;color:#fff}
 .danger-zone-box{border:2px solid #a11c35;background:rgba(40,10,20,.6);padding:14px;margin-top:16px}
 
-/* ===== FIX: botões de ação do Perfil e do Servidor ===== */
-/* Os dois editores usam o mesmo layout: conteúdo com rolagem própria e
-   rodapé de ações fixo. Assim os botões não ficam escondidos abaixo do
-   conteúdo e permanecem acessíveis mesmo quando a janela é menor. */
+                                                             
+                                                                       
+                                                                       
+                                                                     
 .profile-modal-box,
 #serverSettingsModal .modal-box{
   max-height:min(88dvh,760px);
@@ -456,7 +456,7 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 .btn-server-invite{background:#5865f2!important;border:0!important;border-radius:4px!important;color:#fff!important;box-shadow:none!important;cursor:pointer}.btn-server-invite:hover{background:#4752c4!important}.invite-dialog{width:min(520px,92vw);border-radius:8px;background:#313338;border:0}.invite-dialog-head{display:flex;justify-content:space-between;gap:12px}.invite-dialog-head h2{font:20px sans-serif;margin:0}.invite-close{border:0;background:transparent;color:#b5bac1;font-size:28px;cursor:pointer}.invite-link-row{display:flex;gap:8px;background:#1e1f22;border-radius:4px;padding:8px;margin:18px 0}.invite-link-row span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px;color:#dbdee1;font:12px monospace}.invite-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}.invite-options label{color:#b5bac1;font:10px sans-serif;font-weight:700}.invite-options select{display:block;width:100%;margin-top:6px;background:#1e1f22;color:#dbdee1;border:1px solid #111214;padding:9px}
 
 
-/* ===== Mobile members, invite and friend dialogs ===== */
+                                                           
 .mobile-members-btn{display:none;margin-left:auto;align-items:center;gap:7px;background:#150829;border:2px solid #5a2a95;color:#dcd3ee;padding:8px 10px;font:9px var(--pixel);cursor:pointer}
 .mobile-members-btn:hover,.mobile-members-btn[aria-expanded="true"]{border-color:var(--purple2);color:#fff;box-shadow:0 0 12px rgba(181,107,255,.35)}
 .invite-dialog,.add-friend-dialog{width:min(540px,calc(100vw - 28px));max-height:min(760px,calc(100dvh - 32px));overflow:auto;border:3px solid #5a2a95!important;border-radius:0!important;background:#120820!important;padding:22px!important;box-shadow:8px 8px 0 #050007,0 0 24px rgba(181,107,255,.25)!important;color:#eee8ff}
@@ -501,7 +501,7 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 }
 
 
-/* ===== DM profile, blocking and server profile ===== */
+                                                         
 .server-profile-trigger{width:100%;display:flex;align-items:center;gap:8px;background:transparent;border:0;color:inherit;padding:0;cursor:pointer;text-align:left}
 .server-profile-trigger .server-name{display:block;min-width:0;max-width:50ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .server-profile-arrow{margin-left:auto;font:18px monospace;color:#9f8ab8;transition:transform .15s}
@@ -571,7 +571,7 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 .dm-item-blocked{opacity:.72}.dm-item-blocked .dm-preview{color:#ff7891}
 
 
-/* ===== Upload de imagem/banner do servidor ===== */
+                                                     
 .cat-v5-upload-grid{display:grid;grid-template-columns:minmax(0,180px) minmax(0,1fr);gap:16px;align-items:start}
 .cat-v5-image-preview{display:grid;place-items:center;width:100%;overflow:hidden;background:#09020f;border:2px solid #3b1b68;color:#8d7ba9;font:9px monospace;text-align:center}
 .cat-v5-image-preview.square{width:132px;height:132px}
@@ -581,8 +581,8 @@ typing-indicator{flex:none;padding:4px 18px;font-family:monospace;font-size:9px;
 @media(max-width:700px){.cat-v5-upload-grid{grid-template-columns:1fr}.cat-v5-image-preview.square{width:112px;height:112px}.cat-v5-image-preview.banner{height:120px}}
 
 
-/* Fullscreen interno: funciona no navegador e no Android WebView sem depender
-   da implementação incompleta da Fullscreen API do vídeo. */
+                                                                              
+                                                             
 body.voice-expanded-active{overflow:hidden!important}
 .voice-tile.voice-tile-expanded{
   position:fixed!important;

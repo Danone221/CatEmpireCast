@@ -16,16 +16,16 @@ let selectedTextChannelId = null;
 let currentServer = null;
 let unreadChannels = new Set();
 let onlineUserIds = new Set();
-let activeMainView = 'text'; // 'text' | 'voice'
-let voiceChannelId = null;   // channel currently connected to voice
+let activeMainView = 'text';                    
+let voiceChannelId = null;                                          
 let pendingChannelType = 'text';
 
-// ---- Voice/WebRTC state ----
+                               
 let localStream = null;
 let micOn = true;
 let camOn = false;
 let screenOn = false;
-let screenAudioTrack = null; // faixa de áudio da tela (som do jogo/vídeo compartilhado), separada do mic
+let screenAudioTrack = null;                                                                             
 let screenAudioPlaybackOn = localStorage.getItem('cat_screen_audio_playback') !== 'off';
 const VIDEO_SETTINGS_KEY = 'cat_video_settings';
 const VIDEO_PROFILES = {
@@ -34,10 +34,10 @@ const VIDEO_PROFILES = {
   1080: { width: 1920, height: 1080, bitrate: 5_000_000 }
 };
 let videoSettings = loadVideoSettings();
-const peers = {}; // remoteUserId -> { pc, polite, makingOffer, ignoreOffer }
-const nativeScreenOwners = {}; // screen:<userId> -> perfil do autor
-// Um sinal ICE/SDP pode chegar depois de native-screen-ended. Guardar esses
-// IDs impede que o WebView recrie a tela encerrada como um tile de avatar.
+const peers = {};                                                            
+const nativeScreenOwners = {};                                      
+                                                                            
+                                                                           
 const endedNativeScreenPeers = new Set();
 const ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 

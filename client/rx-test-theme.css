@@ -1,7 +1,7 @@
 @import url('/crystal-theme.css?v=20260930');
 
-/* CatEmpireCast — RX-inspired visual test
-   Experimental skin only. Existing DOM ids, Socket.IO/WebRTC hooks and API logic stay untouched. */
+                                          
+                                                                                                    
 
 :root{
   --rx-bg:#06070a;
@@ -100,7 +100,7 @@ body>*{position:relative;z-index:1}
   color:white;
 }
 
-/* Top bar -------------------------------------------------------------- */
+                                                                            
 .landing-topbar{
   height:72px!important;
   padding-left:max(22px,calc((100vw - 1240px)/2))!important;
@@ -173,7 +173,7 @@ body>*{position:relative;z-index:1}
   animation:rx-pulse 2.6s ease-in-out infinite;
 }
 
-/* Landing / hero ------------------------------------------------------- */
+                                                                            
 .landing-page .landing-main{
   width:min(100%,1240px)!important;
   min-height:calc(100dvh - 136px)!important;
@@ -274,7 +274,7 @@ body>*{position:relative;z-index:1}
   text-transform:uppercase;
 }
 
-/* Login card as product panel ----------------------------------------- */
+                                                                           
 .landing-page .auth{
   grid-area:auth;
   position:relative;
@@ -431,7 +431,7 @@ body>*{position:relative;z-index:1}
   box-shadow:0 14px 32px rgba(0,0,0,.28)!important;
 }
 
-/* Copyright ------------------------------------------------------------ */
+                                                                            
 .landing-copyright{
   color:#565d6d!important;
   font-size:10px!important;
@@ -442,7 +442,7 @@ body>*{position:relative;z-index:1}
 .landing-copyright a{color:#a4aabd!important}
 .landing-copyright a:hover{color:white!important}
 
-/* Main application shell ---------------------------------------------- */
+                                                                           
 .discord-page,
 .app-shell{
   background:
@@ -625,7 +625,7 @@ body>*{position:relative;z-index:1}
   background:rgba(255,255,255,.035)!important;
 }
 
-/* Modals / sheets ------------------------------------------------------ */
+                                                                            
 .modal{
   background:
     radial-gradient(circle at 50% 30%,rgba(139,92,246,.08),transparent 35rem),
@@ -675,7 +675,7 @@ body>*{position:relative;z-index:1}
   box-shadow:0 0 24px rgba(139,92,246,.08)!important;
 }
 
-/* Invite page ---------------------------------------------------------- */
+                                                                            
 .invite-card{
   border:1px solid rgba(255,255,255,.10)!important;
   border-radius:28px!important;
@@ -693,7 +693,7 @@ body>*{position:relative;z-index:1}
   box-shadow:0 10px 35px rgba(0,0,0,.35),0 0 26px rgba(139,92,246,.16)!important;
 }
 
-/* Utility glow states -------------------------------------------------- */
+                                                                            
 .dm-unread-badge,
 .online-dot,
 .voice-connected-bar .dot{
@@ -703,7 +703,7 @@ body>*{position:relative;z-index:1}
   color:var(--rx-muted)!important;
 }
 
-/* Mobile --------------------------------------------------------------- */
+                                                                            
 @media(max-width:900px){
   .landing-page .landing-main{
     padding-top:76px!important;
@@ -768,7 +768,7 @@ body>*{position:relative;z-index:1}
   }
 }
 
-/* Motion accessibility ------------------------------------------------- */
+                                                                            
 @media(prefers-reduced-motion:reduce){
   *,
   *::before,

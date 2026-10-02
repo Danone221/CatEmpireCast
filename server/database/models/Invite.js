@@ -3,7 +3,7 @@ const crypto = require('crypto');
 
 class Invite {
   static generateCode() {
-    // Código curto e amigável para URLs (ex: kx82hZ_1)
+                                                       
     return crypto.randomBytes(6).toString('base64url').slice(0, 8);
   }
 
@@ -44,12 +44,12 @@ class Invite {
 
     if (!invite) return null;
 
-    // Verificar se expirou
+                           
     if (invite.expires_at && invite.expires_at < now) {
       return { ...invite, expired: true };
     }
 
-    // Verificar se atingiu limite de usos
+                                          
     if (invite.max_uses && invite.uses >= invite.max_uses) {
       return { ...invite, maxUsesReached: true };
     }

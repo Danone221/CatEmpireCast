@@ -3,7 +3,7 @@ const q = new URLSearchParams(location.search);
 const userId = localStorage.getItem('cat_user_id');
 const userName = localStorage.getItem('cat_user_name') || 'Membro';
 const token = localStorage.getItem('cat_token');
-const openWith = q.get('with'); // pra abrir direto numa conversa (ex: veio do botão "Enviar mensagem" no perfil)
+const openWith = q.get('with');                                                                                  
 
 if (!userId || !token) { location.href = '/'; }
 

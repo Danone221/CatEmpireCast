@@ -25,10 +25,10 @@ module.exports = {
     enabled: process.env.MEDIA_SERVER_ENABLED === 'true',
     rtmpPort: Number(process.env.MEDIA_RTMP_PORT || 1935),
     httpPort: Number(process.env.MEDIA_HTTP_PORT || 8000),
-    // Host público (com protocolo) de onde o navegador vai puxar o
-    // HTTP-FLV pra tocar o cast. Se o servidor de mídia estiver rodando
-    // junto (mesma máquina/host que o app principal), normalmente é o
-    // mesmo domínio do app, só que na porta MEDIA_HTTP_PORT.
+                                                                   
+                                                                        
+                                                                      
+                                                             
     publicRtmpHost: process.env.MEDIA_PUBLIC_RTMP_HOST || '',
     publicHttpBase: process.env.MEDIA_PUBLIC_HTTP_BASE || ''
   },

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Convertido de client/logo.svg (o pixel cat oficial do site), com
-     gradientes trocados por cores planas equivalentes pra não depender de
-     <aapt:attr> dentro do VectorDrawable. Agrupado com um scale pra caber
-     na "zona segura" do ícone adaptativo (o launcher recorta os cantos). -->
+                                                                     
+                                                                          
+                                                                          
+                                                                             
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
     android:viewportWidth="512" android:viewportHeight="512">

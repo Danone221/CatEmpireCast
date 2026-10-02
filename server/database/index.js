@@ -5,8 +5,8 @@ if (!config.databaseUrl) {
   console.error('❌ DATABASE_URL não configurada. Defina a variável de ambiente apontando para o Postgres.');
 }
 
-// Conexões locais/internas (ex: rede interna do Render) geralmente não precisam de SSL.
-// Conexões externas (ex: seu Postgres acessado de outro host) normalmente exigem.
+                                                                                        
+                                                                                  
 const isLocal = /localhost|127\.0\.0\.1/.test(config.databaseUrl || '');
 const pool = new Pool({
   connectionString: config.databaseUrl,
@@ -27,7 +27,7 @@ async function queryOne(text, params = []) {
   return rows[0] || null;
 }
 
-// ========== SCHEMA ==========
+                               
 async function initSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
@@ -194,8 +194,8 @@ async function initSchema() {
           END;
   `);
 
-  // Migração dos canais existentes. md5() é nativo do PostgreSQL e evita
-  // depender de extensões como pgcrypto só para gerar IDs de categorias.
+                                                                         
+                                                                         
   await pool.query(`
     INSERT INTO channel_categories (id, server_id, name, position)
     SELECT md5(x.server_id || ':' || x.category), x.server_id, x.category,

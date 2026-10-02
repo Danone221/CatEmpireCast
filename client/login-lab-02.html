@@ -301,7 +301,7 @@ body[data-theme="void"]{
 }
 }
 
-/* Animated shader + chrome orb + LimelightNav ------------------------- */
+                                                                           
 .shader-layer{
   position:absolute;
   inset:0;
@@ -398,7 +398,7 @@ body[data-theme="void"]{
 }
 
 
-/* 21st.dev Limelight animation — decorative only, no navigation */
+                                                                   
 @keyframes limelight-scan{
   0%{left:8%;opacity:.25}
   12%{opacity:1}
@@ -454,7 +454,7 @@ body[data-theme="void"]{
 }
 
 
-/* Effects round 2: liquid crystal + glowy waves + border beam + shimmer */
+                                                                           
 @keyframes liquid-crystal-morph{
   0%,100%{
     border-radius:48% 52% 49% 51% / 39% 41% 59% 61%;
@@ -604,7 +604,7 @@ body[data-theme="void"]{
 }
 
 
-/* Animation reliability pass */
+                                
 .scene,
 .scene::before,
 .scene::after,
@@ -651,7 +651,7 @@ body[data-theme="void"]{
 }
 
 
-/* LAB 02 — Spotlight + Aurora + Background Beams */
+                                                    
 .chrome-orb,.wave-field,.motion-proof,.gridfx,#shaderCanvas,.shader-vignette{display:none!important}
 .scene{
   background:
@@ -876,7 +876,7 @@ body[data-theme="void"]{
     });
   });
 
-  // Canvas shader-inspired streak field. Pure client-side visual only.
+                                                                       
   const canvas = document.getElementById('shaderCanvas');
   const ctx = canvas?.getContext('2d', { alpha:true });
   let shaderW = 0, shaderH = 0, dpr = Math.min(window.devicePixelRatio || 1, 1.75);

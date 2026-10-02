@@ -2,12 +2,12 @@
   'use strict';
 
   const run = () => {
-    // Do not overwrite or null native room.js handlers. The previous version
-    // accidentally removed serverSettingsBtn.onclick, which made the button
-    // appear dead.
+                                                                             
+                                                                            
+                   
 
-    // Clean only duplicate legacy UI that may still exist in an already-open
-    // page. The canonical runtime creates its own v5 controls.
+                                                                             
+                                                               
     document.querySelectorAll('.cat-actions,.cat-reactions,.cat-reaction-picker,.cat-mention-box').forEach(el => el.remove());
     document.querySelectorAll('.cat-v5-friends').forEach((el, i) => { if (i > 0) el.remove(); });
     document.querySelectorAll('.dm-friends-panel').forEach((el, i) => { if (i > 0) el.remove(); });
@@ -22,7 +22,7 @@
       mention.style.top = 'auto';
     }
 
-    // Keep legacy PATCH role calls compatible with the current PUT endpoint.
+                                                                             
     if (!window.__catEmpireFetchV6) {
       const nativeFetch = window.fetch.bind(window);
       window.fetch = (input, init = {}) => {

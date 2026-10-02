@@ -54,7 +54,7 @@
     });
   };
 
-  // ========== MODAL UNIFICADO "+": CRIAR OU ENTRAR VIA CONVITE ==========
+                                                                           
   window.openAddServerModal = function () {
     let overlay = document.getElementById('globalAddServerModal');
     if (!overlay) {
@@ -173,7 +173,7 @@
     setTimeout(() => overlay.querySelector('#addServerNameInput').focus(), 50);
   };
 
-  // Escuta cliques globais em botões de adicionar servidor (#railAddBtn)
+                                                                         
   document.addEventListener('click', (e) => {
     const addBtn = e.target.closest('#railAddBtn, .rail-add');
     if (addBtn) {
@@ -183,10 +183,10 @@
     }
   });
 
-  // ========== CORREÇÃO DAS PALETAS DE CORES ==========
-  // A paleta é usada tanto no Perfil quanto nas Configurações do Servidor.
-  // Forçamos uma grade estável para impedir que os swatches sejam empilhados
-  // em uma única coluna quando o modal/flexbox calcula uma largura pequena.
+                                                        
+                                                                           
+                                                                             
+                                                                            
   const paletteStyle = document.createElement('style');
   paletteStyle.id = 'catEmpirePaletteFix';
   paletteStyle.textContent = `
@@ -224,8 +224,8 @@
       box-shadow: 0 0 10px rgba(255, 255, 255, .25);
     }
 
-    /* Campo de cor personalizada: não deixar o input nativo aparecer
-       como um retângulo sem identificação ao lado da paleta. */
+                                                                     
+                                                                
     .custom-color-field {
       width: 100%;
       min-width: 172px;
@@ -304,10 +304,10 @@
   `;
   document.head.appendChild(paletteStyle);
 
-  // ========== IDENTIFICAÇÃO DO CAMPO DE COR PERSONALIZADA ==========
-  // Mantemos os IDs existentes para não quebrar o código que já lê/salva
-  // as cores. Apenas transformamos visualmente o input nativo em um campo
-  // claramente identificado, tanto no Perfil quanto no Servidor.
+                                                                      
+                                                                         
+                                                                          
+                                                                 
   function setupCustomColorField(inputId) {
     const input = document.getElementById(inputId);
     if (!input || input.closest('.custom-color-field')) return;

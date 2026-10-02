@@ -165,7 +165,7 @@ router.post('/reactions/toggle', async (req, res) => {
   } catch (_) { res.status(500).json({ error: 'Erro ao atualizar reação' }); }
 });
 
-// Busca opcional de GIFs. O chat também aceita GIFs enviados como arquivo e URLs .gif sem API externa.
+                                                                                                       
 router.get('/gifs/search', async (req, res) => {
   const key = process.env.TENOR_API_KEY;
   if (!key) return res.json({ configured: false, results: [] });

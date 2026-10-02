@@ -31,8 +31,8 @@ class Server {
   }
 
   static async findByUser(userId) {
-    // Compatibilidade com servidores antigos: o criador continua vendo o
-    // servidor mesmo se uma migração anterior não tiver a linha em members.
+                                                                         
+                                                                            
     return query(
       `SELECT s.*,
         (SELECT COUNT(*) FROM server_members WHERE server_id = s.id) as member_count,

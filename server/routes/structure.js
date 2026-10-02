@@ -24,7 +24,7 @@ function fail(res, error, fallback) {
   return res.status(error.status || 400).json({ error: error.message || fallback });
 }
 
-// ===== CATEGORIAS =====
+                         
 router.get('/servers/:serverId/categories', async (req, res) => {
   try {
     await requireMember(req.params.serverId, req.user.id);
@@ -70,14 +70,14 @@ router.delete('/servers/:serverId/categories/:categoryId', async (req, res) => {
     await requireManage(req.params.serverId, req.user.id);
     const category = await queryOne('SELECT id FROM channel_categories WHERE server_id=$1 AND id=$2', [req.params.serverId, req.params.categoryId]);
     if (!category) return res.status(404).json({ error: 'Categoria não encontrada' });
-    // Canais não são apagados ao remover a categoria: tornam-se canais sem categoria.
+                                                                                      
     await query('UPDATE channels SET category_id=NULL, category=NULL WHERE server_id=$1 AND category_id=$2', [req.params.serverId, req.params.categoryId]);
     await query('DELETE FROM channel_categories WHERE server_id=$1 AND id=$2', [req.params.serverId, req.params.categoryId]);
     res.json({ success: true, id: category.id });
   } catch (e) { fail(res, e, 'Erro ao excluir categoria'); }
 });
 
-// ===== CANAIS =====
+                     
 router.post('/servers/:serverId/channels', async (req, res) => {
   try {
     await requireManage(req.params.serverId, req.user.id);

@@ -145,8 +145,8 @@ app.use(['/api', '/auth'], (req, res, next) => {
   next();
 });
 
-// Toda mutação de servidor aprovada publica um evento único. Assim clientes
-// conectados atualizam somente os dados afetados, sem reload/F5.
+                                                                            
+                                                                 
 app.use('/api', (req, res, next) => {
   if (!['POST','PUT','PATCH','DELETE'].includes(req.method)) return next();
   const match = String(req.originalUrl || '').match(/^\/api\/(?:(?:platform|features|v4)\/)?servers\/([^/?]+)/);
@@ -203,8 +203,8 @@ app.use((req, res, next) => {
   const fullPath = path.join(clientDir, file);
   fs.readFile(fullPath, 'utf8', (err, html) => {
     if (err) return next();
-    // Keep HTML pages deterministic. Do not inject legacy profile/runtime layers
-    // at request time; the pages explicitly load their canonical scripts.
+                                                                                 
+                                                                          
     html = html.replace(/<script[^>]+(?:profile-v5|features-v4-final)[^>]*><\/script>/gi, '');
     if (vnextPages.has(req.path) && !html.includes('data-cat-empire-v4') && !html.includes('vnext-loader.js')) {
       html = html.replace('</body>', '<script src="/vnext-loader.js?v=20261001-audit1" data-cat-empire-loader></script></body>');

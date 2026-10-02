@@ -16,7 +16,7 @@
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <!-- Tela de carregamento inicial, some assim que a página termina de renderizar -->
+                                                                                        
     <LinearLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
@@ -40,7 +40,7 @@
             android:textSize="13sp" />
     </LinearLayout>
 
-    <!-- Tela de erro (offline / falha ao carregar), escondida por padrão -->
+                                                                             
     <LinearLayout
         android:id="@+id/errorOverlay"
         android:layout_width="match_parent"

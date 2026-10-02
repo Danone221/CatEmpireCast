@@ -1,4 +1,4 @@
-/* Cat Empire — production server interior theme */
+                                                   
 :root{
   --srv-bg:#06080c;
   --srv-bg2:#0a0f14;
@@ -39,7 +39,7 @@ body.room-page::before{
   opacity:.32;
 }
 
-/* top navigation */
+                    
 .room-page .empire-topbar{
   height:64px;
   padding:0 18px;
@@ -93,7 +93,7 @@ body.room-page::before{
   color:#75efc5;
 }
 
-/* overall workspace */
+                       
 .room-page .empire-topbar~.app-shell{
   height:calc(100dvh - 64px);
   padding:10px;
@@ -104,7 +104,7 @@ body.room-page::before{
 }
 .room-page .mobile-drawer{gap:8px}
 
-/* server rail */
+                 
 .room-page .server-rail{
   width:62px;
   padding:9px 5px;
@@ -150,7 +150,7 @@ body.room-page::before{
 }
 .room-page .rail-add{color:#63e9bc}
 
-/* channels */
+              
 .room-page .channels-sidebar{
   width:226px;
   border:1px solid var(--srv-line);
@@ -254,7 +254,7 @@ body.room-page::before{
   background:rgba(85,242,189,.08);
 }
 
-/* main chat panel */
+                     
 .room-page .main-panel{
   border:1px solid rgba(255,255,255,.055);
   border-radius:14px;
@@ -396,7 +396,7 @@ body.room-page::before{
   color:rgba(240,252,247,.74);
 }
 
-/* members */
+             
 .room-page .members-sidebar{
   width:228px;
   padding:16px 10px;
@@ -431,7 +431,7 @@ body.room-page::before{
   font-size:11px;
 }
 
-/* voice / live stage */
+                        
 .room-page .voice-grid{
   background:
     radial-gradient(circle at 50% 20%,rgba(67,236,181,.035),transparent 24rem);
@@ -496,7 +496,7 @@ body.room-page::before{
   color:#ff8ca0;
 }
 
-/* watch mode */
+                
 .room-page.watch-mode .main-panel{
   gap:10px;
 }
@@ -511,7 +511,7 @@ body.room-page::before{
   background:linear-gradient(180deg,rgba(7,15,17,.88),rgba(5,10,13,.95));
 }
 
-/* profile / generic modal polishing */
+                                       
 .room-page .modal{
   background:rgba(2,5,8,.74);
   backdrop-filter:blur(10px);
@@ -553,7 +553,7 @@ body.room-page::before{
   outline:2px solid rgba(85,242,189,.34);
 }
 
-/* subtle desktop panel lighting */
+                                   
 @media(pointer:fine){
   .room-page .channels-sidebar,
   .room-page .members-sidebar,
@@ -584,7 +584,7 @@ body.room-page::before{
   .room-page .main-panel{position:relative}
 }
 
-/* mobile: preserve working drawer/watch layout, only restyle */
+                                                                
 @media(max-width:860px){
   body.room-page{
     background:
@@ -701,7 +701,7 @@ body.room-page::before{
 }
 
 
-/* Production user profile card --------------------------------------- */
+                                                                          
 .room-page .profile-sheet-modal{
   align-items:center!important;
   padding:22px!important;
@@ -795,7 +795,7 @@ body.room-page::before{
   outline:none!important;
 }
 
-/* Banner gets a readable dark fade so the profile identity always survives custom images. */
+                                                                                             
 .room-page .profile-sheet .profile-banner{
   position:relative!important;
   height:188px!important;
@@ -991,7 +991,7 @@ body.room-page::before{
   box-shadow:0 0 8px color-mix(in srgb,var(--role-color,#61e7b6) 55%,transparent)!important;
 }
 
-/* Give the editing profile card the same material language without altering its fields/actions. */
+                                                                                                   
 .room-page #editProfileModal .profile-modal-box{
   border:1px solid rgba(111,255,210,.13)!important;
   border-radius:22px!important;
@@ -1012,7 +1012,7 @@ body.room-page::before{
   border-radius:50%!important;
 }
 
-/* Desktop-only soft spotlight following the profile card pointer. */
+                                                                     
 @media(pointer:fine){
   .room-page .profile-sheet-modal .profile-sheet{
     --profile-x:50%;
@@ -1039,7 +1039,7 @@ body.room-page::before{
   }
 }
 
-/* Mobile stays a sheet, but no longer looks like the old purple pixel card. */
+                                                                               
 @media(max-width:720px){
   .room-page .profile-sheet-modal{
     align-items:flex-end!important;
