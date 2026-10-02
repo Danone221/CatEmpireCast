@@ -594,7 +594,7 @@ $('messageInput').addEventListener('input', () => {
   typingTimeout = setTimeout(stopTyping, 3000);
 });
 
-const typingUsers = new Map(); // userId -> userName, só do canal aberto no momento
+const typingUsers = new Map();
 function renderTypingIndicator() {
   let el = $('typingIndicator');
   if (!el) {
@@ -1189,7 +1189,7 @@ socket.on('native-screen-audio', ({ peerId, data, sampleRate, channels }) => {
   }
 });
 
-const speakingAnalysers = {}; // uid -> { source, analyser, data, stream, raf }
+const speakingAnalysers = {};
 
 function ensureSpeakingDetection(uid, stream) {
   const audioTrack = stream && stream.getAudioTracks().find(t => t.readyState === 'live');
@@ -1198,7 +1198,7 @@ function ensureSpeakingDetection(uid, stream) {
     if (existing) teardownSpeakingDetection(uid);
     return;
   }
-  if (existing && existing.stream === stream) return; // já monitorando esse stream
+  if (existing && existing.stream === stream) return;
   if (existing) teardownSpeakingDetection(uid);
 
   try {
@@ -1701,31 +1701,31 @@ $('leaveBtn')?.addEventListener('click', () => {
 
 
 const PROFILE_COLORS = [
-  '#5865f2', // Discord Blurple
-  '#57f287', // Discord Green
-  '#fee75c', // Discord Yellow
-  '#eb459e', // Discord Fuchsia
-  '#ed4245', // Discord Red
-  '#00a8fc', // Discord Sky Blue
-  '#f47b67', // Discord Coral
-  '#e91e63', // Discord Pink
-  '#9b59b6', // Discord Purple
-  '#71368a', // Discord Dark Purple
-  '#3498db', // Discord Blue
-  '#206694', // Discord Deep Blue
-  '#1abc9c', // Discord Teal
-  '#11806a', // Discord Dark Teal
-  '#2ecc71', // Discord Light Green
-  '#1f8b4c', // Discord Dark Green
-  '#f1c40f', // Discord Gold
-  '#e67e22', // Discord Orange
-  '#a84300', // Discord Rust
-  '#e74c3c', // Discord Crimson
-  '#8b2bff', // Cat Empire Neon Purple
-  '#ff4fd8', // Cat Empire Neon Pink
-  '#4e5058', // Discord Grey
-  '#2b2d31', // Discord Dark
-  '#111214'  // Discord Black
+  '#5865f2',
+  '#57f287',
+  '#fee75c',
+  '#eb459e',
+  '#ed4245',
+  '#00a8fc',
+  '#f47b67',
+  '#e91e63',
+  '#9b59b6',
+  '#71368a',
+  '#3498db',
+  '#206694',
+  '#1abc9c',
+  '#11806a',
+  '#2ecc71',
+  '#1f8b4c',
+  '#f1c40f',
+  '#e67e22',
+  '#a84300',
+  '#e74c3c',
+  '#8b2bff',
+  '#ff4fd8',
+  '#4e5058',
+  '#2b2d31',
+  '#111214'
 ];
 let editSelectedColor = null;
 let serverSelectedColor = null;
