@@ -82,7 +82,7 @@
     return h ? `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   }
 
-  // ---------- Banner persistente ----------
+
   async function refreshServerBanner() {
     if (!isServer || !serverId) return;
     try {
@@ -99,7 +99,7 @@
     } catch (_) {}
   }
 
-  // ---------- Tempo da call ao lado do canal ----------
+
   let voiceStats = {};
   async function refreshVoiceStats() {
     if (!isServer || !serverId) return;
@@ -129,7 +129,7 @@
     if (channelList) new MutationObserver(() => setTimeout(paintVoiceTimers, 0)).observe(channelList, { childList:true, subtree:true });
   }
 
-  // ---------- Perfil grande com datas + cargos ----------
+
   async function openFullProfile(targetId) {
     if (!targetId) return;
     if (targetId === userId) {
@@ -174,11 +174,11 @@
   }
   window.openProfile = openFullProfile;
 
-  // Rebind member/message profile clicks through event delegation, so the new large profile is always used.
+
   if ($('membersList')) $('membersList').onclick = e => { const el = e.target.closest('[data-user-id]'); if (el) openFullProfile(el.dataset.userId); };
   if ($('messagesList')) $('messagesList').addEventListener('dblclick', e => { const el = e.target.closest('[data-user-id]'); if (el) openFullProfile(el.dataset.userId); });
 
-  // Own profile: keep only the large editor, never the small view profile.
+
   if (typeof window.openMyProfile === 'function' && !window.__catOriginalOpenMyProfile) window.__catOriginalOpenMyProfile = window.openMyProfile;
   if (typeof window.__catOriginalOpenMyProfile === 'function') {
     const originalOwn = window.__catOriginalOpenMyProfile;
@@ -190,7 +190,7 @@
     });
   }
 
-  // ---------- Reações: hover no desktop / segurar no mobile ----------
+
   function picker(x, y, messageId) {
     document.querySelector('.cat-reaction-picker')?.remove();
     const p = document.createElement('div');
@@ -245,7 +245,7 @@
     addReactionActions(); hydrateReactions();
   }
 
-  // ---------- Menções @username ----------
+
   function highlightMentions(root) {
     if (!root) return;
     root.querySelectorAll('.message-content').forEach(el => {
@@ -281,7 +281,7 @@
   setupMentionAutocomplete();
   highlightMentions($('messagesList'));
 
-  // ---------- DMs: somente Amigos + adicionar por @username ----------
+
   function setupDmFriends() {
     if (!isDm) return;
     const side=$('dmSidebar'), list=$('dmList'); if(!side||!list||side.querySelector('.dm-friends-panel')) return;
@@ -292,12 +292,12 @@
   }
   setupDmFriends();
 
-  // ---------- Remover GIF de forma persistente ----------
+
   function removeGifUi(){document.querySelectorAll('.feature-gif-btn,.feature-emoji-btn,#featureGifUrl,#featureGifInsert,.gif-row,.gif-hint,.feature-picker,#gifBtn,.gif-btn,[data-action="gif"]').forEach(el=>el.remove());}
   removeGifUi();
   new MutationObserver(removeGifUi).observe(document.body,{childList:true,subtree:true});
 
-  // ---------- Configurações do servidor, completas e sem abas quebradas ----------
+
   function settingsShell() {
     document.getElementById('catV3Fixed')?.remove();
     document.getElementById('catV3Settings')?.remove();
