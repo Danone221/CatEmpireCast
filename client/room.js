@@ -67,27 +67,27 @@ function esc(s) {
   return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
 }
 
-// Formatação estilo Discord: aplica DEPOIS de esc() escapar o HTML, então
-// é seguro — nunca opera em texto não-escapado.
+
+
 function renderMarkdown(escapedText) {
   let t = escapedText;
-  // Blocos de código ```...``` (antes de tudo, pra não formatar por dentro)
+
   const blocks = [];
   t = t.replace(/```([\s\S]+?)```/g, (_, code) => {
     blocks.push(code);
     return `\u0000CODEBLOCK${blocks.length - 1}\u0000`;
   });
-  // Código inline `texto`
+
   t = t.replace(/`([^`\n]+?)`/g, '<code class="inline-code">$1</code>');
-  // Negrito **texto**
+
   t = t.replace(/\*\*([^\*\n]+?)\*\*/g, '<b>$1</b>');
-  // Itálico *texto* ou _texto_
+
   t = t.replace(/(?:\*([^\*\n]+?)\*|_([^_\n]+?)_)/g, (_, a, b) => `<i>${a || b}</i>`);
-  // Riscado ~~texto~~
+
   t = t.replace(/~~([^~\n]+?)~~/g, '<s>$1</s>');
-  // Links http(s)://
+
   t = t.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
-  // Devolve os blocos de código guardados
+
   t = t.replace(/\u0000CODEBLOCK(\d+)\u0000/g, (_, i) => `<pre class="code-block">${blocks[Number(i)]}</pre>`);
   return t;
 }
@@ -109,7 +109,7 @@ socket.on('connect', () => {
   if (selectedTextChannelId) socket.emit('join-text-channel', { channelId: selectedTextChannelId });
   
   if (voiceChannelId) {
-    // Corrigindo a reconexão do canal de voz
+
     if (hadConnectedBefore) {
       Object.keys(peers).forEach(closePeer);
       if (camOn) { camOn = false; updateCamButton(); removeCurrentVideoTrack(); }
@@ -126,7 +126,7 @@ socket.on('disconnect', () => {
 });
 socket.on('error', d => console.error(d));
 
-// Alguém novo entrou no servidor
+
 socket.on('member-joined', (member) => {
   if (!member || members.some(m => m.id === member.id)) return;
   members.push(member);
@@ -134,7 +134,7 @@ socket.on('member-joined', (member) => {
   if (voiceChannelId) renderVoiceGrid();
 });
 
-// ===== Presença online/offline (bolinha verde/cinza estilo Discord) =====
+
 socket.on('presence-list', (ids) => {
   onlineUserIds = new Set(ids || []);
   renderMembers();
@@ -146,7 +146,7 @@ socket.on('presence-update', ({ userId: uid, online }) => {
   updateServerProfileCounts();
 });
 
-// ========== BARRA DE SERVIDORES (estilo Discord) ==========
+
 socket.on('servers-list', (list) => {
   renderServerRail(list || []);
 });
@@ -177,7 +177,7 @@ $('railHomeBtn').onclick = () => {
 };
 $('railAddBtn').onclick = () => { window.openAddServerModal(); };
 
-// Badge de DMs não lidas no ícone que agora leva pras mensagens privadas.
+
 async function refreshDmBadge() {
   try {
     const r = await fetch('/api/dms/unread-count', { headers: headers() });
@@ -191,7 +191,7 @@ async function refreshDmBadge() {
 refreshDmBadge();
 socket.on('new-dm', (msg) => { if (msg.recipient_id === userId) refreshDmBadge(); });
 
-// ========== CARREGAR SERVIDOR ==========
+
 async function load() {
   if (!serverId || !token) { location.href = '/'; return; }
   try {
@@ -227,7 +227,7 @@ async function load() {
   }
 }
 
-// ========== SIDEBAR: CANAIS ==========
+
 function renderChannelList() {
   const byCategory = {};
   for (const c of channels) {
@@ -286,7 +286,7 @@ function channelItemHtml(c) {
   </div>`;
 }
 
-// ========== SIDEBAR: MEMBROS ==========
+
 function renderMembers() {
   $('memberCount').textContent = members.length;
   $('membersList').innerHTML = members.map(m => `
@@ -304,7 +304,7 @@ function renderMembers() {
   });
 }
 
-// ========== CRIAR CANAL ==========
+
 function openCreateChannelModal(type) {
   pendingChannelType = type || 'text';
   $('newChannelName').value = '';
@@ -336,7 +336,7 @@ $('confirmChannelBtn').onclick = async () => {
   } catch (e) { toast(e.message, 'error'); }
 };
 
-// ========== PERFIL DO SERVIDOR ==========
+
 function updateServerProfileCounts(){
   if($('serverOnlineCount')) $('serverOnlineCount').textContent=members.filter(m=>onlineUserIds.has(m.id)).length;
   if($('serverTotalCount')) $('serverTotalCount').textContent=members.length;
@@ -363,7 +363,7 @@ $('leaveServerFromProfileBtn')?.addEventListener('click',async()=>{
  try{const r=await fetch('/api/servers/'+serverId+'/members/me',{method:'DELETE',headers:headers()});const d=await r.json();if(!r.ok)throw new Error(d.error||'Erro ao sair');localStorage.removeItem('cat_last_server');location.href='/dms.html';}catch(e){toast(e.message,'error');}
 });
 
-// ========== MOBILE SIDEBAR ==========
+
 $('hamburgerBtn').onclick = () => {
   $('membersSidebar')?.classList.remove('mobile-open');
   $('membersToggleBtn')?.setAttribute('aria-expanded', 'false');
@@ -385,11 +385,11 @@ function closeMobileSidebar() {
   $('sidebarOverlay').classList.remove('open');
 }
 
-// ========== VIEW SWITCHING ==========
+
 function showView(view) {
   activeMainView = view;
-  // Keep the selected text channel available beside the live stage.
-  // Reuse its existing message list and listeners rather than duplicating chat.
+
+
   $('textView').hidden = false;
   $('voiceView').hidden = view !== 'voice';
   document.body.classList.toggle('watch-mode', view === 'voice');
@@ -401,7 +401,7 @@ function showView(view) {
   renderChannelList();
 }
 
-// ========== CANAL DE TEXTO ==========
+
 async function openTextChannel(channelId) {
   selectedTextChannelId = channelId;
   unreadChannels.delete(channelId);
@@ -483,7 +483,7 @@ $('messagesList').addEventListener('click', (e) => {
   if (who && who.dataset.userId) openProfile(who.dataset.userId);
 });
 
-// ---- Edição inline de mensagem ----
+
 function startEditMessage(msgEl, messageId) {
   const contentEl = msgEl.querySelector('.message-content');
   if (!contentEl || msgEl.querySelector('.edit-message-input')) return;
@@ -576,7 +576,7 @@ function sendMessage() {
   stopTyping();
 }
 
-// ---- Indicador "está digitando…" ----
+
 let typingTimeout = null;
 let iAmTyping = false;
 function stopTyping() {
@@ -639,10 +639,10 @@ $('messageForm').onsubmit = (e) => {
   sendMessage();
 };
 
-// ========== CANAL DE VOZ / WEBRTC ==========
+
 async function joinVoiceChannel(channelId) {
-  // Aproveita o clique de entrada no canal para liberar a reprodução. Sem
-  // isso a faixa WebRTC pode chegar e continuar silenciosa por autoplay.
+
+
   unlockRemoteAudioPlayback();
   if (voiceChannelId === channelId) { showView('voice'); return; }
   if (voiceChannelId) leaveVoiceChannel(false);
@@ -693,8 +693,8 @@ $('voiceBarLeave').onclick = () => leaveVoiceChannel(false);
 $('micBtn').onclick = () => {
   if (!localStream) return;
   micOn = !micOn;
-  // A faixa da tela não pertence mais ao MediaStream do microfone. Este
-  // botão altera exclusivamente as faixas de entrada de voz.
+
+
   localStream.getAudioTracks().forEach(t => { t.enabled = micOn; });
   updateMicButton();
   socket.emit('voice-media-state', { muted: !micOn, camera: camOn, screen: screenOn });
@@ -726,7 +726,7 @@ function addVideoTrackToPeers(track) {
   if (!localStream) localStream = new MediaStream();
   localStream.addTrack(track);
   
-  // CORREÇÃO: Remove tracks antigas para não duplicar
+
   const oldVideos = localStream.getVideoTracks();
   oldVideos.forEach(t => {
     if (t !== track) {
@@ -831,10 +831,10 @@ $('screenBtn').onclick = async () => {
     }
     try {
       if (camOn) { removeCurrentVideoTrack(); camOn = false; updateCamButton(); }
-      // audio:true pede o som da aba/tela também (jogo, vídeo, música etc).
-      // Depende do navegador/SO aceitar — se não vier áudio nenhum, a
-      // pessoa que está assistindo simplesmente não ouve o som da tela
-      // (não quebra nada, só não tem áudio extra).
+
+
+
+
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
@@ -849,8 +849,8 @@ $('screenBtn').onclick = async () => {
         screenAudioTrack = screenAudio;
         screenAudio.enabled = true;
         if ('contentHint' in screenAudio) screenAudio.contentHint = 'music';
-        // Mantém áudio da tela fora do MediaStream do microfone. Assim o
-        // botão de mute nunca toca nessa faixa nem encerra sua negociação.
+
+
         const screenSoundStream = new MediaStream([screenAudio]);
         Object.values(peers).forEach(p => p.pc.addTrack(screenAudio, screenSoundStream));
         screenAudio.addEventListener('ended', () => removeScreenAudioTrack());
@@ -930,7 +930,7 @@ $('saveVideoSettingsBtn').onclick = async () => {
   }
 };
 
-// ========== CAST EXTERNO ==========
+
 const CAT_EMPIRE_APK_URL = 'https://www.mediafire.com/file/wgcapmj950aylli/CatEmpire.apk/file';
 
 function mobileCastPlatform() {
@@ -1062,9 +1062,9 @@ function removeExternalCastTile() {
 function tileId(uid) { return 'tile-' + uid; }
 function audioElId(uid) { return 'audio-' + uid; }
 
-// ---- Detecção de "está falando" (contorno verde, igual ao Discord) ----
-// Analisa o volume do áudio de cada participante em tempo real via Web
-// Audio API e liga/desliga a classe .speaking no tile correspondente.
+
+
+
 let sharedAudioCtx = null;
 let nativeScreenAudioGain = null;
 let remoteAudioWarningShown = false;
@@ -1135,13 +1135,13 @@ function unlockRemoteAudioPlayback() {
   });
 }
 
-// Uma interação posterior também recupera o áudio caso o navegador tenha
-// bloqueado o primeiro play. Isso vale para WebRTC e para o PCM vindo do APK.
+
+
 document.addEventListener('pointerdown', unlockRemoteAudioPlayback, { passive: true });
 document.addEventListener('keydown', unlockRemoteAudioPlayback);
 
-// Áudio interno enviado pelo APK. É reproduzido automaticamente para os
-// outros participantes e nunca devolvido ao próprio transmissor.
+
+
 const nativeScreenAudioPlayers = {};
 
 function stopNativeScreenAudio(peerId) {
@@ -1212,13 +1212,13 @@ function ensureSpeakingDetection(uid, stream) {
     speakingAnalysers[uid] = { source, analyser, data, stream, raf: null };
     tickSpeaking(uid);
   } catch (e) {
-    // AudioContext pode falhar em navegadores restritos — sem animação,
-    // mas a chamada continua funcionando normalmente.
+
+
   }
 }
 
-// Histerese: limiar mais alto pra "começar a falar" e mais baixo pra
-// "parar de falar", pra não ficar piscando com ruído de fundo.
+
+
 const SPEAKING_ON = 0.045;
 const SPEAKING_OFF = 0.02;
 
@@ -1292,8 +1292,8 @@ function renderVoiceGrid() {
   existingIds.forEach(id => {
     if (id === 'tile-external-cast') return;
     if (![...wantIds].some(u => tileId(u) === id)) {
-      // O ID da tela nativa contém ':'. querySelector tratava o trecho após
-      // os dois-pontos como pseudo-classe e interrompia o mosaico inteiro.
+
+
       const staleTile = document.getElementById(id);
       if (staleTile && expandedVoiceTile === staleTile) closeTileFullscreen();
       staleTile?.remove();
@@ -1349,9 +1349,9 @@ function upsertTile(uid, name, avatar, stream, isSelf, knownVideoOff, isNativeSc
         ? 'screen-waiting'
         : 'avatar';
 
-  // Nunca deixe um tile ampliado trocar o vídeo por avatar/placeholder.
-  // Era exatamente isso que mantinha a foto do autor ocupando a tela toda
-  // no WebView depois que a transmissão era encerrada.
+
+
+
   if (expandedVoiceTile === tile && wantKind !== 'video') closeTileFullscreen();
 
   if (tile.dataset.kind !== wantKind) {
@@ -1465,9 +1465,9 @@ socket.on('native-screen-started', ({ peerId, userId: ownerId, userName: ownerNa
   nativeScreenOwners[peerId] = { userId: ownerId, userName: ownerName || 'Membro' };
   remoteMediaState[peerId] = { camera: false, screen: true };
   if (!peers[peerId]) createPeer(peerId);
-  // Confirma esta conexão específica como visualizadora. Um usuário pode
-  // ter WebView, navegador e reconexões simultâneas; usar só o userId fazia
-  // a oferta WebRTC cair numa conexão antiga e a tela nunca aparecia.
+
+
+
   socket.emit('native-screen-viewer-ready', { peerId });
   renderVoiceGrid();
 });
@@ -1487,7 +1487,7 @@ socket.on('user-left', ({ userId: uid }) => {
   if (peers[uid]) closePeer(uid);
   renderVoiceGrid();
 
-  // CORREÇÃO: Limpeza do tile de quem saiu
+
   const tile = document.getElementById(tileId(uid));
   if (tile) {
     const video = tile.querySelector('video');
@@ -1524,8 +1524,8 @@ function createPeer(remoteId) {
     if (peer.makingOffer || pc.signalingState !== 'stable') return;
     try {
       peer.makingOffer = true;
-      // createOffer/setLocalDescription explícitos funcionam também em
-      // WebViews que ainda não implementam o setLocalDescription() implícito.
+
+
       const offer = await pc.createOffer(isNativeScreen
         ? { offerToReceiveVideo: true, offerToReceiveAudio: false }
         : undefined);
@@ -1541,8 +1541,8 @@ function createPeer(remoteId) {
     }
   };
 
-  // A conexão da tela nativa é somente recepção. Não devolvemos microfone e
-  // câmera do WebView ao serviço Android e evitamos colisão de offers.
+
+
   if (!isNativeScreen && localStream) {
     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
     if (screenAudioTrack?.readyState === 'live') {
@@ -1557,8 +1557,8 @@ function createPeer(remoteId) {
   };
 
   pc.ontrack = (e) => {
-    // Áudio da tela e microfone podem chegar em streams WebRTC separados.
-    // Mesclar as faixas impede que um ontrack substitua e apague o anterior.
+
+
     if (e.track && !peer.remoteStream.getTracks().some(track => track.id === e.track.id)) {
       peer.remoteStream.addTrack(e.track);
     }
@@ -1605,8 +1605,8 @@ function createPeer(remoteId) {
     }
   };
 
-  // A tela nativa responde à oferta criada pelo visualizador. Essa direção
-  // é mais confiável no WebView do que aguardar o Android iniciar a oferta.
+
+
   if (isNativeScreen && typeof pc.addTransceiver === 'function') {
     const transceiver = pc.addTransceiver('video', { direction: 'recvonly' });
     try {
@@ -1629,8 +1629,8 @@ function createPeer(remoteId) {
       'peer-created',
       typeof pc.addTransceiver === 'function' ? `transceiver; ${nativeCodecPreference}` : 'legacy-offer'
     );
-    // Não depende apenas de negotiationneeded: há WebViews em que esse
-    // evento não dispara para um transceiver recvonly.
+
+
     setTimeout(createAndSendOffer, 0);
   }
 
@@ -1692,14 +1692,14 @@ socket.on('voice-signal', async ({ from, data }) => {
   } catch (e) { console.error(e); }
 });
 
-// ========== SAIR DO SERVIDOR ==========
+
 $('leaveBtn')?.addEventListener('click', () => {
   if (voiceChannelId) leaveVoiceChannel(false);
   localStorage.removeItem('cat_last_server');
   location.href = '/dms.html';
 });
 
-// ========== PERFIL DE USUÁRIO E CONFIGURAÇÕES DE SERVIDOR ==========
+
 const PROFILE_COLORS = [
   '#5865f2', // Discord Blurple
   '#57f287', // Discord Green
@@ -1779,7 +1779,7 @@ async function logout() {
   location.href = '/';
 }
 
-// ---- Configurações de Usuário / Perfil ----
+
 async function openMyProfile() {
   try {
     const r = await fetch('/api/me', { headers: headers() });
@@ -1803,7 +1803,7 @@ async function openMyProfile() {
     if ($('accountUsername')) $('accountUsername').textContent = '@' + (me.username || 'usuario');
     if ($('accountUserId')) $('accountUserId').textContent = me.id || userId;
 
-    // Reseta abas para perfil
+
     switchUserTab('profile');
     $('editProfileModal').classList.add('open');
   } catch (e) { toast(e.message, 'error'); }
@@ -1909,7 +1909,7 @@ $('saveEditProfileBtn').onclick = async () => {
   } catch (e) { toast(e.message, 'error'); }
 };
 
-// ---- Ver perfil de outra pessoa ----
+
 let viewingProfileId = null;
 function formatProfileDate(value) {
   const timestamp = Number(value || 0);
@@ -1960,8 +1960,8 @@ $('dmFromProfileBtn').onclick = () => {
   location.href = '/dms.html?with=' + encodeURIComponent(viewingProfileId);
 };
 
-// Configurações avançadas são gerenciadas exclusivamente por runtime-v5.js.
-// ---- Gerenciamento de convites do servidor ----
+
+
 let currentActiveInviteCode = null;
 
 async function openInviteModal() {
@@ -1970,7 +1970,7 @@ async function openInviteModal() {
   $('inviteModal').classList.add('open');
 
   try {
-    // Tenta carregar os convites ativos se for admin ou gerar um padrão
+
     if (['admin', 'owner'].includes(myRole)) {
       const rList = await fetch('/api/servers/' + serverId + '/invites', { headers: headers() });
       const list = await rList.json();
@@ -1981,7 +1981,7 @@ async function openInviteModal() {
         return;
       }
     }
-    // Gera um novo convite inicial (padrão 24h, sem limite)
+
     await generateInvite();
   } catch (e) {
     $('inviteLinkText').textContent = 'Erro ao gerar convite.';
@@ -2066,7 +2066,7 @@ $('copyInviteBtn')?.addEventListener('click', () => {
   }).catch(() => toast('Não foi possível copiar.', 'error'));
 });
 
-// ---- Atualizações em tempo real de perfil/servidor/moderação ----
+
 socket.on('member-profile-updated', (u) => {
   const idx = members.findIndex(m => m.id === u.id);
   if (idx >= 0) { members[idx] = { ...members[idx], display_name: u.display_name, avatar: u.avatar }; renderMembers(); }
@@ -2114,11 +2114,11 @@ async function refreshServerDataLive() {
     }
     await loadServersRail();
     document.dispatchEvent(new CustomEvent('cat:server-live-data', { detail: data }));
-    // Preserve the open editor exactly like the user profile editor does.
-    // Closing the native file picker fires a window focus event; rebuilding the
-    // settings panel here discarded the selected image before it could be saved.
-    // The page behind the editor is already synchronized above, and the settings
-    // runtime updates its own state after a successful save.
+
+
+
+
+
 
   } catch (error) { console.error('Sincronização do servidor:', error); }
 }
@@ -2186,11 +2186,11 @@ socket.on('server-deleted', ({ serverId: sid }) => {
   }
 });
 
-// ========== APP ANDROID NATIVO (captura + WebRTC do próprio canal) ==========
-// Quando o site roda dentro do app Android (ver CatEmpireCast/…/MainActivity.kt),
-// a ponte "CatEmpireNative" fica disponível no window. Nesse caso trocamos o
-// botão de instruções (app externo tipo Larix) por transmissão nativa de
-// verdade, sem precisar de outro app.
+
+
+
+
+
 function hasNativeBroadcast() {
   return !!window.CatEmpireNative &&
     typeof window.CatEmpireNative.prepareBroadcast === 'function' &&
@@ -2242,7 +2242,7 @@ function connectPreparedNativeBroadcast() {
   }
 }
 
-// Chamado pelo app Android quando a permissão, transmissão, erro ou término muda.
+
 window.onNativeBroadcastState = function (state, message) {
   if (state === 'ready') {
     nativePreparing = false;
