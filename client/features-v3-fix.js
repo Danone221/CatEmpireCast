@@ -82,7 +82,7 @@
     return h ? `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   }
 
-
+                                             
   async function refreshServerBanner() {
     if (!isServer || !serverId) return;
     try {
@@ -99,7 +99,7 @@
     } catch (_) {}
   }
 
-
+                                                         
   let voiceStats = {};
   async function refreshVoiceStats() {
     if (!isServer || !serverId) return;
@@ -129,7 +129,7 @@
     if (channelList) new MutationObserver(() => setTimeout(paintVoiceTimers, 0)).observe(channelList, { childList:true, subtree:true });
   }
 
-
+                                                           
   async function openFullProfile(targetId) {
     if (!targetId) return;
     if (targetId === userId) {
@@ -174,11 +174,11 @@
   }
   window.openProfile = openFullProfile;
 
-
+                                                                                                            
   if ($('membersList')) $('membersList').onclick = e => { const el = e.target.closest('[data-user-id]'); if (el) openFullProfile(el.dataset.userId); };
   if ($('messagesList')) $('messagesList').addEventListener('dblclick', e => { const el = e.target.closest('[data-user-id]'); if (el) openFullProfile(el.dataset.userId); });
 
-
+                                                                           
   if (typeof window.openMyProfile === 'function' && !window.__catOriginalOpenMyProfile) window.__catOriginalOpenMyProfile = window.openMyProfile;
   if (typeof window.__catOriginalOpenMyProfile === 'function') {
     const originalOwn = window.__catOriginalOpenMyProfile;
@@ -190,7 +190,7 @@
     });
   }
 
-
+                                                                        
   function picker(x, y, messageId) {
     document.querySelector('.cat-reaction-picker')?.remove();
     const p = document.createElement('div');
@@ -245,7 +245,7 @@
     addReactionActions(); hydrateReactions();
   }
 
-
+                                            
   function highlightMentions(root) {
     if (!root) return;
     root.querySelectorAll('.message-content').forEach(el => {
@@ -281,7 +281,7 @@
   setupMentionAutocomplete();
   highlightMentions($('messagesList'));
 
-
+                                                                        
   function setupDmFriends() {
     if (!isDm) return;
     const side=$('dmSidebar'), list=$('dmList'); if(!side||!list||side.querySelector('.dm-friends-panel')) return;
@@ -292,12 +292,12 @@
   }
   setupDmFriends();
 
-
+                                                           
   function removeGifUi(){document.querySelectorAll('.feature-gif-btn,.feature-emoji-btn,#featureGifUrl,#featureGifInsert,.gif-row,.gif-hint,.feature-picker,#gifBtn,.gif-btn,[data-action="gif"]').forEach(el=>el.remove());}
   removeGifUi();
   new MutationObserver(removeGifUi).observe(document.body,{childList:true,subtree:true});
 
-
+                                                                                    
   function settingsShell() {
     document.getElementById('catV3Fixed')?.remove();
     document.getElementById('catV3Settings')?.remove();
@@ -335,93 +335,93 @@
     const banner=settingsServer.banner_color||'#5865f2'; const icon=settingsServer.icon||'🐱'; const iconHtml=/^(data:|https?:)/.test(icon)?`<img src="${esc(icon)}" alt="">`:`<span>${esc(icon)}</span>`;
     c.innerHTML=`<div class="v3-title">Perfil do servidor</div><div class="v3-sub">Personalize o servidor. As alterações ficam salvas no Postgres e permanecem após F5.</div>
       <div class="v3-field"><label>NOME</label><input id="fxName" maxlength="40" value="${esc(settingsServer.name||'')}"></div>
-      <div class="v3-field"><label>ÍCONE</label><div class="v3-icon" id="fxIcon">${iconHtml}</div><input id="fxIconFile" type="file" accept="image                 
-                                                                                                                                                                                                                                                                                                                                        
-                                                                                                                                                                                              
-                                                                                                                                                 
-                                                                                                                                                                 
-                                           
-                                                                                                                                                                                                                                                                          
-            
-                                                               
-                                                                                                   
-                                                                  
-                                                        
-                                                                                                                                                                                                                      
-                                                                                                                                                                                                                                                                                                                   
-                                                                              
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
-   
-                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                      
-                                     
-                                                                                                                                                     
-                                                                                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                              
-                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
-                                                                                                                                                                                                                                                                                                                                                                                                  
-                                                                                                                                                                                                                                                                                                      
-                                                                                                                                                                                                                                                                                                                                                                                                                                                 
-   
-                                    
-                                                                    
-                                                                                                                                                                      
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                       
-   
-                                  
-                                                                                      
-                                                                                                                                                                                                                                                                                                                                                                                                                   
-   
-                                     
-                                                                                                                                                                            
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
-                                                                                                                                                                                                            
-                                                                                                                                                                                                                                
-   
-                                           
-                                   
-                            
-                                                                                 
-   
-                                                                                                         
+      <div class="v3-field"><label>ÍCONE</label><div class="v3-icon" id="fxIcon">${iconHtml}</div><input id="fxIconFile" type="file" accept="image/*" hidden></div>
+      <div class="v3-field"><label>FAIXA / BANNER</label><div class="v3-banner" id="fxBanner"></div><div class="v3-banner-tools"><button id="fxBannerFileBtn" type="button">📷 Imagem</button><button id="fxBannerDefault" type="button">🎨 Cor padrão</button></div><input id="fxBannerFile" type="file" accept="image/*" hidden></div>
+      <div class="v3-field"><label>COR PERSONALIZADA</label><input id="fxColor" type="color" value="${/^#[0-9a-f]{6}$/i.test(banner)?banner:'#5865f2'}" style="height:44px;padding:4px"></div>
+      <div class="v3-field"><label>DESCRIÇÃO</label><textarea id="fxDesc" maxlength="300">${esc(settingsServer.description||'')}</textarea></div>
+      <div class="v3-actions"><button class="v3-btn" id="fxCancel">Cancelar</button><button class="v3-btn primary" id="fxSave">Salvar alterações</button></div>`;
+    let bannerValue=banner, iconValue=icon;
+    const apply=()=>{const el=$('fxBanner');if(!el)return;if(/^(data:|https?:)/.test(bannerValue)){el.style.backgroundImage=`url("${bannerValue}")`;el.style.backgroundColor='';}else{el.style.backgroundImage='none';el.style.backgroundColor=bannerValue||'#5865f2';} };
+    apply();
+    $('fxBannerFileBtn').onclick=()=>$('fxBannerFile').click();
+    $('fxBannerDefault').onclick=()=>{bannerValue='#5865f2';$('fxColor').value='#5865f2';apply();};
+    $('fxColor').oninput=e=>{bannerValue=e.target.value;apply();};
+    $('fxBanner').onclick=()=>$('fxBannerFile').click();
+    $('fxBannerFile').onchange=async()=>{const f=$('fxBannerFile').files[0];if(!f)return;try{bannerValue=await fileData(f,500*1024);apply();}catch(e){toast?.(e.message,'error')}finally{$('fxBannerFile').value=''}};
+    $('fxIcon').onclick=()=>$('fxIconFile').click(); $('fxIconFile').onchange=async()=>{const f=$('fxIconFile').files[0];if(!f)return;try{iconValue=await fileData(f,500*1024);$('fxIcon').innerHTML=`<img src="${esc(iconValue)}" alt="">`}catch(e){toast?.(e.message,'error')}finally{$('fxIconFile').value=''}};
+    $('fxCancel').onclick=()=>document.getElementById('catV3Fixed')?.remove();
+    $('fxSave').onclick=async()=>{try{const d=await api('/api/servers/'+encodeURIComponent(serverId),{method:'PUT',body:JSON.stringify({name:$('fxName').value.trim(),description:$('fxDesc').value,bannerColor:bannerValue,icon:iconValue})});if(typeof window.applyBannerStyle==='function')window.applyBannerStyle($('serverHead'),d.banner_color);settingsServer=d;document.getElementById('catV3Fixed')?.remove();if(typeof toast==='function')toast('Configurações salvas.','success');setTimeout(refreshServerBanner,50)}catch(e){toast?.(e.message,'error')}};
+  }
+  function fileData(file,max){return new Promise((resolve,reject)=>{if(file.size>max)return reject(new Error('Imagem muito grande (máx. 500KB).'));const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('Erro ao ler imagem.'));r.readAsDataURL(file);});}
+  async function reloadServer(){const d=await api('/api/servers/'+encodeURIComponent(serverId));if(Array.isArray(window.channels))window.channels=d.channels||[];if(Array.isArray(window.members))window.members=d.members||[];if(typeof window.myRole!=='undefined')window.myRole=d.myRole||window.myRole;window.renderChannelList?.();window.renderMembers?.();refreshVoiceStats();}
+  async function settingsChannels(c){
+    const d=await api('/api/features/servers/'+encodeURIComponent(serverId)+'/categories'); const cats=d.categories||d||[]; const chs=d.channels||[];
+    c.innerHTML=`<div class="v3-title">Canais e categorias</div><div class="v3-sub">Crie, renomeie, mova e exclua categorias e canais.</div><div class="v3-card"><div class="v3-field"><label>NOVA CATEGORIA</label><input id="fxCat" maxlength="40" placeholder="ex.: MODERADOR"></div><button class="v3-btn primary" id="fxCatBtn">Criar categoria</button></div><div id="fxCats"></div>`;
+    $('fxCatBtn').onclick=async()=>{const n=$('fxCat').value.trim();if(!n)return;try{await api('/api/features/servers/'+serverId+'/categories',{method:'POST',body:JSON.stringify({name:n})});await reloadServer();settingsChannels(c);}catch(e){toast?.(e.message,'error')}};
+    const fallbackCats=cats.length?cats:Array.from(new Set(chs.map(x=>x.category).filter(Boolean))).map((name,i)=>({id:'virtual-'+i,name}));
+    $('fxCats').innerHTML=fallbackCats.map(cat=>{const catChannels=chs.filter(x=>(x.category||'CANAIS')===cat.name);return `<div class="v3-card"><div class="v3-row"><b class="grow">${esc(cat.name)}</b><button class="v3-mini" data-ren="${esc(cat.id)}">Editar</button><button class="v3-mini" data-del="${esc(cat.id)}">Excluir</button></div>${catChannels.length?catChannels.map(ch=>`<div class="v3-row"><span>${ch.type==='voice'?'🔊':'#'}</span><span class="grow">${esc(ch.name)}</span><button class="v3-mini" data-ch="${esc(ch.id)}">Editar</button><button class="v3-mini" data-cd="${esc(ch.id)}">Excluir</button></div>`).join(''):'<div style="font:8px monospace;color:#6f5a88;padding:8px 0">Nenhum canal nesta categoria.</div>'}<div style="margin-top:10px"><button class="v3-mini" data-add="${esc(cat.name)}">＋ Criar canal nesta categoria</button></div></div>`}).join('');
+    document.querySelectorAll('#fxCats [data-ren]').forEach(b=>b.onclick=async()=>{const cat=fallbackCats.find(x=>x.id===b.dataset.ren);if(!cat||String(cat.id).startsWith('virtual-'))return toast?.('Essa categoria ainda não possui registro próprio.','info');const n=prompt('Nome da categoria:',cat.name);if(!n)return;try{await api('/api/features/servers/'+serverId+'/categories/'+cat.id,{method:'PUT',body:JSON.stringify({name:n})});await reloadServer();settingsChannels(c);}catch(e){toast?.(e.message,'error')}});
+    document.querySelectorAll('#fxCats [data-del]').forEach(b=>b.onclick=async()=>{const cat=fallbackCats.find(x=>x.id===b.dataset.del);if(!cat||String(cat.id).startsWith('virtual-'))return toast?.('Categoria padrão não pode ser excluída desta tela.','info');if(!(await uiConfirm('Excluir categoria? Os canais serão movidos para CANAIS.')))return;try{await api('/api/features/servers/'+serverId+'/categories/'+cat.id,{method:'DELETE'});await reloadServer();settingsChannels(c);}catch(e){toast?.(e.message,'error')}});
+    document.querySelectorAll('#fxCats [data-ch]').forEach(b=>b.onclick=async()=>{const ch=chs.find(x=>x.id===b.dataset.ch);if(!ch)return;const n=prompt('Nome do canal:',ch.name);if(!n)return;try{await api('/api/features/servers/'+serverId+'/channels/'+ch.id,{method:'PUT',body:JSON.stringify({name:n})});await reloadServer();settingsChannels(c);}catch(e){toast?.(e.message,'error')}});
+    document.querySelectorAll('#fxCats [data-cd]').forEach(b=>b.onclick=async()=>{if(!(await uiConfirm('Excluir canal?')))return;try{await api('/api/servers/'+serverId+'/channels/'+b.dataset.cd,{method:'DELETE'});await reloadServer();settingsChannels(c);}catch(e){toast?.(e.message,'error')}});
+    document.querySelectorAll('#fxCats [data-add]').forEach(b=>b.onclick=async()=>{const name=prompt('Nome do novo canal:');if(!name)return;const type=confirm('OK = canal de voz / Cancelar = canal de texto');try{await api('/api/servers/'+serverId+'/channels',{method:'POST',body:JSON.stringify({name,type:type?'voice':'text',category:b.dataset.add})});await reloadServer();settingsChannels(c);}catch(e){toast?.(e.message,'error')}});
+  }
+  async function settingsMembers(c){
+    const d=await api('/api/servers/'+encodeURIComponent(serverId));
+    c.innerHTML=`<div class="v3-title">Membros</div><div class="v3-sub">Gerencie membros e a hierarquia do servidor.</div><div class="v3-card" id="fxMembers"></div>`;
+    $('fxMembers').innerHTML=(d.members||[]).map(m=>`<div class="v3-row"><div class="m-avatar" style="width:30px;height:30px;flex:none"><img src="${esc(m.avatar||'/logo.svg')}" alt="" style="width:100%;height:100%;object-fit:cover"></div><span class="grow">${esc(m.display_name||m.username)}<small style="display:block;color:#6f5a88">@${esc(m.username)}</small></span><span class="v3-role">${d.creator_id===m.id?'FOUNDER':m.role==='admin'?'ADMIN':'MEMBRO'}</span>${d.creator_id===m.id||m.id===userId?'':`<button class="v3-mini" data-m="${esc(m.id)}">${m.role==='admin'?'Rebaixar':'Promover'}</button>`}</div>`).join('');
+    document.querySelectorAll('#fxMembers [data-m]').forEach(b=>b.onclick=async()=>{const m=d.members.find(x=>x.id===b.dataset.m);try{await api('/api/servers/'+serverId+'/members/'+b.dataset.m+'/role',{method:'PUT',body:JSON.stringify({role:m.role==='admin'?'member':'admin'})});await reloadServer();settingsMembers(c);}catch(e){toast?.(e.message,'error')}});
+  }
+  async function settingsRoles(c){
+    const d=await api('/api/features/servers/'+encodeURIComponent(serverId)+'/roles');
+    c.innerHTML=`<div class="v3-title">Cargos</div><div class="v3-sub">Hierarquia visual do servidor.</div>${(d.roles||[]).map(r=>`<div class="v3-card"><div class="v3-row"><b style="color:${esc(r.color)}">${esc(r.name)}</b><span class="grow"></span><span class="v3-role">${r.count}</span></div><div style="font:8px monospace;color:#8d7ba9;line-height:1.6">${esc(r.description)}</div></div>`).join('')}`;
+  }
+  async function settingsSecurity(c){
+    const d=await api('/api/features/servers/'+encodeURIComponent(serverId)+'/settings'); const s={verification:false,mediaFilter:false,mentions:false,...(d.security||{})};
+    c.innerHTML=`<div class="v3-title">Configurações de segurança</div><div class="v3-sub">Controles persistidos no Postgres.</div><div id="fxSecurity">${[['verification','Verificação de entrada'],['mediaFilter','Filtro de mídia'],['mentions','Controle de menções']].map(([k,n])=>`<div class="v3-toggle"><span>${n}</span><button type="button" data-s="${k}" class="${s[k]?'on':''}">${s[k]?'ATIVO':'DESATIVADO'}</button></div>`).join('')}<div class="v3-actions"><button class="v3-btn primary" id="fxSecSave">Salvar segurança</button></div></div>`;
+    document.querySelectorAll('#fxSecurity [data-s]').forEach(b=>b.onclick=()=>{s[b.dataset.s]=!s[b.dataset.s];b.classList.toggle('on',s[b.dataset.s]);b.textContent=s[b.dataset.s]?'ATIVO':'DESATIVADO';});
+    $('fxSecSave').onclick=async()=>{try{await api('/api/features/servers/'+serverId+'/settings',{method:'PUT',body:JSON.stringify({security:s})});toast?.('Segurança salva.','success');}catch(e){toast?.(e.message,'error')}};
+  }
+  async function openServerSettingsFinal(){
+    if(!isServer||!serverId)return;
+    const o=settingsShell();
+    try{await showSettingsPage('overview');}catch(e){toast?.(e.message,'error');}
+  }
+  if (isServer) $('serverSettingsBtn').onclick = e => { e.preventDefault(); openServerSettingsFinal(); };
 
                                                                                   
-                 
-                                                                                                                                                                       
-                          
-   
-                                                       
-                                                    
-                                                                                                                                                                       
-   
-                                                    
-                                                       
-                                                                                                                                                                                                            
-   
+  if (isServer) {
+    document.addEventListener('click', e => { const el=e.target.closest('[data-user-id]'); if(el && el.closest('#membersList')) openFullProfile(el.dataset.userId); });
+    refreshServerBanner();
+  }
+  if (typeof window.renderChannelList === 'function') {
+    const originalRender = window.renderChannelList;
+    window.renderChannelList = function(){ const r=originalRender.apply(this,arguments); setTimeout(paintVoiceTimers,0); setTimeout(highlightMentions,20); return r; };
+  }
+  if (typeof window.renderMessages === 'function') {
+    const originalRenderMessages=window.renderMessages;
+    window.renderMessages=function(msgs){const r=originalRenderMessages.apply(this,arguments);setTimeout(()=>{addReactionActions();hydrateReactions();highlightMentions($('messagesList'));},30);return r;};
+  }
 
                                                                                                     
-                                    
-                                           
-                                                       
-                                                                             
-                                                                                                                
-           
-                                                                              
-                   
-                                                                                                                                           
-                                                          
-                                                                                                            
-         
-                                                                                                                                                       
-                                   
-                                                                                                                      
-      
-   
+  if (isServer && $('flipCamBtn')) {
+    $('flipCamBtn').onclick = async () => {
+      if (!window.camOn || !window.localStream) return;
+      const track=window.localStream.getVideoTracks?.()[0]; if(!track)return;
+      const old=window.videoSettings?.facingMode || 'user'; const next=old==='environment'?'user':'environment';
+      try {
+        try { await track.applyConstraints({ facingMode: { exact: next } }); }
+        catch (_) {
+          const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:next}},audio:false}); const nt=s.getVideoTracks()[0];
+          if(!nt)throw new Error('Câmera não encontrada');
+          await window.replaceCameraTrack(nt); if(window.videoSettings)window.videoSettings.facingMode=next;
+        }
+        if(window.videoSettings){window.videoSettings.facingMode=next;localStorage.setItem('cat_video_settings',JSON.stringify(window.videoSettings));}
+        window.renderVoiceGrid?.();
+      } catch(e) { if(typeof toast==='function')toast('Não foi possível virar a câmera neste dispositivo.','error'); }
+    };
+  }
 
                                                                                 
-                                                            
-     
+  setTimeout(removeGifUi,500); setTimeout(removeGifUi,1500);
+})();
