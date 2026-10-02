@@ -3716,8 +3716,8 @@ body[data-theme="void"]{
     });
   });
 
-  // V1 Lite: the old per-frame Canvas shader was removed.
-  // A compositor-friendly CSS streak layer now provides the same ambient motion.
+
+
 
 
 
@@ -3729,7 +3729,7 @@ body[data-theme="void"]{
   const scene = document.querySelector('.scene');
   setTimeout(() => scene?.classList.add('login-ready'), 1350);
 
-  // Cursor-reactive card lighting and tilt.
+
   if (matchMedia('(pointer:fine)').matches) {
     document.querySelectorAll('.login-visual-pane,.login-form-pane').forEach(card => {
       let raf = 0;
@@ -3755,7 +3755,7 @@ body[data-theme="void"]{
     });
   }
 
-  // Footer text hover reveal follows the pointer, mirroring the supplied component behavior.
+
   const footerSvg = document.querySelector('.footer-hover-svg');
   const footerReveal = document.getElementById('footerReveal');
   if (footerSvg && footerReveal) {
