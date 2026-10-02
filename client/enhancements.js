@@ -388,8 +388,8 @@
   }
 
   function openMyProfileEditor() {
-    // Preserva o editor já existente em room.js. Só muda o ponto de entrada
-    // do próprio perfil para a visualização pequena + "Editar perfil".
+
+
     const original = window.__catOriginalOpenMyProfile;
     if (typeof original === 'function') return original();
   }
@@ -529,13 +529,13 @@
     installChannelCreateOverride();
     loadCategories();
 
-    // room.js já carregou o servidor. Re-renderiza os membros com a hierarquia
-    // visual sem mexer na API de permissões existente.
+
+
     if (typeof window.renderMembers === 'function') window.renderMembers = enhancedRenderMembers;
     enhancedRenderMembers();
     enhancedRenderChannelList();
 
-    // Se room.js atualizar membros/canais por socket, reaplica a apresentação.
+
     const observer = new MutationObserver(() => {
       if (document.getElementById('membersList') && !document.getElementById('membersList').dataset.catEnhanced) {
         document.getElementById('membersList').dataset.catEnhanced = '1';
